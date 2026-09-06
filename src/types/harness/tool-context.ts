@@ -24,7 +24,7 @@ type HarnessToolContext = {
     verdict: 'allow' | 'deny',
     scope: 'workspace' | 'always',
   ) => Promise<void>
-  onHarnessEvent?: (event: HarnessEvent) => void
+  onHarnessEvent?: (event: HarnessEvent) => void | Promise<void>
   signal?: AbortSignal
   /** Set when tools run inside a spawn_subagent nested agent. */
   subagentId?: string

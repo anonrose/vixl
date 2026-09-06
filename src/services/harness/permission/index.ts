@@ -1,4 +1,5 @@
 export { gateToolPermission, type PendingApprovalView, type PermissionGateContext } from './gate'
+export { default as gateWorkspaceMovePermission } from './workspace-move-gate'
 export { decidePermission, parsePermissionRecords, fsDeleteCapability, fsWriteCapability, mcpCapability } from './policy'
 export {
   requestApproval,

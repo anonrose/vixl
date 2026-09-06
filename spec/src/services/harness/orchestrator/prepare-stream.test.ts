@@ -125,12 +125,18 @@ type SessionSets = {
 const buildInput = (
   mode: HarnessStreamInput['mode'],
   sets?: SessionSets,
-): HarnessStreamInput =>
-  ({
+): HarnessStreamInput => {
+  const workspace = {
     projectSlug: 'proj',
-    chatId: 'chat-1',
     projectRoot: '/tmp/proj',
     projectName: 'proj',
+  }
+  return {
+    workspace,
+    projectSlug: workspace.projectSlug,
+    chatId: 'chat-1',
+    projectRoot: workspace.projectRoot,
+    projectName: workspace.projectName,
     mode,
     modelId: 'gpt',
     providerId: 'openai',
@@ -145,11 +151,14 @@ const buildInput = (
     captureTurnMessages: false,
     sessionAllows: sets?.sessionAllows ?? new Set<string>(),
     sessionDenies: sets?.sessionDenies ?? new Set<string>(),
-  }) as HarnessStreamInput
+  } as HarnessStreamInput
+}
 
 type BuildToolsCtx = {
   sessionAllows: Set<string>
   sessionDenies: Set<string>
+  projectRoot: string
+  projectSlug: string
 }
 
 describe('prepare-stream prefix freeze vs rebuild', () => {
@@ -376,5 +385,23 @@ describe('prepare-stream session permission sets', () => {
     expect(second.sessionAllows).toBe(sessionAllows)
     expect(second.sessionDenies).toBe(sessionDenies)
     expect(second.sessionAllows.has('fs.write')).toBe(true)
+  })
+
+  it('writes tool ctx projectRoot and projectSlug through the live workspace', async () => {
+    const workspace = {
+      projectSlug: 'proj',
+      projectRoot: '/tmp/proj',
+      projectName: 'proj',
+    }
+    await prepareStream({
+      ...buildInput('agent'),
+      workspace,
+    })
+
+    const ctx = buildTools.mock.calls[0]?.[0] as BuildToolsCtx
+    ctx.projectRoot = '/tmp/dest'
+    ctx.projectSlug = 'dest'
+    expect(workspace.projectRoot).toBe('/tmp/dest')
+    expect(workspace.projectSlug).toBe('dest')
   })
 })

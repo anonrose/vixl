@@ -22,9 +22,9 @@ pub mod watch;
 pub mod web_fetch;
 pub mod workbench;
 pub use chat::{
-    append_chat_line, create_chat, delete_chat, fork_chat, list_chats, list_pinned_chats, pin_chat,
-    read_chat_messages, read_chat_meta, read_chat_usage, truncate_chat_log, update_chat_meta,
-    write_chat_usage,
+    append_chat_line, create_chat, delete_chat, fork_chat, list_chats, list_pinned_chats,
+    move_chat_to_workspace, pin_chat, read_chat_messages, read_chat_meta, read_chat_usage,
+    truncate_chat_log, update_chat_meta, write_chat_usage,
 };
 pub use codegraph::{codegraph_cli, codegraph_store_stat, delete_graph, list_graphs};
 pub use config::{

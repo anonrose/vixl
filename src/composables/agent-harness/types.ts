@@ -17,6 +17,7 @@ import type useChatStore from '@/composables/use-chat-store'
 import type useContextUsage from '@/composables/use-context-usage'
 import type useChatContextBudgetSync from '@/composables/use-chat-context-budget-sync'
 import type useVixlConfig from '@/composables/use-vixl-config'
+import type useFleetRegistry from '@/composables/use-fleet-registry'
 import type useFleetSidebar from '@/composables/use-fleet-sidebar'
 import type useWorkbenchStore from '@/composables/use-workbench-store'
 import type useMcpServers from '@/composables/use-mcp-servers'
@@ -41,6 +42,7 @@ export type AgentHarnessState = {
   contextUsage: ReturnType<typeof useContextUsage>
   contextBudgetSync: ReturnType<typeof useChatContextBudgetSync>
   fleetSidebar: ReturnType<typeof useFleetSidebar>
+  fleet: ReturnType<typeof useFleetRegistry>
   workbench: ReturnType<typeof useWorkbenchStore>
   mcpServers: ReturnType<typeof useMcpServers>
   messageQueue: ReturnType<typeof useMessageQueue>

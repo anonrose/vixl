@@ -8,6 +8,7 @@ import mapSubagentResultStatus from '@/utils/map-subagent-result-status'
 import mergeToolRunArgs from '@/utils/merge-tool-run-args'
 import toolArgsPath from '@/utils/tool-args-path'
 import lastStepUsageFromRecord from './last-step-usage-from-record'
+import rebindWorkspace from './rebind-workspace'
 import type { AgentHarnessState, AttentionHelpers } from './types'
 
 const HOLD_PATH_TOOLS = new Set(['write_file', 'edit_file'])
@@ -38,7 +39,7 @@ export default (
     compacting,
   } = state
 
-  const handleEvent = (event: HarnessEvent): void => {
+  const handleEvent = (event: HarnessEvent): void | Promise<void> => {
     liveEvents.value = [...liveEvents.value, event]
     if (event.type === 'text-delta') {
       session.appendLocalTextDelta(event.delta, event.messageId, event.stepId)
@@ -295,6 +296,9 @@ export default (
       status.value = 'ready'
       session.clearPendingQuestion()
       session.finishAgentTurn()
+    }
+    if (event.type === 'workspace-moved') {
+      return rebindWorkspace(state, event)
     }
   }
 

@@ -71,7 +71,7 @@ const baseInput = () => {
       modelRef: parentModelRef,
       system: 'You are the parent agent.',
       signal: new AbortController().signal,
-      projectSlug: 'demo',
+      workspace: { projectSlug: 'demo', projectRoot: '/tmp/demo', projectName: 'demo' },
       chatId: 'chat-1',
       turnId: 'turn-1',
       messages: [],

@@ -1,4 +1,5 @@
 export type { HarnessToolContext } from '@/types/harness/tool-context'
+export type { HarnessWorkspace } from '@/types/harness/harness-workspace'
 export type { HarnessStreamInput } from '@/types/harness/harness-stream-input'
 export type {
   OrchestratorInput,

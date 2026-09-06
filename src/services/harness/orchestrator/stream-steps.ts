@@ -1,4 +1,5 @@
 import type { HarnessEvent } from '@/types/harness/harness-event'
+import type { HarnessWorkspace } from '@/types/harness/harness-workspace'
 import deriveToolArtifact from '@/services/harness/derive-tool-artifact'
 import parseTodoUpdate from '@/services/harness/parse-todo-update'
 import truncateToolResult from '@/utils/truncate-tool-result'
@@ -11,13 +12,14 @@ import {
 } from './persistence'
 
 type StepControllerOptions = {
-  projectSlug: string
+  workspace: HarnessWorkspace
   chatId: string
   onEvent: (event: HarnessEvent) => void
 }
 
 export default (options: StepControllerOptions) => {
-  const { projectSlug, chatId, onEvent } = options
+  const { workspace, chatId, onEvent } = options
+  const persistSlug = (): string => workspace.projectSlug
 
   let trailingText = ''
   let assistantReasoning = ''
@@ -37,7 +39,7 @@ export default (options: StepControllerOptions) => {
     currentStepText = ''
     stepOpen = true
     onEvent({ type: 'step-start', stepId: currentStepId })
-    await persistStepBoundary(projectSlug, chatId, currentStepId, 'start')
+    await persistStepBoundary(persistSlug(), chatId, currentStepId, 'start')
   }
 
   const finishStep = async (): Promise<void> => {
@@ -48,10 +50,10 @@ export default (options: StepControllerOptions) => {
       collectedStepText = collectedStepText
         ? `${collectedStepText}\n\n${currentStepText}`
         : currentStepText
-      await persistStepText(projectSlug, chatId, currentStepId, currentStepText)
+      await persistStepText(persistSlug(), chatId, currentStepId, currentStepText)
     }
     onEvent({ type: 'step-finish', stepId: currentStepId })
-    await persistStepBoundary(projectSlug, chatId, currentStepId, 'finish')
+    await persistStepBoundary(persistSlug(), chatId, currentStepId, 'finish')
     stepCount += 1
     currentStepText = ''
     stepOpen = false
@@ -74,7 +76,7 @@ export default (options: StepControllerOptions) => {
     startedToolIds.add(toolCallId)
     onEvent({ type: 'tool-start', toolCallId, name, args })
     await persistToolRun(
-      projectSlug,
+      persistSlug(),
       chatId,
       toolCallId,
       name,
@@ -107,7 +109,7 @@ export default (options: StepControllerOptions) => {
       ...(diffs ? { diffs } : {}),
     })
     await persistToolRun(
-      projectSlug,
+      persistSlug(),
       chatId,
       toolCallId,
       name,
@@ -122,7 +124,7 @@ export default (options: StepControllerOptions) => {
       const todos = parseTodoUpdate(name, truncated)
       if (todos) {
         onEvent({ type: 'todo-update', todos })
-        await persistTodoUpdate(projectSlug, chatId, todos)
+        await persistTodoUpdate(persistSlug(), chatId, todos)
       }
     }
   }

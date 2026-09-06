@@ -49,7 +49,7 @@ fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339()
 }
 
-fn path_hash(path: &str) -> String {
+pub(crate) fn path_hash(path: &str) -> String {
     let digest = Sha256::digest(path.as_bytes());
     format!("{digest:x}")
 }
@@ -73,11 +73,11 @@ fn manifest_path(dir: &Path) -> PathBuf {
     dir.join("manifest.json")
 }
 
-fn content_path(dir: &Path, hash: &str) -> PathBuf {
+pub(crate) fn content_path(dir: &Path, hash: &str) -> PathBuf {
     dir.join(format!("{hash}.bin"))
 }
 
-fn read_manifest(dir: &Path) -> Result<Vec<FileCheckpointBaseline>, String> {
+pub(crate) fn read_manifest(dir: &Path) -> Result<Vec<FileCheckpointBaseline>, String> {
     let path = manifest_path(dir);
     if !path.exists() {
         return Ok(Vec::new());
@@ -86,7 +86,7 @@ fn read_manifest(dir: &Path) -> Result<Vec<FileCheckpointBaseline>, String> {
     serde_json::from_str(&raw).map_err(|error| error.to_string())
 }
 
-fn write_manifest(dir: &Path, entries: &[FileCheckpointBaseline]) -> Result<(), String> {
+pub(crate) fn write_manifest(dir: &Path, entries: &[FileCheckpointBaseline]) -> Result<(), String> {
     let path = manifest_path(dir);
     let raw = serde_json::to_string_pretty(entries).map_err(|error| error.to_string())?;
     fs::write(path, raw).map_err(|error| error.to_string())

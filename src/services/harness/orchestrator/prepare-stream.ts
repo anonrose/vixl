@@ -2,6 +2,7 @@ import type { LanguageModel, ModelMessage, UIMessage } from 'ai'
 import type { SystemPromptParts } from '@/services/context/system-prompt-parts/types'
 import type { HarnessEvent } from '@/types/harness/harness-event'
 import type { HarnessStreamInput } from '@/types/harness/harness-stream-input'
+import type { HarnessWorkspace } from '@/types/harness/harness-workspace'
 import { isReasoningLevel } from '@/types/models/reasoning-level'
 import createModel from '@/services/providers/create-model'
 import { readChatMeta, updateChatMeta } from '@/services/vixl/vixl-tauri'
@@ -41,6 +42,8 @@ import {
   persistPendingSubagent,
   persistSubagentHarnessEvent,
 } from './persistence'
+import bindLiveToolContext from './live-tool-context'
+import resolveLiveWorkspace from './resolve-workspace'
 import createStreamSteps from './stream-steps'
 
 const MAX_OUTPUT_TOKENS = DEFAULT_MAX_OUTPUT_TOKENS
@@ -53,23 +56,21 @@ export type PreparedHarnessStream = {
   callModel: ReturnType<typeof resolveModelRefForCall>
   callOptions: ReturnType<typeof resolveModelCallOptions>
   steps: ReturnType<typeof createStreamSteps>
-  projectSlug: string
+  workspace: HarnessWorkspace
   chatId: string
   modelId: string
   settings: HarnessStreamInput['settings']
   assistantId: string
   signal: AbortSignal
-  onEvent: (event: HarnessEvent) => void
+  onEvent: (event: HarnessEvent) => void | Promise<void>
   captureTurnMessages: boolean
   messages: UIMessage[]
 }
 
 export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream> => {
+  const workspace = resolveLiveWorkspace(input)
   const {
-    projectSlug,
     chatId,
-    projectRoot,
-    projectName,
     mode,
     modelId,
     providerId,
@@ -84,11 +85,13 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     assistantId,
     captureTurnMessages,
   } = input
+  const projectRoot = workspace.projectRoot
+  const projectName = workspace.projectName
 
   const callModel = resolveModelRefForCall(settings, { providerId, modelId })
 
   const [existingMeta, model] = await Promise.all([
-    readChatMeta(projectSlug, chatId).catch(() => null),
+    readChatMeta(workspace.projectSlug, chatId).catch(() => null),
     createModel({
       providerId: callModel.createRef.providerId,
       modelId: callModel.createRef.modelId,
@@ -96,9 +99,9 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     }),
   ])
 
-  const planSession = beginPlanExecutionTurn(projectSlug, chatId)
+  const planSession = beginPlanExecutionTurn(workspace.projectSlug, chatId)
   if (existingMeta) {
-    hydratePlanExecutionSession(projectSlug, chatId, {
+    hydratePlanExecutionSession(workspace.projectSlug, chatId, {
       awaitingPlanGo: existingMeta.awaitingPlanGo ?? null,
       subagentModel: existingMeta.subagentModel ?? null,
       subagentReasoning: isReasoningLevel(existingMeta.subagentReasoning)
@@ -122,7 +125,7 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     projectRoot,
     mentions: [],
     agentCatalog: [],
-    standalone: input.standalone,
+    standalone: workspace.standalone,
   })
   // Mentions are injected into the last user message, not the frozen prefix.
   const prefixParts: SystemPromptParts = { ...freshParts, mentions: '' }
@@ -151,7 +154,7 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     system = candidateSystem
     parts = prefixParts
 
-    updateChatMeta(projectSlug, chatId, {
+    updateChatMeta(workspace.projectSlug, chatId, {
       prefixSnapshot: candidate as unknown as Record<string, unknown>,
     }).catch((error: unknown) => {
       toast.error('Failed to persist chat prefix', {
@@ -160,7 +163,7 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     })
     onEvent({
       type: 'chat-meta-changed',
-      projectSlug,
+      projectSlug: workspace.projectSlug,
       chatId,
       patch: { prefixSnapshot: candidate },
     })
@@ -181,7 +184,7 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     mentions,
     messages,
     timeline,
-    standalone: input.standalone,
+    standalone: workspace.standalone,
     parts,
     frozenSnapshot,
     activeContext: input.activeContext,
@@ -207,70 +210,70 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     ]),
   })
 
-  const handleHarnessEvent = (event: HarnessEvent): void => {
+  const handleHarnessEvent = (event: HarnessEvent): void | Promise<void> => {
     if (
       event.type === 'subagent-start' ||
       event.type === 'subagent-result' ||
       event.type === 'subagent-event'
     ) {
-      persistSubagentHarnessEvent(projectSlug, chatId, event).catch((error) => {
+      persistSubagentHarnessEvent(workspace.projectSlug, chatId, event).catch((error) => {
         toast.error('Failed to save subagent event', {
           description: error instanceof Error ? error.message : 'Unknown error',
         })
       })
     }
     if (event.type === 'pending-subagent') {
-      persistPendingSubagent(projectSlug, chatId, event).catch((error) => {
+      persistPendingSubagent(workspace.projectSlug, chatId, event).catch((error) => {
         toast.error('Failed to save pending subagent', {
           description: error instanceof Error ? error.message : 'Unknown error',
         })
       })
     }
-    onEvent(event)
+    return onEvent(event)
   }
 
   const sessionAllows = input.sessionAllows
   const sessionDenies = input.sessionDenies
 
-  const allTools = buildTools({
-    projectRoot,
-    projectSlug,
-    chatId,
-    mode,
-    userMessageId,
-    // AgentTurn.id is passed as assistantId from use-agent-harness.
-    turnId: assistantId,
-    settings,
-    permissionLevel: input.permissionLevel ?? settings['agent.permissionLevel'] ?? 'allowlist',
-    sessionAllows,
-    sessionDenies,
-    sandboxEnabled: settings['agent.sandbox.enabled'] ?? true,
-    supportsVision,
-    onPendingApproval: (entry) => {
-      onEvent({
-        type: 'tool-pending-approval',
-        toolCallId: entry.toolCallId,
-        name: entry.name,
-        kind: entry.kind,
-        title: entry.title,
-        detail: entry.detail,
-        unsandboxed: entry.unsandboxed,
-        needsNetwork: entry.needsNetwork,
-        allowedScopes: entry.allowedScopes,
-        diff: entry.diff ?? [],
-        subagentId: entry.subagentId,
-        subagentLabel: entry.subagentLabel,
-      })
-    },
-    persistPermission: input.persistPermission,
-    onHarnessEvent: handleHarnessEvent,
-    signal,
-  })
+  const allTools = buildTools(
+    bindLiveToolContext(workspace, {
+      chatId,
+      mode,
+      userMessageId,
+      // AgentTurn.id is passed as assistantId from use-agent-harness.
+      turnId: assistantId,
+      settings,
+      permissionLevel: input.permissionLevel ?? settings['agent.permissionLevel'] ?? 'allowlist',
+      sessionAllows,
+      sessionDenies,
+      sandboxEnabled: settings['agent.sandbox.enabled'] ?? true,
+      supportsVision,
+      onPendingApproval: (entry) => {
+        onEvent({
+          type: 'tool-pending-approval',
+          toolCallId: entry.toolCallId,
+          name: entry.name,
+          kind: entry.kind,
+          title: entry.title,
+          detail: entry.detail,
+          unsandboxed: entry.unsandboxed,
+          needsNetwork: entry.needsNetwork,
+          allowedScopes: entry.allowedScopes,
+          diff: entry.diff ?? [],
+          subagentId: entry.subagentId,
+          subagentLabel: entry.subagentLabel,
+        })
+      },
+      persistPermission: input.persistPermission,
+      onHarnessEvent: handleHarnessEvent,
+      signal,
+    }),
+  )
   const tools = filterToolsForMode(mode, allTools, {
     awaitingPlanGo: Boolean(planSession.awaitingPlanGo),
   })
 
-  const steps = createStreamSteps({ projectSlug, chatId, onEvent })
+  const steps = createStreamSteps({ workspace, chatId, onEvent })
 
   return {
     model,
@@ -280,7 +283,7 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     callModel,
     callOptions,
     steps,
-    projectSlug,
+    workspace,
     chatId,
     modelId,
     settings,

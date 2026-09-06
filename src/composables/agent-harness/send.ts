@@ -33,7 +33,7 @@ export type SendArgs = {
 }
 
 type SendDeps = {
-  handleEvent: (event: HarnessEvent) => void
+  handleEvent: (event: HarnessEvent) => void | Promise<void>
   persistPermission: (
     capability: PermissionCapabilityKey,
     verdict: 'allow' | 'deny',
@@ -206,6 +206,7 @@ export default (
 
     try {
       await runOrchestrator({
+        workspace: options,
         projectSlug: options.projectSlug,
         chatId: options.chatId,
         projectRoot: options.projectRoot,

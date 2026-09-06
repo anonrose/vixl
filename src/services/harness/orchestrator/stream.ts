@@ -7,19 +7,21 @@ import { setAgentShellEventEmitter } from '@/services/harness/shell/registry'
 import { hasRunningSubagentsForChat } from '@/services/harness/subagent/registry'
 import consumeStream from './consume-stream'
 import prepareStream, { type PreparedHarnessStream } from './prepare-stream'
+import resolveLiveWorkspace from './resolve-workspace'
 
 export default async (input: HarnessStreamInput): Promise<void> => {
-  const { projectSlug, chatId, signal, onEvent } = input
+  const workspace = resolveLiveWorkspace(input)
+  const { chatId, signal, onEvent } = input
 
   setAgentShellEventEmitter(chatId, onEvent)
 
   onEvent({
     type: 'chat-status-changed',
-    projectSlug,
+    projectSlug: workspace.projectSlug,
     chatId,
     status: 'running',
   })
-  await updateChatMeta(projectSlug, chatId, { status: 'running', attention: null })
+  await updateChatMeta(workspace.projectSlug, chatId, { status: 'running', attention: null })
 
   let prepared: PreparedHarnessStream | null = null
 
@@ -45,20 +47,20 @@ export default async (input: HarnessStreamInput): Promise<void> => {
     const waitingOnBackground = hasRunningSubagentsForChat(chatId)
     onEvent({
       type: 'chat-status-changed',
-      projectSlug,
+      projectSlug: workspace.projectSlug,
       chatId,
       status: 'idle',
     })
     if (waitingOnBackground) {
-      await updateChatMeta(projectSlug, chatId, { status: 'running' })
+      await updateChatMeta(workspace.projectSlug, chatId, { status: 'running' })
       onEvent({
         type: 'chat-meta-changed',
-        projectSlug,
+        projectSlug: workspace.projectSlug,
         chatId,
         patch: { status: 'running' },
       })
     } else {
-      await updateChatMeta(projectSlug, chatId, { status: 'idle' })
+      await updateChatMeta(workspace.projectSlug, chatId, { status: 'idle' })
     }
   }
 }

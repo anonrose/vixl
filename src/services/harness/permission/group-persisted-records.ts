@@ -43,6 +43,7 @@ const kindFor = (capability: PermissionCapabilityKey): ApprovalKind => {
   }
   if (capability.startsWith('mcp:')) return 'mcp'
   if (capability === 'web.fetch' || capability.startsWith('web.fetch:')) return 'web'
+  if (capability === 'workspace.move') return 'workspace'
   return 'fs'
 }
 

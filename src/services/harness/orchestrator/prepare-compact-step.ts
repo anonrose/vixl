@@ -2,6 +2,7 @@ import { toast } from 'vue-sonner'
 import type { ModelMessage, UIMessage } from 'ai'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import type { HarnessEvent } from '@/types/harness/harness-event'
+import type { HarnessWorkspace } from '@/types/harness/harness-workspace'
 import captureBillableUsage from '@/services/billing/capture-billable-usage'
 import {
   buildModelTranscript,
@@ -18,7 +19,7 @@ type PrepareParentCompactStepInput = {
   modelRef: ModelRef
   system: string
   signal: AbortSignal
-  projectSlug: string
+  workspace: HarnessWorkspace
   chatId: string
   turnId: string
   messages: UIMessage[]
@@ -60,7 +61,7 @@ export default (input: PrepareParentCompactStepInput) =>
       }
 
       const checkpoint = await persistCompactionCheckpoint({
-        projectSlug: input.projectSlug,
+        projectSlug: input.workspace.projectSlug,
         chatId: input.chatId,
         summary: compacted.summary,
         focus: 'parent',
@@ -74,7 +75,7 @@ export default (input: PrepareParentCompactStepInput) =>
       })
       input.onEvent({
         type: 'chat-meta-changed',
-        projectSlug: input.projectSlug,
+        projectSlug: input.workspace.projectSlug,
         chatId: input.chatId,
         patch: {
           activeContext: {
@@ -87,7 +88,7 @@ export default (input: PrepareParentCompactStepInput) =>
 
       try {
         await captureBillableUsage({
-          projectSlug: input.projectSlug,
+          projectSlug: input.workspace.projectSlug,
           chatId: input.chatId,
           turnId: input.turnId,
           source: 'compaction',

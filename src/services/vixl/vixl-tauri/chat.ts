@@ -1,5 +1,5 @@
 import { call } from './helpers'
-import type { ChatMetaRecord } from './types'
+import type { ChatMetaRecord, FleetProjectRecord } from './types'
 
 export const createChat = (args: {
   projectSlug: string
@@ -95,3 +95,10 @@ export const writeChatUsage = (
   chatId: string,
   records: unknown[],
 ): Promise<void> => call('write_chat_usage', { projectSlug, chatId, records })
+
+export const moveChatToWorkspace = (args: {
+  fromProjectSlug: string
+  chatId: string
+  rootPath: string
+}): Promise<{ project: FleetProjectRecord; chat: ChatMetaRecord }> =>
+  call('move_chat_to_workspace', args)

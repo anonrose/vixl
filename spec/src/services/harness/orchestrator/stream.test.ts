@@ -56,6 +56,11 @@ import runStream from '@/services/harness/orchestrator/stream'
 
 const buildInput = (signal: AbortSignal): HarnessStreamInput =>
   ({
+    workspace: {
+      projectSlug: 'proj',
+      projectRoot: '/tmp/proj',
+      projectName: 'proj',
+    },
     projectSlug: 'proj',
     chatId: 'chat-1',
     signal,

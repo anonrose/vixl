@@ -66,6 +66,24 @@ export const beginPlanExecutionTurn = (
   return session
 }
 
+export const rekeyPlanExecutionSession = (
+  fromProjectSlug: string,
+  chatId: string,
+  toProjectSlug: string,
+): void => {
+  const fromKey = planExecutionSessionKey(fromProjectSlug, chatId)
+  const toKey = planExecutionSessionKey(toProjectSlug, chatId)
+  if (fromKey === toKey) {
+    return
+  }
+  const existing = sessions.get(fromKey)
+  if (!existing) {
+    return
+  }
+  sessions.delete(fromKey)
+  sessions.set(toKey, existing)
+}
+
 export const markCreatedPlanThisTurn = (
   projectSlug: string,
   chatId: string,

@@ -122,3 +122,43 @@ describe('createSessionOps initHarness', () => {
     expect(setPermissionLevel).toHaveBeenCalledWith('ask')
   })
 })
+
+describe('createSessionOps loadThread reuse', () => {
+  it('does not call initHarness when loadedThreadKey was pre-patched and harness exists', async () => {
+    const { createSessionOps } = await import('@/composables/agent-thread-view/session')
+    vi.mocked(useAgentHarness).mockClear()
+
+    const restoreUsageLedger = vi
+      .fn<() => Promise<void>>()
+      .mockResolvedValue(undefined)
+    const restorePendingApprovals = vi.fn<() => void>()
+
+    const state = {
+      chatId: computed(() => 'chat-1'),
+      projectSlug: computed(() => 'dest'),
+      threadKey: computed(() => 'dest:chat-1'),
+      loadedThreadKey: ref('dest:chat-1'),
+      harness: shallowRef({
+        restoreUsageLedger,
+        restorePendingApprovals,
+        send: vi.fn<(args: unknown) => Promise<void>>().mockResolvedValue(undefined),
+      }),
+      fleet: { loaded: ref(true) },
+      isStandalone: computed(() => false),
+      isSubagentView: computed(() => false),
+      contextBudgetSync: {
+        draftMentions: ref([]),
+      },
+      fleetSidebar: {
+        refreshSlug: vi.fn<(slug: string) => Promise<void>>().mockResolvedValue(undefined),
+      },
+    } as unknown as AgentThreadViewState
+
+    const session = createSessionOps(state)
+    await session.loadThread()
+
+    expect(useAgentHarness).not.toHaveBeenCalled()
+    expect(restorePendingApprovals).toHaveBeenCalledTimes(1)
+    expect(restoreUsageLedger).toHaveBeenCalledTimes(1)
+  })
+})

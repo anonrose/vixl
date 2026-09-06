@@ -35,6 +35,7 @@ import { askUser } from '@/services/harness/ask'
 import { loadSkillTool } from '@/services/harness/skill'
 import { lspQuery, diagnostics } from '@/services/harness/lsp'
 import { webFetchTool } from '@/services/harness/web'
+import { moveWorkspace } from '@/services/harness/workspace'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const buildHarnessTools = (ctx: HarnessToolContext) => ({
@@ -55,6 +56,7 @@ const buildHarnessTools = (ctx: HarnessToolContext) => ({
   git_commit: gitCommit(ctx),
   delete_file: deleteFile(ctx),
   move_file: moveFile(ctx),
+  move_workspace: moveWorkspace(ctx),
   write_file: writeFile(ctx),
   edit_file: editFile(ctx),
   apply_patch: applyPatch(ctx),

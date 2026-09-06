@@ -13,11 +13,12 @@ import dropTrailingAssistantMessages from '@/utils/drop-trailing-assistant-messa
 import prepareMessagesForModelVision from '@/utils/prepare-messages-for-model-vision'
 import { patchSubagentToolResults } from './helpers'
 import { persistToolRun } from './persistence'
+import resolveLiveWorkspace from './resolve-workspace'
 import runHarnessStream from './stream'
 
 export default async (input: ResumeOrchestratorInput): Promise<void> => {
+  const workspace = resolveLiveWorkspace(input)
   const {
-    projectSlug,
     chatId,
     messages,
     completedResults,
@@ -43,7 +44,7 @@ export default async (input: ResumeOrchestratorInput): Promise<void> => {
       isError: false,
     })
     await persistToolRun(
-      projectSlug,
+      workspace.projectSlug,
       chatId,
       item.toolCallId,
       'spawn_subagent',
@@ -58,7 +59,7 @@ export default async (input: ResumeOrchestratorInput): Promise<void> => {
     turnMessages,
     completedResults,
   )
-  const activeContextMeta = await readChatMeta(projectSlug, chatId).catch(() => null)
+  const activeContextMeta = await readChatMeta(workspace.projectSlug, chatId).catch(() => null)
   const activeContext = activeContextMeta?.activeContext
   const { messages: contextMessages, checkpointText } = filterMessagesForActiveContext(
     messages,
@@ -100,8 +101,9 @@ export default async (input: ResumeOrchestratorInput): Promise<void> => {
 
   await runHarnessStream({
     ...streamInput,
+    workspace,
     mentions: [],
-    projectSlug,
+    projectSlug: workspace.projectSlug,
     chatId,
     messages,
     modelMessages,

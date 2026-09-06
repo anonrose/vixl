@@ -91,6 +91,7 @@ export const MODE_TOOL_ALLOWLIST: Record<VixlChatMode, string[]> = {
     'apply_patch',
     'delete_file',
     'move_file',
+    'move_workspace',
     'grep',
     'glob_files',
     'list_dir',

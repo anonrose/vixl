@@ -2,11 +2,13 @@ import type { ModelMessage, UIMessage } from 'ai'
 import type { ChatTimelineItem } from '@/types/chat/chat-timeline-item'
 import type { ContextMention } from '@/types/harness/context-mention'
 import type { HarnessEvent } from '@/types/harness/harness-event'
+import type { HarnessWorkspace } from '@/types/harness/harness-workspace'
 import type { PermissionCapabilityKey, PermissionLevel } from '@/types/harness/permission'
 import type { ReasoningLevel } from '@/types/models/reasoning-level'
 import type { VixlChatMode, VixlSettings } from '@/types/vixl/vixl-settings'
 
 export type HarnessStreamInput = {
+  workspace: HarnessWorkspace
   projectSlug: string
   chatId: string
   projectRoot: string
@@ -21,7 +23,7 @@ export type HarnessStreamInput = {
   modelMessages: ModelMessage[]
   userMessageId: string
   signal: AbortSignal
-  onEvent: (event: HarnessEvent) => void
+  onEvent: (event: HarnessEvent) => void | Promise<void>
   assistantId: string
   captureTurnMessages: boolean
   standalone?: boolean

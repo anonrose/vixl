@@ -10,7 +10,7 @@ import router from '@/router'
 import type { AgentHarnessState } from './types'
 
 type SessionOpsDeps = {
-  handleEvent: (event: HarnessEvent) => void
+  handleEvent: (event: HarnessEvent) => void | Promise<void>
   maybeDrainQueue: () => Promise<void>
 }
 

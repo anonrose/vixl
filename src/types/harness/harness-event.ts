@@ -96,6 +96,14 @@ export type HarnessEvent =
   | { type: 'chat-status-changed'; projectSlug: string; chatId: string; status: 'idle' | 'running' }
   | { type: 'turn-aborted'; reason: 'user-stop' | 'error'; partialSteps: number }
   | { type: 'question-request'; toolCallId: string; question: string; options?: string[] }
+  | {
+      type: 'workspace-moved'
+      fromProjectSlug: string
+      chatId: string
+      project: { id: string; name: string; slug: string; rootPath: string }
+      projectSlug: string
+      projectRoot: string
+    }
   | { type: 'compaction-started' }
   | { type: 'compaction-ended' }
   | { type: 'compaction'; summary: string; focus: string | null }

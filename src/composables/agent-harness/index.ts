@@ -1,5 +1,4 @@
 import { ref, shallowRef } from 'vue'
-import { toast } from 'vue-sonner'
 import type { ChatStatus } from 'ai'
 import type { AgentHarnessOptions } from '@/types/harness/agent-harness-options'
 import type { HarnessEvent } from '@/types/harness/harness-event'
@@ -10,18 +9,25 @@ import type { TurnUsageAggregate } from '@/types/billing/turn-usage-aggregate'
 import type { PermissionLevel } from '@/types/harness/permission'
 import type { PendingApprovalView } from '@/services/harness/permission/gate'
 import type { PendingMcpAuthView } from '@/types/chat/pending-mcp-auth'
-import formatUnknownError from '@/utils/format-unknown-error'
 import useChatStore from '@/composables/use-chat-store'
 import useContextUsage from '@/composables/use-context-usage'
 import useChatContextBudgetSync from '@/composables/use-chat-context-budget-sync'
 import useVixlConfig from '@/composables/use-vixl-config'
+import useFleetRegistry from '@/composables/use-fleet-registry'
 import useFleetSidebar from '@/composables/use-fleet-sidebar'
 import useWorkbenchStore from '@/composables/use-workbench-store'
 import useMcpServers from '@/composables/use-mcp-servers'
 import useMessageQueue from '@/composables/use-message-queue'
 import createApprovals from './approvals'
 import createEvents from './events'
-import createHelpers, { makeHarnessKey } from './helpers'
+import createHelpers from './helpers'
+import {
+  dropAgentHarness,
+  getCachedAgentHarness,
+  rekeyAgentHarness,
+  resetAgentHarnessCacheForTests,
+  setCachedAgentHarness,
+} from './cache'
 import createLifecycle from './lifecycle'
 import createPersistence from './persistence'
 import createRestoreUsage from './restore-usage'
@@ -31,24 +37,7 @@ import type { AgentHarnessState, LastRunConfig } from './types'
 
 type AgentHarness = ReturnType<typeof createAgentHarness>
 
-const harnessCache = new Map<string, AgentHarness>()
-
-export const dropAgentHarness = (projectSlug: string, chatId: string): void => {
-  const key = makeHarnessKey(projectSlug, chatId)
-  const existing = harnessCache.get(key)
-  harnessCache.delete(key)
-  if (existing) {
-    existing.dispose().catch((error: unknown) => {
-      toast.error('Failed to stop chat session', {
-        description: formatUnknownError(error),
-      })
-    })
-  }
-}
-
-export const resetAgentHarnessCacheForTests = (): void => {
-  harnessCache.clear()
-}
+export { dropAgentHarness, rekeyAgentHarness, resetAgentHarnessCacheForTests }
 
 const createAgentHarness = (options: AgentHarnessOptions) => {
   const chatStore = useChatStore()
@@ -56,6 +45,7 @@ const createAgentHarness = (options: AgentHarnessOptions) => {
   const config = useVixlConfig()
   const contextUsage = useContextUsage()
   const contextBudgetSync = useChatContextBudgetSync()
+  const fleet = useFleetRegistry()
   const fleetSidebar = useFleetSidebar()
   const workbench = useWorkbenchStore()
   const mcpServers = useMcpServers()
@@ -67,6 +57,7 @@ const createAgentHarness = (options: AgentHarnessOptions) => {
     config,
     contextUsage,
     contextBudgetSync,
+    fleet,
     fleetSidebar,
     workbench,
     mcpServers,
@@ -166,13 +157,15 @@ const createAgentHarness = (options: AgentHarnessOptions) => {
 }
 
 export default (options: AgentHarnessOptions): AgentHarness => {
-  const key = makeHarnessKey(options.projectSlug, options.chatId)
-  const existing = harnessCache.get(key)
+  const existing = getCachedAgentHarness<AgentHarness>(
+    options.projectSlug,
+    options.chatId,
+  )
   if (existing) {
     return existing
   }
   const harness = createAgentHarness(options)
-  harnessCache.set(key, harness)
+  setCachedAgentHarness(options.projectSlug, options.chatId, harness)
   return harness
 }
 

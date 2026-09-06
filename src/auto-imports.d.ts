@@ -100,6 +100,7 @@ declare global {
   const refThrottled: typeof import('@vueuse/core').refThrottled
   const refWithControl: typeof import('@vueuse/core').refWithControl
   const refreshFleetSidebar: typeof import('./composables/use-fleet-sidebar').refreshFleetSidebar
+  const rekeyAgentHarness: typeof import('./composables/use-agent-harness').rekeyAgentHarness
   const resetAgentHarnessCacheForTests: typeof import('./composables/use-agent-harness').resetAgentHarnessCacheForTests
   const resetChatSessionsForTests: typeof import('./composables/use-chat-store').resetChatSessionsForTests
   const resolveComponent: typeof import('vue').resolveComponent
@@ -481,6 +482,7 @@ declare module 'vue' {
     readonly refThrottled: UnwrapRef<typeof import('@vueuse/core')['refThrottled']>
     readonly refWithControl: UnwrapRef<typeof import('@vueuse/core')['refWithControl']>
     readonly refreshFleetSidebar: UnwrapRef<typeof import('./composables/use-fleet-sidebar')['refreshFleetSidebar']>
+    readonly rekeyAgentHarness: UnwrapRef<typeof import('./composables/use-agent-harness')['rekeyAgentHarness']>
     readonly resetAgentHarnessCacheForTests: UnwrapRef<typeof import('./composables/use-agent-harness')['resetAgentHarnessCacheForTests']>
     readonly resetChatSessionsForTests: UnwrapRef<typeof import('./composables/use-chat-store')['resetChatSessionsForTests']>
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>

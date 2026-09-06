@@ -1,4 +1,4 @@
-export type ApprovalKind = 'fs' | 'shell' | 'git' | 'mcp' | 'web'
+export type ApprovalKind = 'fs' | 'shell' | 'git' | 'mcp' | 'web' | 'workspace'
 
 export type PermissionAction =
   | 'fs.write'
@@ -9,6 +9,7 @@ export type PermissionAction =
   | 'git.write'
   | 'mcp.call'
   | 'web.fetch'
+  | 'workspace.move'
 
 export type PermissionVerdict = 'allow' | 'ask' | 'deny'
 
@@ -31,6 +32,7 @@ export type PermissionCapabilityKey =
   | `mcp:${string}:${string}`
   | 'web.fetch'
   | `web.fetch:${string}`
+  | 'workspace.move'
 
 export type PermissionRecord = {
   capability: PermissionCapabilityKey

@@ -148,6 +148,7 @@ export {
   listPinnedChats,
   readChatUsage,
   writeChatUsage,
+  moveChatToWorkspace,
 } from './chat'
 export {
   workbenchLoadSession,

@@ -1,12 +1,12 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tauri::AppHandle;
 use uuid::Uuid;
 
 use super::paths::user_vixl_dir;
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct FleetProject {
     pub id: String,
     pub name: String,
@@ -67,6 +67,79 @@ fn slugify(name: &str) -> String {
         .join("-")
 }
 
+pub(crate) fn unique_project_slug(name: &str, projects: &[FleetProject]) -> String {
+    let base = slugify(name);
+    let base = if base.is_empty() {
+        "project".to_string()
+    } else {
+        base
+    };
+    if base != "_home_" && !projects.iter().any(|project| project.slug == base) {
+        return base;
+    }
+    let mut n = 2u32;
+    loop {
+        let candidate = format!("{base}-{n}");
+        if !projects.iter().any(|project| project.slug == candidate) {
+            return candidate;
+        }
+        n = n.saturating_add(1);
+        if n == u32::MAX {
+            return format!("{base}-{n}");
+        }
+    }
+}
+
+fn roots_match(left: &str, right: &str) -> bool {
+    if left == right {
+        return true;
+    }
+    match (
+        Path::new(left).canonicalize(),
+        Path::new(right).canonicalize(),
+    ) {
+        (Ok(left_canonical), Ok(right_canonical)) => left_canonical == right_canonical,
+        _ => false,
+    }
+}
+
+fn normalize_root_path(root_path: String) -> String {
+    Path::new(&root_path)
+        .canonicalize()
+        .map(|path| path.to_string_lossy().to_string())
+        .unwrap_or(root_path)
+}
+
+pub(crate) fn upsert_fleet_project(
+    projects: &mut Vec<FleetProject>,
+    name: String,
+    root_path: String,
+) -> FleetProject {
+    let root_path = normalize_root_path(root_path);
+    if let Some(index) = projects
+        .iter()
+        .position(|project| roots_match(&project.root_path, &root_path))
+    {
+        let existing = &mut projects[index];
+        existing.last_opened = chrono_now();
+        existing.root_path = root_path;
+        let project = existing.clone();
+        projects.sort_by(|a, b| b.last_opened.cmp(&a.last_opened));
+        return project;
+    }
+
+    let project = FleetProject {
+        id: Uuid::new_v4().to_string(),
+        name: name.clone(),
+        slug: unique_project_slug(&name, projects),
+        root_path,
+        last_opened: chrono_now(),
+    };
+    projects.push(project.clone());
+    projects.sort_by(|a, b| b.last_opened.cmp(&a.last_opened));
+    project
+}
+
 #[tauri::command]
 pub fn registry_list_projects(app: AppHandle) -> Result<Vec<FleetProject>, String> {
     Ok(read_registry(&app)?.projects)
@@ -93,35 +166,13 @@ pub fn resolve_launch_path(path_arg: &str) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
-fn add_or_update_project(
+pub(crate) fn add_or_update_project(
     app: &AppHandle,
     name: String,
     root_path: String,
 ) -> Result<FleetProject, String> {
     let mut registry = read_registry(app)?;
-    if let Some(existing) = registry
-        .projects
-        .iter_mut()
-        .find(|p| p.root_path == root_path)
-    {
-        existing.name = name;
-        existing.last_opened = chrono_now();
-        let project = existing.clone();
-        write_registry(app, &registry)?;
-        return Ok(project);
-    }
-
-    let project = FleetProject {
-        id: Uuid::new_v4().to_string(),
-        name: name.clone(),
-        slug: slugify(&name),
-        root_path,
-        last_opened: chrono_now(),
-    };
-    registry.projects.push(project.clone());
-    registry
-        .projects
-        .sort_by(|a, b| b.last_opened.cmp(&a.last_opened));
+    let project = upsert_fleet_project(&mut registry.projects, name, root_path);
     write_registry(app, &registry)?;
     Ok(project)
 }
@@ -218,3 +269,6 @@ fn chrono_now() -> String {
         .unwrap_or_default();
     format!("{}", duration.as_secs())
 }
+
+#[cfg(test)]
+mod tests;

@@ -5,6 +5,7 @@ export const TOOL_DESCRIPTIONS: Record<string, string> = {
   apply_patch: 'Apply an OpenCode-style multi-file patch',
   delete_file: 'Delete a file from the workspace',
   move_file: 'Move or rename a workspace file',
+  move_workspace: 'Move this chat onto a different project folder (always user-approved)',
   list_dir: 'List directory contents',
   glob_files: 'Find files by glob pattern',
   grep: 'Search file contents with regex',

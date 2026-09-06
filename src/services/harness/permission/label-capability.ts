@@ -23,6 +23,7 @@ const labelPermissionCapability = (
   if (capability.startsWith('web.fetch:')) {
     return capability.slice('web.fetch:'.length)
   }
+  if (capability === 'workspace.move') return 'Move workspace'
   return capability
 }
 

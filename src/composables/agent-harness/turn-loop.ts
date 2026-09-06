@@ -16,7 +16,7 @@ import createSend, { type SendArgs } from './send'
 import type { AgentHarnessState, AttentionHelpers } from './types'
 
 type TurnLoopDeps = {
-  handleEvent: (event: HarnessEvent) => void
+  handleEvent: (event: HarnessEvent) => void | Promise<void>
   persistPermission: (
     capability: PermissionCapabilityKey,
     verdict: 'allow' | 'deny',
@@ -109,6 +109,7 @@ export default (
 
     try {
       await resumeOrchestrator({
+        workspace: options,
         projectSlug: options.projectSlug,
         chatId: options.chatId,
         projectRoot: options.projectRoot,

@@ -22,6 +22,7 @@ export const createSessionOps = (state: AgentThreadViewState) => {
       projectRoot: root,
       projectName: name,
       standalone: state.isStandalone.value,
+      loadedThreadKey: state.loadedThreadKey,
     })
     state.harness.value = nextHarness
     nextHarness.setPermissionLevel(state.sessionPermissionLevel.value)
@@ -94,9 +95,17 @@ export const createSessionOps = (state: AgentThreadViewState) => {
     }
 
     const nextThreadKey = state.threadKey.value
-    if (state.loadedThreadKey.value === nextThreadKey && state.harness.value) {
-      state.harness.value.restorePendingApprovals()
-      await state.harness.value.restoreUsageLedger()
+    const loadedKey = state.loadedThreadKey.value
+    const liveHarness = state.harness.value
+    const liveSameChat =
+      Boolean(liveHarness) &&
+      Boolean(state.chatId.value) &&
+      Boolean(loadedKey) &&
+      (loadedKey === nextThreadKey ||
+        Boolean(loadedKey?.endsWith(`:${state.chatId.value}`)))
+    if (liveHarness && liveSameChat) {
+      liveHarness.restorePendingApprovals()
+      await liveHarness.restoreUsageLedger()
       await flushPendingChatMessage()
       return
     }

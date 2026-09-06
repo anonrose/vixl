@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { MODE_TOOL_ALLOWLIST } from '@/services/harness/mode-allowlists'
+import {
+  SUBAGENT_READ_ONLY_TOOLS,
+  SUBAGENT_WRITE_TOOLS,
+} from '@/services/harness/subagent/constants'
 
 describe('mode allowlists codebase tools', () => {
   const codebaseTools = [
@@ -136,6 +140,21 @@ describe('mode allowlists mutations', () => {
     expect(MODE_TOOL_ALLOWLIST.studio).toContain('run_terminal')
     expect(MODE_TOOL_ALLOWLIST.studio).toContain('write_studio_artifact')
     expect(MODE_TOOL_ALLOWLIST.studio).toContain('create_plan')
+  })
+})
+
+describe('mode allowlists move_workspace', () => {
+  it('includes move_workspace in agent only', () => {
+    expect(MODE_TOOL_ALLOWLIST.agent).toContain('move_workspace')
+    expect(MODE_TOOL_ALLOWLIST.ask).not.toContain('move_workspace')
+    expect(MODE_TOOL_ALLOWLIST.plan).not.toContain('move_workspace')
+    expect(MODE_TOOL_ALLOWLIST.studio).not.toContain('move_workspace')
+    expect(MODE_TOOL_ALLOWLIST.orchestrator).not.toContain('move_workspace')
+  })
+
+  it('does not include move_workspace in subagent tool sets', () => {
+    expect(SUBAGENT_READ_ONLY_TOOLS).not.toContain('move_workspace')
+    expect(SUBAGENT_WRITE_TOOLS).not.toContain('move_workspace')
   })
 })
 

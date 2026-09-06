@@ -33,7 +33,7 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
     callModel,
     callOptions,
     steps,
-    projectSlug,
+    workspace,
     chatId,
     modelId,
     settings,
@@ -54,7 +54,7 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
     extras?: { providerMetadata?: unknown; responseId?: string },
   ): Promise<void> => {
     await captureBillableUsage({
-      projectSlug,
+      projectSlug: workspace.projectSlug,
       chatId,
       turnId: assistantId,
       source: 'main',
@@ -85,14 +85,14 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
     experimental_transform: smoothStream({ chunking: 'word' }),
     stopWhen: [
       isLoopFinished(),
-      () => getPlanExecutionSession(projectSlug, chatId).createdPlanThisTurn,
+      () => getPlanExecutionSession(workspace.projectSlug, chatId).createdPlanThisTurn,
     ],
     prepareStep: prepareParentCompactStep({
       settings,
       modelRef: callModel.optionRef,
       system,
       signal,
-      projectSlug,
+      workspace,
       chatId,
       turnId: assistantId,
       messages,
@@ -106,7 +106,7 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
       await killShellsForChat(chatId)
       abortSubagentsForChat(chatId)
       if (steps.trailingText || steps.assistantReasoning) {
-        await persistLine(projectSlug, chatId, {
+        await persistLine(workspace.projectSlug, chatId, {
           id: assistantId,
           role: 'assistant',
           parts: [
@@ -289,7 +289,7 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
   }
 
   if (!signal.aborted && (steps.trailingText || steps.assistantReasoning)) {
-    await persistLine(projectSlug, chatId, {
+    await persistLine(workspace.projectSlug, chatId, {
       id: assistantId,
       role: 'assistant',
       parts: [

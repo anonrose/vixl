@@ -20,6 +20,7 @@ import {
 import hydrateSessionFromDisk from './hydrate'
 import { bindSessionMutations } from './session-mutations'
 import createActiveSessionFacade from './active-session-facade'
+import rekeyChatSession from './rekey'
 import type { SessionMutations } from './types'
 
 const useChatStore = () => {
@@ -60,6 +61,14 @@ const useChatStore = () => {
     if (activeKey.value === key) {
       activeKey.value = null
     }
+  }
+
+  const rekeySession = (
+    fromProjectSlug: string,
+    chatIdValue: string,
+    to: { projectSlug: string; projectRoot: string },
+  ): void => {
+    rekeyChatSession(fromProjectSlug, chatIdValue, to)
   }
 
   const ensureChatHydrated = async (
@@ -169,6 +178,7 @@ const useChatStore = () => {
     isSessionWarm,
     selectChat,
     dropSession,
+    rekeySession,
     ensureChatHydrated,
     refreshChatMeta,
     loadChat,

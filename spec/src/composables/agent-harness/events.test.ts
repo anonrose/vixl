@@ -11,6 +11,27 @@ vi.mock('@/services/harness/orchestrator', () => ({
   mapMetaStatusToChatStatus: (status: string) => status,
 }))
 
+const routerReplace = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+)
+
+vi.mock('@/router', () => ({
+  default: {
+    replace: (...args: unknown[]) => routerReplace(...args),
+  },
+}))
+
+const rekeyAgentHarness = vi.hoisted(() => vi.fn<(...args: unknown[]) => void>())
+
+vi.mock('@/composables/agent-harness/cache', () => ({
+  rekeyAgentHarness: (...args: unknown[]) => rekeyAgentHarness(...args),
+}))
+
+vi.mock('@/services/harness/plan-execution-session', () => ({
+  rekeyPlanExecutionSession: vi.fn<(...args: unknown[]) => void>(),
+}))
+
+import { toast } from 'vue-sonner'
 import createEvents from '@/composables/agent-harness/events'
 
 const buildState = (): AgentHarnessState =>
@@ -261,5 +282,135 @@ describe('agent-harness events billable-usage last-step', () => {
       buckets: [],
     })
     expect(state.contextUsage.clearLastStepUsage).not.toHaveBeenCalled()
+  })
+})
+
+describe('agent-harness events workspace-moved', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('sets standalone false and activates the destination project', async () => {
+    const refresh = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+    const setActiveProject = vi
+      .fn<(id: string) => Promise<void>>()
+      .mockResolvedValue(undefined)
+    const refreshSlug = vi
+      .fn<(slug: string) => Promise<void>>()
+      .mockResolvedValue(undefined)
+    const rekeySession = vi.fn<(...args: unknown[]) => void>()
+    const loadedThreadKey = ref<string | null>('_home_:chat-1')
+
+    const state = {
+      ...buildState(),
+      options: {
+        projectSlug: '_home_',
+        chatId: 'chat-1',
+        projectRoot: '/home',
+        projectName: 'Home',
+        standalone: true,
+        loadedThreadKey,
+      },
+      fleet: {
+        refresh,
+        setActiveProject,
+      },
+      fleetSidebar: {
+        refreshSlug,
+      },
+      chatStore: {
+        rekeySession,
+      },
+    } as unknown as AgentHarnessState
+
+    const { handleEvent } = createEvents(state, buildAttention(), deps)
+
+    await handleEvent({
+      type: 'workspace-moved',
+      fromProjectSlug: '_home_',
+      chatId: 'chat-1',
+      project: {
+        id: 'proj-1',
+        name: 'Dest',
+        slug: 'dest',
+        rootPath: '/tmp/dest',
+      },
+      projectSlug: 'dest',
+      projectRoot: '/tmp/dest',
+    })
+
+    expect(state.options.standalone).toBe(false)
+    expect(state.options.projectSlug).toBe('dest')
+    expect(state.options.projectRoot).toBe('/tmp/dest')
+    expect(state.options.projectName).toBe('Dest')
+    expect(loadedThreadKey.value).toBe('dest:chat-1')
+    expect(rekeySession).toHaveBeenCalledWith('_home_', 'chat-1', {
+      projectSlug: 'dest',
+      projectRoot: '/tmp/dest',
+    })
+    expect(rekeyAgentHarness).toHaveBeenCalledWith('_home_', 'chat-1', 'dest')
+    expect(setActiveProject).toHaveBeenCalledWith('proj-1')
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(routerReplace).toHaveBeenCalledWith('/project/dest/chat/chat-1')
+    expect(refreshSlug).toHaveBeenCalledWith('_home_')
+    expect(refreshSlug).toHaveBeenCalledWith('dest')
+  })
+
+  it('rekeys sync then toasts and rejects when fleet activation fails', async () => {
+    const refresh = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+    const setActiveProject = vi
+      .fn<(id: string) => Promise<void>>()
+      .mockRejectedValue(new Error('no graph'))
+    const refreshSlug = vi
+      .fn<(slug: string) => Promise<void>>()
+      .mockResolvedValue(undefined)
+    const rekeySession = vi.fn<(...args: unknown[]) => void>()
+
+    const state = {
+      ...buildState(),
+      options: {
+        projectSlug: '_home_',
+        chatId: 'chat-1',
+        projectRoot: '/home',
+        projectName: 'Home',
+        standalone: true,
+      },
+      fleet: {
+        refresh,
+        setActiveProject,
+      },
+      fleetSidebar: {
+        refreshSlug,
+      },
+      chatStore: {
+        rekeySession,
+      },
+    } as unknown as AgentHarnessState
+
+    const { handleEvent } = createEvents(state, buildAttention(), deps)
+
+    await expect(
+      handleEvent({
+        type: 'workspace-moved',
+        fromProjectSlug: '_home_',
+        chatId: 'chat-1',
+        project: {
+          id: 'proj-1',
+          name: 'Dest',
+          slug: 'dest',
+          rootPath: '/tmp/dest',
+        },
+        projectSlug: 'dest',
+        projectRoot: '/tmp/dest',
+      }),
+    ).rejects.toThrow('no graph')
+
+    expect(state.options.projectSlug).toBe('dest')
+    expect(rekeySession).toHaveBeenCalled()
+    expect(rekeyAgentHarness).toHaveBeenCalledWith('_home_', 'chat-1', 'dest')
+    expect(toast.error).toHaveBeenCalledWith('Failed to rebind workspace', {
+      description: 'no graph',
+    })
+    expect(refreshSlug).not.toHaveBeenCalled()
   })
 })

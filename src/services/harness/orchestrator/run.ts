@@ -11,11 +11,12 @@ import resolveModelVision from '@/services/harness/resolve-model-vision'
 import prepareMessagesForModelVision from '@/utils/prepare-messages-for-model-vision'
 import { nowIso } from './helpers'
 import { persistLine } from './persistence'
+import resolveLiveWorkspace from './resolve-workspace'
 import runHarnessStream from './stream'
 
 export default async (input: OrchestratorInput): Promise<void> => {
+  const workspace = resolveLiveWorkspace(input)
   const {
-    projectSlug,
     chatId,
     messages,
     userText,
@@ -60,7 +61,7 @@ export default async (input: OrchestratorInput): Promise<void> => {
   }
 
   if (!skipUserPersist) {
-    await persistLine(projectSlug, chatId, userLine)
+    await persistLine(workspace.projectSlug, chatId, userLine)
   }
 
   const isFirstUserMessage =
@@ -71,7 +72,7 @@ export default async (input: OrchestratorInput): Promise<void> => {
   const emitTitleChange = (title: string): void => {
     input.onEvent({
       type: 'chat-meta-changed',
-      projectSlug,
+      projectSlug: workspace.projectSlug,
       chatId,
       patch: { title },
     })
@@ -81,7 +82,7 @@ export default async (input: OrchestratorInput): Promise<void> => {
     // Keep the short "New Agent" placeholder while naming runs. Never copy the
     // user prompt into the sidebar title (including sync fallbacks).
     runSideTask({
-      projectSlug,
+      projectSlug: workspace.projectSlug,
       chatId,
       prompt: userText,
       settings: input.settings,
@@ -96,7 +97,7 @@ export default async (input: OrchestratorInput): Promise<void> => {
     })
   }
 
-  const activeContextMeta = await readChatMeta(projectSlug, chatId).catch(() => null)
+  const activeContextMeta = await readChatMeta(workspace.projectSlug, chatId).catch(() => null)
   const activeContext = activeContextMeta?.activeContext
   const { messages: contextMessages, checkpointText } = filterMessagesForActiveContext(
     messages,
@@ -128,7 +129,8 @@ export default async (input: OrchestratorInput): Promise<void> => {
 
   await runHarnessStream({
     ...streamInput,
-    projectSlug,
+    workspace,
+    projectSlug: workspace.projectSlug,
     chatId,
     messages,
     modelMessages: effectiveModelMessages,

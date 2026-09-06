@@ -218,3 +218,17 @@ fn resolve_project_id_home_and_registry() {
     let unmatched = resolve_project_id("other", "/tmp/other", &projects);
     assert!(unmatched.starts_with("unmatched-"));
 }
+
+#[test]
+fn update_chat_reparents_project_fields() {
+    let (_dir, conn) = open_migrated();
+    let mut meta = sample_meta("c1", "home", "Chat", "2026-01-01T00:00:00Z");
+    store::insert_chat(&conn, &meta, "_home_").expect("insert");
+    meta.project_slug = "game".to_string();
+    meta.project_root = "/tmp/game".to_string();
+    store::update_chat(&conn, &meta, "fleet-uuid").expect("update");
+    let updated = store::get_chat(&conn, "game", "c1").expect("get");
+    assert_eq!(updated.project_id, "fleet-uuid");
+    assert_eq!(updated.meta.project_slug, "game");
+    assert_eq!(updated.meta.project_root, "/tmp/game");
+}

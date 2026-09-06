@@ -2,6 +2,7 @@ import useAgentHarness from './agent-harness'
 
 export {
   dropAgentHarness,
+  rekeyAgentHarness,
   resetAgentHarnessCacheForTests,
 } from './agent-harness'
 export type {
