@@ -595,16 +595,14 @@ const handleNodeClick = async (event: NodeMouseEvent): Promise<void> => {
         <EmptyMedia variant="icon">
           <GitBranch class="size-6" />
         </EmptyMedia>
-        <EmptyTitle>
-          {{ state.hasSearched ? 'No graph to show' : 'Search the graph' }}
-        </EmptyTitle>
-        <EmptyDescription>
-          {{
-            state.hasSearched
-              ? 'No indexed files or symbols matched. Try a symbol, or a source file from the index (markdown and some configs may be missing).'
-              : 'Search by symbol or file name to explore callers, callees, and related nodes.'
-          }}
-        </EmptyDescription>
+        <template v-if="state.hasSearched">
+          <EmptyTitle>
+            No graph to show
+          </EmptyTitle>
+          <EmptyDescription>
+            No indexed files or symbols matched. Try a symbol, or a source file from the index (markdown and some configs may be missing).
+          </EmptyDescription>
+        </template>
       </EmptyHeader>
     </Empty>
   </div>
