@@ -1,54 +1,109 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { lspEnsureServer, lspRequest } from '@/services/vixl/vixl-tauri'
 import { parseLspDiagnosticItems } from '@/services/harness/lsp/parse-diagnostics'
-const diagnostics = () =>
+import summarizeWorkspace from '@/services/harness/lsp/summarize-workspace'
+import withToolExamples from '@/services/harness/with-tool-examples'
+import {
+  lspEnsureServer,
+  lspRequest,
+  lspWorkspaceDiagnostics,
+} from '@/services/vixl/vixl-tauri'
+import type { HarnessToolContext } from '@/types/harness/tool-context'
+import type { LspWorkspaceIssuesResult } from '@/types/lsp'
+
+const workspaceFailure = (message: string): LspWorkspaceIssuesResult => ({
+  scope: 'workspace',
+  errorCount: 0,
+  warningCount: 0,
+  itemCap: 50,
+  truncated: false,
+  items: [],
+  servers: [],
+  error: message,
+})
+
+const executeWorkspace = async (
+  projectRoot: string,
+): Promise<LspWorkspaceIssuesResult> => {
+  try {
+    const result = await lspWorkspaceDiagnostics(projectRoot)
+    return summarizeWorkspace(result)
+  } catch (error: unknown) {
+    return workspaceFailure(
+      error instanceof Error ? error.message : 'Workspace diagnostics failed',
+    )
+  }
+}
+
+const executeFile = async (
+  path: string,
+  extension: string | undefined,
+  projectRoot: string,
+) => {
+  const ext = extension ?? path.split('.').pop() ?? ''
+  let server: Awaited<ReturnType<typeof lspEnsureServer>>
+  try {
+    server = await lspEnsureServer(ext, projectRoot)
+  } catch (error: unknown) {
+    server = {
+      id: '',
+      running: false,
+      error: error instanceof Error ? error.message : 'LSP ensure failed',
+      installState: 'error',
+    }
+  }
+  if (server.installState === 'installing') {
+    return {
+      path,
+      diagnostics: [],
+      error: 'installing',
+      installState: 'installing',
+    }
+  }
+  if (!server.running) {
+    return {
+      path,
+      diagnostics: [],
+      error: server.error ?? 'LSP unavailable',
+      installState: server.installState ?? null,
+    }
+  }
+
+  try {
+    const result = await lspRequest(server.id, 'diagnostics', { path })
+    if (result && typeof result === 'object' && 'error' in result) {
+      return {
+        path,
+        diagnostics: [],
+        error: String((result as { error: string }).error),
+      }
+    }
+    return { path, diagnostics: parseLspDiagnosticItems(result) }
+  } catch (error: unknown) {
+    return {
+      path,
+      diagnostics: [],
+      error: error instanceof Error ? error.message : 'Diagnostics request failed',
+    }
+  }
+}
+
+const diagnostics = (ctx: HarnessToolContext) =>
   tool({
-    description: 'Read linter and diagnostic errors for a file via LSP',
+    description: withToolExamples(
+      'Read LSP diagnostics. Omit path for project-wide issues (50 cap, errors first; truncated means more). Pass path for one file. open_documents is already-analyzed files only; full typecheck is tsc --noEmit or vue-tsc. Retry if installing.',
+      [{}],
+    ),
     inputSchema: z.object({
-      path: z.string(),
+      path: z.string().optional(),
       extension: z.string().optional(),
     }),
     execute: async ({ path, extension }) => {
-      const ext = extension ?? path.split('.').pop() ?? ''
-      const server = await lspEnsureServer(ext).catch((error: unknown) => ({
-        id: '',
-        running: false,
-        error: error instanceof Error ? error.message : 'LSP ensure failed',
-        installState: 'error' as string | null,
-      }))
-      if (server.installState === 'installing') {
-        return {
-          path,
-          diagnostics: [],
-          error: 'installing',
-          installState: 'installing',
-        }
+      const trimmed = path?.trim() ?? ''
+      if (!trimmed) {
+        return executeWorkspace(ctx.projectRoot)
       }
-      if (!server.running) {
-        return {
-          path,
-          diagnostics: [],
-          error: server.error ?? 'LSP unavailable',
-          installState: server.installState ?? null,
-        }
-      }
-
-      const result = await lspRequest(server.id, 'diagnostics', { path }).catch(
-        (error: unknown) => ({
-          error: error instanceof Error ? error.message : 'Diagnostics request failed',
-        }),
-      )
-
-      if (result && typeof result === 'object' && 'error' in result) {
-        return {
-          path,
-          diagnostics: [],
-          error: String((result as { error: string }).error),
-        }
-      }
-
-      return { path, diagnostics: parseLspDiagnosticItems(result) }
+      return executeFile(trimmed, extension, ctx.projectRoot)
     },
   })
 

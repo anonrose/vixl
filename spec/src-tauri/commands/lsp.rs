@@ -1,15 +1,17 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_lib::commands::lsp::{
-    append_stderr_snippet, apply_server_disabled_flag, compute_vue_in_play,
-    lsp_invalid_stream_error, lsp_request_timeout_error, merge_vue_plugin_options,
-    normalize_lsp_params, pick_typescript_tsdk, read_lsp_message, resolve_lsp_servers,
-    server_display_label, should_inject_vue_typescript_plugin, start_lock_for,
-    tsserver_request_body, typescript_lsp_argv, typescript_version_supports_native_lsp,
-    unwrap_tsserver_request_tuple,
+    append_stderr_snippet, apply_diagnostic_registrations, apply_server_disabled_flag,
+    compute_vue_in_play, forget_open_document, is_lsp_method_not_found, lsp_invalid_stream_error,
+    lsp_request_timeout_error, merge_vue_plugin_options, normalize_lsp_method,
+    normalize_lsp_params, parse_diagnostic_provider, parse_workspace_diagnostic_report,
+    pick_typescript_tsdk, read_lsp_message, resolve_lsp_servers, server_display_label,
+    should_inject_vue_typescript_plugin, start_lock_for, tsserver_request_body,
+    typescript_lsp_argv, typescript_version_supports_native_lsp, unwrap_tsserver_request_tuple,
 };
 use app_lib::commands::lsp_install::{
     looks_like_javascript_bin, should_wrap_npm_bin_with_node, with_timeout,
@@ -494,4 +496,117 @@ async fn read_lsp_message_empty_eof_is_exit() {
     let mut reader = tokio::io::BufReader::new(client);
     let err = read_lsp_message(&mut reader).await.unwrap_err();
     assert_eq!(err, "Language server exited");
+}
+
+#[test]
+fn normalize_maps_workspace_diagnostics_alias() {
+    assert_eq!(
+        normalize_lsp_method("workspaceDiagnostics").unwrap(),
+        "workspace/diagnostic"
+    );
+    assert_eq!(
+        normalize_lsp_method("workspace/diagnostic").unwrap(),
+        "workspace/diagnostic"
+    );
+}
+
+#[test]
+fn parse_initialize_diagnostic_provider() {
+    let init = serde_json::json!({
+      "capabilities": {
+        "diagnosticProvider": {
+          "identifier": "rustc",
+          "interFileDependencies": true,
+          "workspaceDiagnostics": true
+        }
+      }
+    });
+    let provider = parse_diagnostic_provider(&init).unwrap();
+    assert!(provider.workspace_diagnostics);
+    assert_eq!(provider.identifier.as_deref(), Some("rustc"));
+
+    let missing = serde_json::json!({ "capabilities": {} });
+    assert!(parse_diagnostic_provider(&missing).is_none());
+
+    let pull_only = serde_json::json!({
+      "capabilities": {
+        "diagnosticProvider": {
+          "workspaceDiagnostics": false
+        }
+      }
+    });
+    let provider = parse_diagnostic_provider(&pull_only).unwrap();
+    assert!(!provider.workspace_diagnostics);
+}
+
+#[test]
+fn parse_workspace_report_into_uri_items() {
+    let report = serde_json::json!({
+      "items": [
+        {
+          "kind": "full",
+          "uri": "file:///tmp/src/foo.rs",
+          "version": 1,
+          "items": [{ "message": "unused", "severity": 2 }]
+        },
+        {
+          "kind": "unchanged",
+          "uri": "file:///tmp/src/bar.rs",
+          "version": 1,
+          "resultId": "1"
+        }
+      ]
+    });
+    let parsed = parse_workspace_diagnostic_report(&report);
+    assert_eq!(parsed.len(), 2);
+    assert_eq!(parsed[0].kind, "full");
+    assert_eq!(parsed[0].uri, "file:///tmp/src/foo.rs");
+    assert_eq!(
+        parsed[0].diagnostics,
+        serde_json::json!([{ "message": "unused", "severity": 2 }])
+    );
+    assert_eq!(parsed[1].kind, "unchanged");
+    assert_eq!(parsed[1].uri, "file:///tmp/src/bar.rs");
+    assert_eq!(parsed[1].diagnostics, serde_json::json!([]));
+}
+
+#[test]
+fn method_not_found_falls_back_to_open_documents() {
+    assert!(is_lsp_method_not_found("Method not found (code -32601)"));
+    assert!(is_lsp_method_not_found("unhandled method"));
+    assert!(is_lsp_method_not_found("method not found"));
+    assert!(!is_lsp_method_not_found("LSP request timed out after 60s"));
+}
+
+#[test]
+fn document_close_keeps_diagnostics_cache() {
+    let mut open_documents = HashMap::from([("file:///tmp/a.ts".to_string(), 1)]);
+    let diagnostics_by_uri = HashMap::from([(
+        "file:///tmp/a.ts".to_string(),
+        serde_json::json!([{ "message": "unused" }]),
+    )]);
+    forget_open_document(&mut open_documents, "file:///tmp/a.ts");
+    assert!(open_documents.is_empty());
+    assert!(diagnostics_by_uri.contains_key("file:///tmp/a.ts"));
+}
+
+#[test]
+fn register_capability_enables_workspace_diagnostics() {
+    let mut current = None;
+    apply_diagnostic_registrations(
+        &mut current,
+        &serde_json::json!({
+          "registrations": [{
+            "id": "1",
+            "method": "textDocument/diagnostic",
+            "registerOptions": {
+              "identifier": "typescript",
+              "workspaceDiagnostics": true
+            }
+          }]
+        }),
+    );
+    let provider = current.unwrap();
+    assert!(provider.workspace_diagnostics);
+    assert_eq!(provider.identifier.as_deref(), Some("typescript"));
 }

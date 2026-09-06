@@ -10,12 +10,19 @@ use super::super::lsp_install::{with_timeout, LSP_WRITE_TIMEOUT};
 use super::helpers::LspServerStatus;
 use super::io::{append_stderr_snippet, lsp_request_timeout_error};
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LspDiagnosticProvider {
+    pub workspace_diagnostics: bool,
+    pub identifier: Option<String>,
+}
+
 pub(crate) struct LspProcess {
     pub(crate) child: Child,
     pub(crate) stdin: ChildStdin,
     pub(crate) workspace_root: String,
     pub(crate) open_documents: HashMap<String, i32>,
     pub(crate) diagnostics_by_uri: HashMap<String, serde_json::Value>,
+    pub(crate) diagnostic_provider: Option<LspDiagnosticProvider>,
     pub(crate) pending: Mutex<HashMap<u64, oneshot::Sender<serde_json::Value>>>,
     pub(crate) next_id: Mutex<u64>,
     pub(crate) uses_classic_typescript: bool,
@@ -187,6 +194,7 @@ pub(crate) async fn json_rpc_request(
         | "textDocument/completion"
         | "textDocument/documentSymbol"
         | "workspace/symbol" => 12u64,
+        "workspace/diagnostic" => 60u64,
         _ => 30u64,
     };
 

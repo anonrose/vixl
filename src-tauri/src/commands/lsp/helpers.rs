@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 
@@ -143,6 +143,17 @@ pub(crate) fn path_to_uri(path: &Path) -> String {
     format!("file://{normalized}")
 }
 
+pub(crate) fn uri_to_path(uri: &str) -> PathBuf {
+    if let Ok(parsed) = url::Url::parse(uri) {
+        if parsed.scheme() == "file" {
+            if let Ok(path) = parsed.to_file_path() {
+                return path;
+            }
+        }
+    }
+    PathBuf::from(uri.strip_prefix("file://").unwrap_or(uri))
+}
+
 pub(crate) fn is_absolute_program(program: &str) -> bool {
     Path::new(program).is_absolute()
         || (cfg!(windows)
@@ -151,27 +162,35 @@ pub(crate) fn is_absolute_program(program: &str) -> bool {
             && (program.as_bytes()[2] == b'\\' || program.as_bytes()[2] == b'/'))
 }
 
-pub(crate) fn normalize_lsp_method(method: &str) -> Result<&str, String> {
+pub fn normalize_lsp_method(method: &str) -> Result<&str, String> {
     match method {
-    "goToDefinition" => Ok("textDocument/definition"),
-    "hover" => Ok("textDocument/hover"),
-    "findReferences" => Ok("textDocument/references"),
-    "symbols" | "documentSymbol" => Ok("textDocument/documentSymbol"),
-    "workspaceSymbol" | "workspace/symbol" => Ok("workspace/symbol"),
-    "diagnostics" | "publishDiagnostics" => Ok("textDocument/diagnostic"),
-    "workspace/executeCommand" | "executeCommand" => {
-      Err("workspace/executeCommand is not allowed".to_string())
+        "goToDefinition" => Ok("textDocument/definition"),
+        "hover" => Ok("textDocument/hover"),
+        "findReferences" => Ok("textDocument/references"),
+        "symbols" | "documentSymbol" => Ok("textDocument/documentSymbol"),
+        "workspaceSymbol" | "workspace/symbol" => Ok("workspace/symbol"),
+        "diagnostics" | "publishDiagnostics" => Ok("textDocument/diagnostic"),
+        "workspaceDiagnostics" | "workspace/diagnostic" => Ok("workspace/diagnostic"),
+        "workspace/executeCommand" | "executeCommand" => {
+            Err("workspace/executeCommand is not allowed".to_string())
+        }
+        other if other.starts_with("textDocument/") || other.starts_with("workspace/") => {
+            if other.contains("executeCommand") {
+                return Err("executeCommand is not allowed".to_string());
+            }
+            Ok(other)
+        }
+        other => Err(format!(
+            "Unsupported LSP method '{other}'. Use goToDefinition, findReferences, hover, symbols, workspaceSymbol, diagnostics, or workspaceDiagnostics."
+        )),
     }
-    other if other.starts_with("textDocument/") || other.starts_with("workspace/") => {
-      if other.contains("executeCommand") {
-        return Err("executeCommand is not allowed".to_string());
-      }
-      Ok(other)
-    }
-    other => Err(format!(
-      "Unsupported LSP method '{other}'. Use goToDefinition, findReferences, hover, symbols, workspaceSymbol, or diagnostics."
-    )),
-  }
+}
+
+pub fn is_lsp_method_not_found(error: &str) -> bool {
+    let lower = error.to_ascii_lowercase();
+    lower.contains("unhandled method")
+        || lower.contains("method not found")
+        || lower.contains("code -32601")
 }
 
 pub(crate) fn lsp_method_is_notification(method: &str) -> bool {

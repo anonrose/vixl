@@ -7,22 +7,30 @@ mod rpc;
 mod start;
 mod typescript;
 mod vue_tsserver;
+mod workspace_diagnostics;
 
+pub use documents::forget_open_document;
 pub use ensure_running::start_lock_for;
 pub use helpers::{
-    apply_server_disabled_flag, normalize_lsp_params, server_display_label, LspCatalogEntry,
-    LspServerStatus, LspWorkspaceProfile,
+    apply_server_disabled_flag, is_lsp_method_not_found, normalize_lsp_method,
+    normalize_lsp_params, server_display_label, LspCatalogEntry, LspServerStatus,
+    LspWorkspaceProfile,
 };
 pub use io::{
     append_stderr_snippet, lsp_invalid_stream_error, lsp_request_timeout_error, read_lsp_message,
 };
 pub use resolve::{resolve_lsp_servers, LspServerEntry};
+pub use rpc::LspDiagnosticProvider;
 pub use typescript::{
     compute_vue_in_play, merge_vue_plugin_options, pick_typescript_tsdk,
     should_inject_vue_typescript_plugin, typescript_lsp_argv,
     typescript_version_supports_native_lsp,
 };
 pub use vue_tsserver::{tsserver_request_body, unwrap_tsserver_request_tuple};
+pub use workspace_diagnostics::{
+    apply_diagnostic_registrations, lsp_workspace_diagnostics, parse_diagnostic_provider,
+    parse_workspace_diagnostic_report, ParsedWorkspaceDocumentReport,
+};
 
 use std::sync::Arc;
 
@@ -41,8 +49,8 @@ use documents::{
 };
 use ensure_running::ensure_running_server;
 use helpers::{
-    install_kind_label, is_managed_install_kind, lsp_method_is_notification, normalize_lsp_method,
-    path_to_uri, LspDiagnosticsEvent,
+    install_kind_label, is_managed_install_kind, lsp_method_is_notification, path_to_uri,
+    LspDiagnosticsEvent,
 };
 use resolve::{load_effective_servers, server_binary_available};
 use rpc::{
@@ -89,7 +97,17 @@ pub(crate) fn spawn_reader(process: Arc<Mutex<LspProcess>>, server_id: String, a
                 let vue_in_play = vue_in_play_for(&workspace_root, None, vue_running);
                 let result = match method {
                     "window/workDoneProgress/create" => serde_json::json!(null),
-                    "client/registerCapability" => serde_json::json!(null),
+                    "client/registerCapability" => {
+                        let params = message
+                            .get("params")
+                            .cloned()
+                            .unwrap_or(serde_json::Value::Null);
+                        {
+                            let mut guard = process.lock().await;
+                            apply_diagnostic_registrations(&mut guard.diagnostic_provider, &params);
+                        }
+                        serde_json::json!(null)
+                    }
                     "workspace/configuration" => workspace_configuration_response(
                         &app,
                         &message,
@@ -305,20 +323,22 @@ pub async fn lsp_request(
     }
 
     let mut lsp_params = params;
-    if let Some(path) = lsp_params
-        .get("path")
-        .and_then(|value| value.as_str())
-        .map(str::to_string)
-    {
-        let content = lsp_params.get("content").and_then(|value| value.as_str());
-        let uri = ensure_document_open(&process, &workspace_root, &path, content).await?;
-        if let Some(object) = lsp_params.as_object_mut() {
-            object.remove("path");
-            if method.starts_with("textDocument/") && !object.contains_key("textDocument") {
-                object.insert(
-                    "textDocument".to_string(),
-                    serde_json::json!({ "uri": uri }),
-                );
+    if method != "workspace/diagnostic" {
+        if let Some(path) = lsp_params
+            .get("path")
+            .and_then(|value| value.as_str())
+            .map(str::to_string)
+        {
+            let content = lsp_params.get("content").and_then(|value| value.as_str());
+            let uri = ensure_document_open(&process, &workspace_root, &path, content).await?;
+            if let Some(object) = lsp_params.as_object_mut() {
+                object.remove("path");
+                if method.starts_with("textDocument/") && !object.contains_key("textDocument") {
+                    object.insert(
+                        "textDocument".to_string(),
+                        serde_json::json!({ "uri": uri }),
+                    );
+                }
             }
         }
     }
@@ -364,11 +384,7 @@ pub async fn lsp_request(
                         }));
                     }
                 }
-                let lower = pull_error.to_ascii_lowercase();
-                if lower.contains("unhandled method")
-                    || lower.contains("method not found")
-                    || lower.contains("code -32601")
-                {
+                if is_lsp_method_not_found(&pull_error) {
                     return Ok(serde_json::json!({
                       "kind": "full",
                       "items": [],

@@ -130,6 +130,7 @@ export {
   lspUninstallServer,
   lspSetServerDisabled,
   lspWorkspaceProfile,
+  lspWorkspaceDiagnostics,
 } from './lsp'
 export {
   createChat,

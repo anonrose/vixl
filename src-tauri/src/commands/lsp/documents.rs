@@ -1,9 +1,15 @@
+use std::collections::HashMap;
+
 use tokio::sync::Mutex;
 
 use super::super::fs::resolve_workspace_path;
 use super::super::lsp_registry::language_id_for_extension;
 use super::helpers::path_to_uri;
 use super::rpc::{send_notification, LspProcess};
+
+pub fn forget_open_document(open_documents: &mut HashMap<String, i32>, uri: &str) {
+    open_documents.remove(uri);
+}
 
 pub(crate) async fn ensure_document_open(
     process: &Mutex<LspProcess>,
@@ -117,7 +123,6 @@ pub(crate) async fn close_document(process: &Mutex<LspProcess>, uri: &str) -> Re
     .await?;
 
     let mut guard = process.lock().await;
-    guard.open_documents.remove(uri);
-    guard.diagnostics_by_uri.remove(uri);
+    forget_open_document(&mut guard.open_documents, uri);
     Ok(())
 }

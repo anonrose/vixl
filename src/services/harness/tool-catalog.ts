@@ -20,7 +20,8 @@ export const TOOL_DESCRIPTIONS: Record<string, string> = {
   git_branch_create: 'Create a new git branch',
   git_commit: 'Stage and commit changes',
   lsp: 'Query language server (goToDefinition, findReferences, hover, symbols, workspaceSymbol, diagnostics). Use 0-based position for defs/refs/hover and query for workspaceSymbol. Prefer codebase_* for structural discovery; prefer over grep for precise symbols.',
-  diagnostics: 'Read linter and diagnostic errors for a file',
+  diagnostics:
+    'Read linter and diagnostic issues (omit path for project issues, items capped at 50; pass path for one file)',
   run_terminal: 'Run a shell command in the project',
   terminal_output: 'Read output from a background agent shell (not subagent ids)',
   stop_terminal: 'Stop a background agent shell',

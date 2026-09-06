@@ -73,7 +73,7 @@ const buildHarnessTools = (ctx: HarnessToolContext) => ({
   terminal_output: terminalOutput(),
   stop_terminal: stopTerminal(),
   lsp: lspQuery(),
-  diagnostics: diagnostics(),
+  diagnostics: diagnostics(ctx),
   web_fetch: webFetchTool(ctx),
 })
 

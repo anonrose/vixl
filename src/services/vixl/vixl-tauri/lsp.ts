@@ -1,3 +1,4 @@
+import type { LspWorkspaceDiagnosticsResult } from '@/types/lsp'
 import { call } from './helpers'
 import type { LspCatalogEntry, LspServerStatus, LspWorkspaceProfile } from './types'
 
@@ -41,3 +42,8 @@ export const lspSetServerDisabled = (
     serverId,
     disabled,
   })
+
+export const lspWorkspaceDiagnostics = (
+  projectRoot: string,
+): Promise<LspWorkspaceDiagnosticsResult> =>
+  call('lsp_workspace_diagnostics', { projectRoot })

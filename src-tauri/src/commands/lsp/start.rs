@@ -18,6 +18,7 @@ use super::rpc::{
     LSP_SERVERS,
 };
 use super::typescript::{build_initialization_options, inject_vue_tsdk_arg};
+use super::workspace_diagnostics::parse_diagnostic_provider;
 
 pub(crate) async fn start_server(
     server_id: String,
@@ -77,6 +78,7 @@ pub(crate) async fn start_server(
         workspace_root: workspace_root.clone(),
         open_documents: HashMap::new(),
         diagnostics_by_uri: HashMap::new(),
+        diagnostic_provider: None,
         pending: Mutex::new(HashMap::new()),
         next_id: Mutex::new(0),
         uses_classic_typescript: server_id == "typescript" && classic_typescript,
@@ -95,7 +97,7 @@ pub(crate) async fn start_server(
         classic_typescript,
     );
 
-    json_rpc_request(
+    let init_result = json_rpc_request(
         &process,
         "initialize",
         serde_json::json!({
@@ -112,7 +114,7 @@ pub(crate) async fn start_server(
               },
               "publishDiagnostics": {},
               "diagnostic": {
-                "dynamicRegistration": false,
+                "dynamicRegistration": true,
                 "relatedDocumentSupport": false
               },
               "hover": {
@@ -133,7 +135,10 @@ pub(crate) async fn start_server(
             "workspace": {
               "configuration": true,
               "workspaceFolders": true,
-              "symbol": {}
+              "symbol": {},
+              "diagnostics": {
+                "refreshSupport": false
+              }
             }
           },
           "initializationOptions": init_options,
@@ -148,6 +153,11 @@ pub(crate) async fn start_server(
         }),
     )
     .await?;
+
+    {
+        let mut guard = process.lock().await;
+        guard.diagnostic_provider = parse_diagnostic_provider(&init_result);
+    }
 
     send_notification(&process, "initialized", serde_json::json!({})).await?;
 

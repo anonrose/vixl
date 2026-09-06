@@ -52,6 +52,7 @@ export function createVixlTauriMock(overrides: Record<string, unknown> = {}) {
       warmExtensions: [],
     })),
     lspRequest: vi.fn<() => Promise<unknown>>(),
+    lspWorkspaceDiagnostics: vi.fn<() => Promise<unknown>>(),
     mcpCallTool: vi.fn<() => Promise<unknown>>(),
     httpProxyRequest: vi.fn<() => Promise<unknown>>(),
     shellSpawnTracked: vi.fn<() => Promise<void>>(async () => undefined),
