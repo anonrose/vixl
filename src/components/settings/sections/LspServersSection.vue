@@ -16,8 +16,6 @@ const {
   installMessage,
   prefetching,
   autoDownload,
-  activeRoot,
-  workspaceTrusted,
   isBusy,
   extensionsHint,
   statusBadges,
@@ -26,7 +24,6 @@ const {
   setDisabled,
   prefetchDefaults,
   updateAutoDownload,
-  trustWorkspace,
   lspServerIconName,
   isTauri,
   Ban,
@@ -34,7 +31,6 @@ const {
   Loader2,
   Play,
   RotateCcw,
-  ShieldCheck,
   Trash2,
 } = useLspServersSection()
 </script>
@@ -77,47 +73,11 @@ const {
         <Switch :model-value="autoDownload" @update:model-value="updateAutoDownload" />
       </div>
 
-      <div class="space-y-2 rounded-md border border-border/50 p-3">
-        <div class="flex items-center justify-between gap-3">
-          <div class="space-y-1">
-            <Label>Workspace trust</Label>
-            <p class="text-sm text-muted-foreground">
-              Required only for project-local binaries (node_modules) and ESLint/Biome/Oxlint.
-              Managed servers work without trust.
-            </p>
-          </div>
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="h-8 w-8"
-                :aria-label="workspaceTrusted ? 'Workspace trusted' : 'Trust project'"
-                :disabled="!activeRoot || workspaceTrusted"
-                @click="trustWorkspace"
-              >
-                <ShieldCheck class="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {{ workspaceTrusted ? 'Workspace trusted' : 'Trust project' }}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
       <p
         v-if="installMessage"
         class="text-sm text-muted-foreground"
       >
         {{ installMessage }}
-      </p>
-      <p
-        v-else
-        class="text-sm text-muted-foreground"
-      >
-        Language servers are available. They are not all started automatically.
-        Install managed ones below, or disable a server globally.
       </p>
 
       <div class="space-y-2">

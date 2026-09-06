@@ -6,7 +6,6 @@ import {
   Loader2,
   Play,
   RotateCcw,
-  ShieldCheck,
   Trash2,
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -80,27 +79,6 @@ export default () => {
       await config.updateSetting('personal', 'lsp.autoDownload', value)
     } catch (error) {
       toast.error('Failed to save auto-download setting', {
-        description: formatUnknownError(error),
-      })
-    }
-  }
-
-  const trustWorkspace = async (): Promise<void> => {
-    const root = activeRoot.value
-    if (!root) {
-      toast.error('No active project to trust')
-      return
-    }
-    const existing = config.effectiveSettings.value['workspace.trust'] ?? []
-    const next = [
-      ...existing.filter((record) => record.rootPath !== root),
-      { rootPath: root, trusted: true },
-    ]
-    try {
-      await config.updateSetting('personal', 'workspace.trust', next)
-      toast.success('Workspace trusted for project-local language tools')
-    } catch (error) {
-      toast.error('Failed to save workspace trust', {
         description: formatUnknownError(error),
       })
     }
@@ -207,8 +185,6 @@ export default () => {
     installMessage,
     prefetching,
     autoDownload,
-    activeRoot,
-    workspaceTrusted,
     isBusy,
     extensionsHint,
     statusBadges,
@@ -217,7 +193,6 @@ export default () => {
     setDisabled,
     prefetchDefaults,
     updateAutoDownload,
-    trustWorkspace,
     lspServerIconName,
     isTauri,
     // Icons used by template
@@ -226,7 +201,6 @@ export default () => {
     Loader2,
     Play,
     RotateCcw,
-    ShieldCheck,
     Trash2,
   }
 }
