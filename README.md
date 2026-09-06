@@ -27,11 +27,6 @@
   <a href="https://vixl.app/"><img src="https://img.shields.io/badge/Agents%20UI-desktop-8b5cf6" alt="Agents UI" /></a>
 </p>
 
-Vixl is a local-first BYOK desktop Agents UI (Tauri, Vue, AI SDK).
-
-This project is in alpha. Download a build from [GitHub Releases](https://github.com/vixl-ai/vixl/releases).
-
-Contributors should start with [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Sponsored by
 
@@ -45,22 +40,4 @@ Contributors should start with [CONTRIBUTING.md](./CONTRIBUTING.md).
   <a href="https://getminds.ai/">Minds</a>
 </p>
 
-## Features
 
-- Agent coding harness
-
-  <p align="center">
-    <img src="./docs/media/readme/harness-readme.jpg" alt="Agent coding harness" />
-  </p>
-
-- Workbench editor with shared LSPs
-
-  <p align="center">
-    <img src="./docs/media/readme/editor-readme.jpg" alt="Workbench editor with shared LSPs" />
-  </p>
-
-- Built-in terminals
-
-  <p align="center">
-    <img src="./docs/media/readme/terminals-readme.jpg" alt="Built-in terminals" />
-  </p>

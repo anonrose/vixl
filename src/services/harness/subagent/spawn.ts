@@ -23,8 +23,13 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const spawnSubagent = (ctx: HarnessToolContext) =>
   tool({
     description: withToolExamples(
-      "Spawn a subagent. Default mode is blocking (waits until complete). Set mode to background to run concurrently: return immediately, end your turn, and do not poll with terminal_output (subagentId is not a shell_id). The harness resumes this chat with the summary when all background subagents finish. Default capabilities are read-only. Edit, write, modify, delete, move, or shell/git mutations REQUIRE capabilities: 'write'. A read-only subagent can only report; it cannot make changes. In Ask, Plan, and Studio modes, subagents are restricted to read-only; the write capability is rejected. agentName must be a very brief verb phrase that explains the work (for example \"Reading auth\", \"Editing config\").",
+      "Spawn a subagent. Default mode is blocking (waits until complete). Set mode to background to run concurrently: return immediately, end your turn, and do not poll with terminal_output (subagentId is not a shell_id). The harness resumes this chat with the summary when all background subagents finish. Default capabilities are read-only. Edit, write, modify, delete, move, or shell/git mutations REQUIRE capabilities: 'write'. A read-only subagent can only report; it cannot make changes. In Ask, Plan, and Studio modes, subagents are restricted to read-only; the write capability is rejected. When spawning a catalog agent, agentName MUST be the catalog name (frontmatter name, filename stem, or slug). Verb-phrase labels are only for generic helpers that are not in the catalog.",
       [
+        {
+          agentName: 'reviewer',
+          prompt: 'Review the auth changes and report findings.',
+          mode: 'blocking',
+        },
         {
           agentName: 'Reading auth',
           prompt: 'Find where MCP trust is granted and summarize the flow.',
@@ -48,7 +53,7 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
       agentName: z
         .string()
         .describe(
-          'Very brief UI label. Prefer a verb phrase that explains the work, such as "Reading auth", "Editing config", or "Exploring LSP".',
+          'Catalog name (frontmatter name, filename stem, or slug) when spawning a defined agent. Verb phrases such as "Reading auth" are only for generic helpers that are not in the catalog.',
         ),
       prompt: z.string().describe('Task instructions for the subagent'),
       mode: z

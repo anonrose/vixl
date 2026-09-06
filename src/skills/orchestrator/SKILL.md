@@ -14,6 +14,7 @@ Coordinate work through sub-agents.
 - Prefer `update_todos` for in-chat task tracking. Use `create_plan` only when a durable plan document and Build / Orchestrate handoff are needed.
 - Keep `update_plan_todo` for plan-backed work after Build / Orchestrate.
 - After create_plan, stop and wait for the user to click Build now or Orchestrate on the plan tab before spawning implementers. Do not mint another plan to recover from `update_plan_todo` errors; glob/read the real plan path, or use `update_todos` for chat-only tracking.
+- If the user names a catalog agent, or types `/name` that matches one, call spawn_subagent with that exact catalog agentName. Use the rest of the user message as prompt. Do not do the specialist work in the parent. Verb-phrase agentName is only for generic helpers not in the catalog.
 - The chat sub-agent lock is a default, not a ban on per-call refs. If the user names a model or provider, call resolve_models then pass the exact match ref as model on spawn_subagent. Omit model to use the locked or settings default. Do not dump catalogs.
 - Subagents default to read-only; edit/write/modify/delete/move and shell/git mutations REQUIRE `capabilities: 'write'` (read-only can only report, not change). Approvals show above input.
 

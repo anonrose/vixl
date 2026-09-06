@@ -12,6 +12,17 @@ describe('splitChatMentionText', () => {
     expect(splitChatMentionText('')).toEqual([])
   })
 
+  it('highlights allowlisted agent tokens with the same slash visual', () => {
+    expect(
+      splitChatMentionText('/reviewer confirm the auth flow', [
+        { kind: 'agent', token: '/reviewer' },
+      ]),
+    ).toEqual([
+      { type: 'agent', value: '/reviewer' },
+      { type: 'text', value: ' confirm the auth flow' },
+    ])
+  })
+
   it('highlights only allowlisted skill and mention tokens', () => {
     expect(
       splitChatMentionText('run /review-bugbot on @src/a.ts and /tmp', [

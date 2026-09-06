@@ -1,25 +1,14 @@
 import type { MentionHighlight } from '@/types/chat/mention-highlight'
 import type { ContextMention } from '@/types/harness/context-mention'
 import contextMentionDisplayToken from '@/utils/context-mention-display-token'
-
-const isSkillTokenBoundary = (
-  text: string,
-  index: number,
-  tokenLength: number,
-): boolean => {
-  const after = index + tokenLength
-  if (after >= text.length) {
-    return true
-  }
-  const next = text[after]
-  // Avoid matching /ask inside /asking or /ask/foo paths.
-  return next === undefined || !/[A-Za-z0-9_/-]/.test(next)
-}
+import findSlashToken from '@/utils/find-slash-token'
+import isReservedSlashName from '@/services/skills/is-reserved-slash-name'
 
 export default (
   text: string,
   mentions: ContextMention[],
   skillNames: string[],
+  agentNames: string[] = [],
 ): MentionHighlight[] => {
   const byToken = new Map<string, MentionHighlight>()
 
@@ -28,25 +17,24 @@ export default (
     byToken.set(highlight.token, highlight)
   }
 
-  const names = [...skillNames].sort((left, right) => right.length - left.length)
-  for (const name of names) {
-    const trimmed = name.trim()
-    if (!trimmed) {
+  const skills = [...skillNames].sort((left, right) => right.length - left.length)
+  for (const name of skills) {
+    const token = findSlashToken(text, name)
+    if (token) {
+      byToken.set(token, { kind: 'skill', token })
+    }
+  }
+
+  const agents = [...agentNames].sort((left, right) => right.length - left.length)
+  for (const name of agents) {
+    if (isReservedSlashName(name)) {
       continue
     }
-    const token = `/${trimmed}`
-    let from = 0
-    while (from < text.length) {
-      const index = text.indexOf(token, from)
-      if (index < 0) {
-        break
-      }
-      if (isSkillTokenBoundary(text, index, token.length)) {
-        byToken.set(token, { kind: 'skill', token })
-        break
-      }
-      from = index + token.length
+    const token = findSlashToken(text, name)
+    if (!token || byToken.has(token)) {
+      continue
     }
+    byToken.set(token, { kind: 'agent', token })
   }
 
   return [...byToken.values()]

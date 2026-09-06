@@ -3,6 +3,7 @@ export type ContextMention =
   | { type: 'folder'; path: string; listing?: string }
   | { type: 'rule'; name: string }
   | { type: 'skill'; name: string }
+  | { type: 'agent'; name: string }
   | {
       type: 'symbol'
       path: string

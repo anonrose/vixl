@@ -7,10 +7,9 @@ import type { ChatTimelineItem } from '@/types/chat/chat-timeline-item'
 import type { PrefixSnapshot } from '@/types/harness/prefix-snapshot'
 import { CONTEXT_BUCKET_META, CONTEXT_BUCKET_ORDER } from '@/types/harness/context-bucket-meta'
 import estimateTextTokens from '@/utils/estimate-text-tokens'
-import assembleSystemPromptParts, {
-  formatMentionsAsText,
-  type SystemPromptParts,
-} from '@/services/context/system-prompt-parts'
+import assembleSystemPromptParts from '@/services/context/system-prompt-parts/assemble'
+import buildMentionInjectionText from '@/services/context/system-prompt-parts/build-mention-injection-text'
+import type { SystemPromptParts } from '@/services/context/system-prompt-parts/types'
 import filterMessagesForActiveContext, {
   type ActiveContextSlice,
 } from '@/services/context/filter-messages-for-active-context'
@@ -202,9 +201,9 @@ const resolveMentionsTokens = (
   parts: SystemPromptParts,
   mentions: ContextMention[],
 ): number => {
-  const injected = formatMentionsAsText(mentions)
+  const injected = buildMentionInjectionText(mentions)
   if (injected) {
-    return estimateTextTokens(`Context:\n${injected}`)
+    return estimateTextTokens(injected)
   }
   return estimateTextTokens(parts.mentions)
 }

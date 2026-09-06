@@ -21,7 +21,7 @@ const segments = computed(() =>
         class="chat-mention"
       >{{ segment.value }}</span>
       <span
-        v-else-if="segment.type === 'skill'"
+        v-else-if="segment.type === 'skill' || segment.type === 'agent'"
         class="chat-skill"
       >{{ segment.value }}</span>
       <template v-else>{{ segment.value }}</template>

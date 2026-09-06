@@ -1,14 +1,13 @@
 import type { LanguageModel, ModelMessage, UIMessage } from 'ai'
-import type { SystemPromptParts } from '@/services/context/system-prompt-parts'
+import type { SystemPromptParts } from '@/services/context/system-prompt-parts/types'
 import type { HarnessEvent } from '@/types/harness/harness-event'
 import type { HarnessStreamInput } from '@/types/harness/harness-stream-input'
 import { isReasoningLevel } from '@/types/models/reasoning-level'
 import createModel from '@/services/providers/create-model'
 import { readChatMeta, updateChatMeta } from '@/services/vixl/vixl-tauri'
-import assembleSystemPromptParts, {
-  formatMentionsAsText,
-  joinSystemPromptParts,
-} from '@/services/context/system-prompt-parts'
+import assembleSystemPromptParts from '@/services/context/system-prompt-parts/assemble'
+import buildMentionInjectionText from '@/services/context/system-prompt-parts/build-mention-injection-text'
+import joinSystemPromptParts from '@/services/context/system-prompt-parts/join'
 import {
   buildPrefixSnapshot,
   frozenPrefixMatchesMode,
@@ -167,9 +166,9 @@ export default async (input: HarnessStreamInput): Promise<PreparedHarnessStream>
     })
   }
 
-  const mentionsText = formatMentionsAsText(mentions)
+  const mentionsText = buildMentionInjectionText(mentions)
   const finalModelMessages = mentionsText
-    ? injectContextIntoLastUserMessage(modelMessages, `Context:\n${mentionsText}`)
+    ? injectContextIntoLastUserMessage(modelMessages, mentionsText)
     : modelMessages
 
   const budget = await countContextBudget({

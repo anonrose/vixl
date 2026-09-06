@@ -33,6 +33,18 @@ vi.mock('@/services/skills/skill-registry', () => ({
   listSlashSkillIndex: vi.fn<() => Promise<unknown[]>>().mockResolvedValue([]),
 }))
 
+const listAgentIndex = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<unknown[]>>().mockResolvedValue([]),
+)
+const resolveAgentDefinition = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<unknown>>().mockResolvedValue(null),
+)
+
+vi.mock('@/services/agents/registry', () => ({
+  listAgentIndex: (...args: unknown[]) => listAgentIndex(...args),
+  resolveAgentDefinition: (...args: unknown[]) => resolveAgentDefinition(...args),
+}))
+
 vi.mock('@/services/harness/subagent/registry', () => ({
   hasPendingBackgroundResume: () => false,
   hasRunningSubagentsForChat: () => false,
@@ -120,6 +132,8 @@ describe('agent-harness send persist model/mode', () => {
     updateChatMeta.mockResolvedValue(undefined)
     runOrchestrator.mockResolvedValue(undefined)
     listConfiguredProviders.mockReturnValue(['openai'])
+    listAgentIndex.mockResolvedValue([])
+    resolveAgentDefinition.mockResolvedValue(null)
   })
 
   it('persists model and mode via updateChatMeta before the turn', async () => {
@@ -239,5 +253,142 @@ describe('agent-harness send persist model/mode', () => {
     expect(second.sessionAllows).toBe(state.sessionAllows)
     expect(second.sessionDenies).toBe(state.sessionDenies)
     expect(second.sessionAllows.has('fs.write')).toBe(true)
+  })
+
+  it('turns raw /reviewer text into an agent mention on send', async () => {
+    listAgentIndex.mockResolvedValue([
+      {
+        id: 'reviewer',
+        name: 'reviewer',
+        description: 'Review helper',
+        scope: 'project',
+        path: '/tmp/proj/.vixl/agents/reviewer.md',
+      },
+    ])
+    resolveAgentDefinition.mockResolvedValue({
+      id: 'reviewer',
+      name: 'reviewer',
+      description: 'Review helper',
+      body: 'Review the change.',
+      path: '/tmp/proj/.vixl/agents/reviewer.md',
+      scope: 'project',
+    })
+    const state = buildState()
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: '/reviewer rest',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mentions: [{ type: 'agent', name: 'reviewer' }],
+      }),
+    )
+  })
+
+  it('leaves /unknown-agent as plain text', async () => {
+    const state = buildState()
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: '/unknown-agent rest',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mentions: [],
+      }),
+    )
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('toasts and drops an agent mention when the catalog file is gone', async () => {
+    resolveAgentDefinition.mockResolvedValue(null)
+    const state = buildState()
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'check auth',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      mentions: [{ type: 'agent', name: 'reviewer' }],
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(toastError).toHaveBeenCalledWith(
+      'Agent not found',
+      expect.objectContaining({
+        description: expect.stringContaining('reviewer'),
+      }),
+    )
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mentions: [],
+      }),
+    )
+  })
+
+  it('keeps reserved /agent as a skill even when the catalog has that name', async () => {
+    listAgentIndex.mockResolvedValue([
+      {
+        id: 'agent',
+        name: 'agent',
+        description: 'Custom agent named agent',
+        scope: 'user',
+        path: '/tmp/personal/.vixl/agents/agent.md',
+      },
+    ])
+    resolveAgentDefinition.mockResolvedValue({
+      id: 'agent',
+      name: 'agent',
+      description: 'Custom agent named agent',
+      body: 'Do custom agent work.',
+      path: '/tmp/personal/.vixl/agents/agent.md',
+      scope: 'user',
+    })
+    const state = buildState()
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: '/agent rest',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      mentions: [{ type: 'agent', name: 'agent' }],
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(toastError).not.toHaveBeenCalled()
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mentions: [{ type: 'skill', name: 'agent' }],
+      }),
+    )
   })
 })

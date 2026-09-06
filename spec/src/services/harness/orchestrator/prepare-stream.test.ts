@@ -28,13 +28,9 @@ vi.mock('@/services/providers/create-model', () => ({
   default: vi.fn<() => Promise<{ id: string }>>(async () => ({ id: 'stub-model' })),
 }))
 
-vi.mock('@/services/context/system-prompt-parts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/context/system-prompt-parts')>()
-  return {
-    ...actual,
-    default: (...args: unknown[]) => assembleSystemPromptParts(...args),
-  }
-})
+vi.mock('@/services/context/system-prompt-parts/assemble', () => ({
+  default: (...args: unknown[]) => assembleSystemPromptParts(...args),
+}))
 
 vi.mock('@/services/context/count-context-budget', () => ({
   default: (...args: unknown[]) => countContextBudget(...args),
@@ -333,6 +329,37 @@ describe('prepare-stream session permission sets', () => {
     expect(ctx.sessionAllows).toBe(sessionAllows)
     expect(ctx.sessionDenies).toBe(sessionDenies)
     expect(ctx.sessionAllows.has('fs.write')).toBe(true)
+  })
+
+  it('injects explicit agent invocation into the last user message, not the frozen prefix', async () => {
+    const frozenSnapshot = snapshotFromParts('agent', promptParts('agent'))
+    readChatMeta.mockResolvedValue({
+      prefixSnapshot: frozenSnapshot,
+    })
+
+    const prepared = await prepareStream({
+      ...buildInput('agent'),
+      mentions: [
+        { type: 'agent', name: 'reviewer' },
+        { type: 'file', path: 'src/auth.ts', content: 'export const auth = 1' },
+      ],
+      modelMessages: [{ role: 'user', content: '/reviewer check auth' }],
+    })
+
+    expect(assembleSystemPromptParts).toHaveBeenCalledWith(
+      expect.objectContaining({ mentions: [] }),
+    )
+    expect(prepared.system).toBe(frozenSnapshot.systemString)
+    expect(prepared.system).not.toContain('explicitly invoked')
+
+    const last = prepared.finalModelMessages.at(-1)
+    expect(last).toMatchObject({ role: 'user' })
+    const content = typeof last?.content === 'string' ? last.content : ''
+    expect(content).toContain('The user explicitly invoked these subagents: reviewer')
+    expect(content).toContain('You MUST call spawn_subagent')
+    expect(content).toContain('Context:')
+    expect(content).toContain('File src/auth.ts')
+    expect(content).not.toContain('Skill reviewer')
   })
 
   it('keeps session allow mutations across a second prepare-stream', async () => {

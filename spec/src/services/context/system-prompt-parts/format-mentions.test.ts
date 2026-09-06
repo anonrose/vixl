@@ -29,4 +29,22 @@ describe('format-mentions', () => {
     expect(blocks.mentions).toContain('File src/utils/foo.ts:')
     expect(blocks.mentions).toContain('export const foo = 1')
   })
+
+  it('omits agent mentions from untrusted Context and Skill lines', () => {
+    const mentions = [
+      fileMention,
+      { type: 'skill' as const, name: 'ask' },
+      { type: 'agent' as const, name: 'reviewer' },
+    ]
+
+    expect(formatMentionsAsText(mentions)).not.toContain('reviewer')
+    expect(formatMentionsAsText(mentions)).not.toContain('Skill reviewer')
+    expect(formatMentionsAsText(mentions)).toContain('File src/utils/foo.ts:')
+    expect(formatMentionsAsText(mentions)).toContain('Skill ask')
+
+    const blocks = formatMentionBlocks(mentions)
+    expect(blocks.skills).toBe('Skill ask')
+    expect(blocks.mentions).not.toContain('reviewer')
+    expect(blocks.skills).not.toContain('reviewer')
+  })
 })

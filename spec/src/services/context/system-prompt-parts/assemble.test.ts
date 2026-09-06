@@ -4,7 +4,12 @@ import { mockVixlTauri } from '../../../test-utils/mocks/vixl-tauri'
 vi.mock('@/services/vixl/vixl-tauri', () => mockVixlTauri())
 
 import assembleSystemPromptParts from '@/services/context/system-prompt-parts/assemble'
-import { fsReadFile, getVixlDir, listVixlFiles } from '@/services/vixl/vixl-tauri'
+import {
+  fsReadFile,
+  getVixlDir,
+  listVixlFiles,
+  type ProjectFileEntry,
+} from '@/services/vixl/vixl-tauri'
 
 const projectRoot = '/tmp/vixl'
 const personalDir = '/tmp/personal-vixl'
@@ -20,6 +25,46 @@ const input = (
   agentCatalog: [],
   standalone: extra.standalone ?? true,
 })
+
+const agentDocument = (name: string, description: string, body: string): string => `---
+name: ${JSON.stringify(name)}
+description: ${JSON.stringify(description)}
+---
+
+${body}
+`
+
+const stubAgentDisks = (options: {
+  personal?: ProjectFileEntry[]
+  project?: ProjectFileEntry[]
+  contents?: Record<string, string>
+}): void => {
+  vi.mocked(listVixlFiles).mockImplementation(async (scope, kind, rootPath) => {
+    if (kind !== 'agents') {
+      return []
+    }
+    if (scope === 'personal') {
+      return options.personal ?? []
+    }
+    if (scope === 'project' && rootPath === projectRoot) {
+      return options.project ?? []
+    }
+    return []
+  })
+  vi.mocked(fsReadFile).mockImplementation(async ({ path }) => {
+    const content = options.contents?.[path]
+    if (content === undefined) {
+      throw new Error(`missing agent file: ${path}`)
+    }
+    return {
+      path,
+      content,
+      totalLines: content.split('\n').length,
+      offset: 0,
+      limit: 0,
+    }
+  })
+}
 
 beforeEach(() => {
   vi.mocked(listVixlFiles).mockReset()
@@ -216,5 +261,128 @@ describe('assemble system prompt parts', () => {
     expect(parts.agentsMd).toBe('')
     expect(parts.base).toBe('frozen-system')
     expect(listVixlFiles).not.toHaveBeenCalled()
+  })
+
+  it('lists personal and project agents in Available subagents', async () => {
+    stubAgentDisks({
+      personal: [
+        {
+          name: 'notes.md',
+          path: `${personalDir}/agents/notes.md`,
+          description: 'Personal notes helper',
+        },
+      ],
+      project: [
+        {
+          name: 'deploy.md',
+          path: `${projectRoot}/.vixl/agents/deploy.md`,
+          description: 'Project deploy helper',
+        },
+      ],
+      contents: {
+        'agents/notes.md': agentDocument(
+          'notes',
+          'Personal notes helper',
+          'Capture personal notes.',
+        ),
+        '.vixl/agents/deploy.md': agentDocument(
+          'deploy',
+          'Project deploy helper',
+          'Ship the project.',
+        ),
+      },
+    })
+
+    const parts = await assembleSystemPromptParts(input('agent', { standalone: false }))
+
+    expect(parts.subagents).toContain('Available subagents:')
+    expect(parts.subagents).toContain('- notes: Personal notes helper')
+    expect(parts.subagents).toContain('- deploy: Project deploy helper')
+  })
+
+  it('lets a project agent description win a name collision', async () => {
+    stubAgentDisks({
+      personal: [
+        {
+          name: 'reviewer.md',
+          path: `${personalDir}/agents/reviewer.md`,
+          description: 'Personal review helper',
+        },
+      ],
+      project: [
+        {
+          name: 'reviewer.md',
+          path: `${projectRoot}/.vixl/agents/reviewer.md`,
+          description: 'Project review helper',
+        },
+      ],
+      contents: {
+        'agents/reviewer.md': agentDocument(
+          'reviewer',
+          'Personal review helper',
+          'Personal review body.',
+        ),
+        '.vixl/agents/reviewer.md': agentDocument(
+          'reviewer',
+          'Project review helper',
+          'Project review body.',
+        ),
+      },
+    })
+
+    const parts = await assembleSystemPromptParts(input('agent', { standalone: false }))
+
+    expect(parts.subagents).toContain('- reviewer: Project review helper')
+    expect(parts.subagents).not.toContain('Personal review helper')
+  })
+
+  it('includes personal-only agents for standalone chats', async () => {
+    stubAgentDisks({
+      personal: [
+        {
+          name: 'notes.md',
+          path: `${personalDir}/agents/notes.md`,
+          description: 'Personal notes helper',
+        },
+      ],
+      project: [
+        {
+          name: 'deploy.md',
+          path: `${projectRoot}/.vixl/agents/deploy.md`,
+          description: 'Project deploy helper',
+        },
+      ],
+      contents: {
+        'agents/notes.md': agentDocument(
+          'notes',
+          'Personal notes helper',
+          'Capture personal notes.',
+        ),
+        '.vixl/agents/deploy.md': agentDocument(
+          'deploy',
+          'Project deploy helper',
+          'Ship the project.',
+        ),
+      },
+    })
+
+    const parts = await assembleSystemPromptParts(input('agent', { standalone: true }))
+
+    expect(parts.subagents).toContain('Available subagents:')
+    expect(parts.subagents).toContain('- notes: Personal notes helper')
+    expect(parts.subagents).not.toContain('deploy')
+    expect(listVixlFiles).toHaveBeenCalledWith('personal', 'agents')
+    expect(listVixlFiles).not.toHaveBeenCalledWith('project', 'agents', projectRoot)
+  })
+
+  it('does not put explicit agent invocation into assembled parts', async () => {
+    const parts = await assembleSystemPromptParts({
+      ...input('agent'),
+      mentions: [{ type: 'agent', name: 'reviewer' }],
+    })
+    const joined = [parts.base, parts.subagents, parts.mentions, parts.skills].join('\n')
+    expect(joined).not.toContain('explicitly invoked')
+    expect(parts.mentions).not.toContain('reviewer')
+    expect(parts.skills).not.toContain('Skill reviewer')
   })
 })

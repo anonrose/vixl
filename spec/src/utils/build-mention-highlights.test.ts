@@ -18,6 +18,18 @@ describe('buildMentionHighlights', () => {
     ).toEqual([{ kind: 'skill', token: '/ask' }])
   })
 
+  it('highlights slash agents found in text from the agent index', () => {
+    expect(
+      buildMentionHighlights('/reviewer check auth', [], [], ['reviewer']),
+    ).toEqual([{ kind: 'agent', token: '/reviewer' }])
+  })
+
+  it('keeps reserved /agent as a skill even when an agent reuses that name', () => {
+    expect(
+      buildMentionHighlights('/agent rest', [], ['agent'], ['agent']),
+    ).toEqual([{ kind: 'skill', token: '/agent' }])
+  })
+
   it('does not treat path-like or prefix matches as skills', () => {
     expect(
       buildMentionHighlights('look in /asking and /ask/foo', [], ['ask']),

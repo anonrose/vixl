@@ -19,23 +19,23 @@ const MODES: VixlChatMode[] = ['ask', 'plan', 'studio', 'agent', 'orchestrator']
 /**
  * Empty-project (standalone, no rules, no MCP) ceilings after dropping embedded browser tools.
  * Measured totals (system join + builtin tool defs, chars/4):
- * ask 4328, plan 4899, studio 5112, agent 6247, orchestrator 4653.
+ * ask 4356, plan 4927, studio 5140, agent 6373, orchestrator 4741.
  * Headroom is about 3 percent so waste cannot return unnoticed.
  */
 const TOTAL_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 4460,
-  plan: 5050,
-  studio: 5270,
-  agent: 6440,
-  orchestrator: 4800,
+  ask: 4490,
+  plan: 5075,
+  studio: 5295,
+  agent: 6565,
+  orchestrator: 4885,
 }
 
 const BASE_CEILINGS: Record<VixlChatMode, number> = {
   ask: 820,
   plan: 885,
   studio: 890,
-  agent: 1090,
-  orchestrator: 965,
+  agent: 1195,
+  orchestrator: 1035,
 }
 
 const SKILLS_CEILINGS: Record<VixlChatMode, number> = {

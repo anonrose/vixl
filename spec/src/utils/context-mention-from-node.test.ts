@@ -36,6 +36,31 @@ describe('contextMentionFromNode.fromAttrs', () => {
     ).toEqual({ type: 'skill', name: 'ask' })
   })
 
+  it('does not coerce slash plus mentionType agent to skill', () => {
+    expect(
+      contextMentionFromNode.fromAttrs({
+        id: 'agent:reviewer',
+        label: 'reviewer',
+        mentionSuggestionChar: '/',
+        mentionType: 'agent',
+        path: null,
+        name: 'reviewer',
+        query: null,
+        startLine: null,
+        endLine: null,
+        content: null,
+      }),
+    ).toEqual({ type: 'agent', name: 'reviewer' })
+  })
+
+  it('round-trips agent mentions with a slash suggestion char', () => {
+    const mention = { type: 'agent' as const, name: 'reviewer' }
+    const attrs = contextMentionFromNode.toAttrs(mention)
+    expect(attrs.mentionType).toBe('agent')
+    expect(attrs.mentionSuggestionChar).toBe('/')
+    expect(contextMentionFromNode.fromAttrs(attrs)).toEqual(mention)
+  })
+
   it('keeps @ file mentions', () => {
     expect(
       contextMentionFromNode.fromAttrs({

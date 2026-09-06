@@ -10,7 +10,10 @@ import listConfiguredProviders from '@/services/providers/list-configured-provid
 import { updateChatMeta } from '@/services/vixl/vixl-tauri'
 import parseModelRef from '@/utils/parse-model-ref'
 import { listSlashSkillIndex } from '@/services/skills/skill-registry'
+import { listAgentIndex } from '@/services/agents/registry'
+import dropUnresolvedAgentMentions from '@/services/agents/drop-unresolved-agent-mentions'
 import buildMentionHighlights from '@/utils/build-mention-highlights'
+import collectExplicitAgentMentions from '@/utils/collect-explicit-agent-mentions'
 import type { AgentHarnessState, AttentionHelpers } from './types'
 
 export type SendArgs = {
@@ -111,14 +114,21 @@ export default (
     toolRuns.value = []
     subagents.value = []
 
+    const projectRoot = options.standalone ? null : options.projectRoot
+    const agentIndex = await listAgentIndex(projectRoot).catch(() => [])
+    const mentions = await dropUnresolvedAgentMentions(
+      collectExplicitAgentMentions(args.text, args.mentions ?? [], agentIndex),
+      projectRoot,
+    )
+
     lastRunConfig.value = {
       mode: args.mode,
       model: args.model,
       reasoning: args.reasoning,
-      mentions: args.mentions ?? [],
+      mentions,
       effectiveSettings: config.effectiveSettings.value,
     }
-    contextBudgetSync.setDraftMentions(args.mentions ?? [])
+    contextBudgetSync.setDraftMentions(mentions)
 
     try {
       await updateChatMeta(options.projectSlug, options.chatId, {
@@ -165,15 +175,15 @@ export default (
       }
 
       const skillNames = (
-        await listSlashSkillIndex(
-          options.standalone ? null : options.projectRoot,
-        ).catch(() => [])
+        await listSlashSkillIndex(projectRoot).catch(() => [])
       ).map((skill) => skill.name)
+      const agentNames = agentIndex.map((agent) => agent.name)
 
       const mentionHighlights = buildMentionHighlights(
         args.text,
-        args.mentions ?? [],
+        mentions,
         skillNames,
+        agentNames,
       )
 
       session.appendLocalMessage({
@@ -207,7 +217,7 @@ export default (
         messages: session.messages.value,
         timeline: session.timeline.value,
         userText: args.text,
-        mentions: args.mentions ?? [],
+        mentions,
         signal: controller.signal,
         onEvent: deps.handleEvent,
         assistantId: turnId,

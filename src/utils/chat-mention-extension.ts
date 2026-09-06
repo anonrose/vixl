@@ -31,14 +31,20 @@ const attrConfig = (key: keyof ChatMentionNodeAttrs, defaultValue: unknown = nul
 })
 
 const mentionChar = (attrs: Record<string, unknown>): string => {
-  if (attrs.mentionType === 'skill' || attrs.mentionSuggestionChar === '/') {
+  if (
+    attrs.mentionType === 'skill' ||
+    attrs.mentionType === 'agent' ||
+    attrs.mentionSuggestionChar === '/'
+  ) {
     return '/'
   }
   return '@'
 }
 
 const mentionClass = (attrs: Record<string, unknown>): string =>
-  attrs.mentionType === 'skill' ? 'chat-prompt-skill' : 'chat-prompt-mention'
+  attrs.mentionType === 'skill' || attrs.mentionType === 'agent'
+    ? 'chat-prompt-skill'
+    : 'chat-prompt-mention'
 
 export default (suggestions: ChatMentionSuggestion[]) =>
   Mention.extend({

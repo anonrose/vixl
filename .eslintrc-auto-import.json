@@ -306,6 +306,7 @@
     "useScrollLock": true,
     "useSessionStorage": true,
     "useShare": true,
+    "useSlashIndex": true,
     "useSlots": true,
     "useSorted": true,
     "useSpeechRecognition": true,

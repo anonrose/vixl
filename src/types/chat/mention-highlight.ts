@@ -1,4 +1,4 @@
 export type MentionHighlight = {
-  kind: 'skill' | 'mention'
+  kind: 'skill' | 'mention' | 'agent'
   token: string
 }

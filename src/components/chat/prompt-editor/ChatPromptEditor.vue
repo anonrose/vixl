@@ -16,14 +16,13 @@ import ChatMentionSuggestionList from '@/components/chat/prompt-editor/ChatMenti
 import ChatSkillSuggestionList from '@/components/chat/prompt-editor/ChatSkillSuggestionList.vue'
 import useChatContextBudgetSync from '@/composables/use-chat-context-budget-sync'
 import useChatPromptEditor from '@/composables/use-chat-prompt-editor'
-import { vixlFileChangeToken } from '@/composables/use-vixl-live-sync'
+import useSlashIndex from '@/composables/use-slash-index'
 import createChatMentionExtension from '@/utils/chat-mention-extension'
 import contextMentionFromNode from '@/utils/context-mention-from-node'
 import searchWorkspaceFiles from '@/utils/search-workspace-files'
 import formatUnknownError from '@/utils/format-unknown-error'
-import { listSlashSkillIndex } from '@/services/skills/skill-registry'
 import type { ContextMention } from '@/types/harness/context-mention'
-import type { SkillIndexEntry } from '@/types/skills/skill'
+import type { SlashIndexEntry } from '@/types/chat/slash-index-entry'
 
 const props = withDefaults(
   defineProps<{
@@ -40,30 +39,7 @@ const props = withDefaults(
 const { textInput, setTextInput, addFiles, files, removeFile } = usePromptInput()
 const contextBudgetSync = useChatContextBudgetSync()
 const chatPromptEditor = useChatPromptEditor()
-
-const slashSkills = ref<SkillIndexEntry[]>([])
-
-const refreshSlashSkills = async (): Promise<void> => {
-  try {
-    slashSkills.value = await listSlashSkillIndex(props.projectRoot ?? null)
-  } catch (error) {
-    toast.error('Failed to load skills', {
-      description: formatUnknownError(error),
-    })
-  }
-}
-
-watch(
-  [() => props.projectRoot, vixlFileChangeToken],
-  () => {
-    refreshSlashSkills().catch((error) => {
-      toast.error('Failed to load skills', {
-        description: formatUnknownError(error),
-      })
-    })
-  },
-  { immediate: true },
-)
+const slashIndex = useSlashIndex(() => props.projectRoot ?? null)
 
 const isComposing = ref(false)
 const suggestionOpen = ref(false)
@@ -150,40 +126,32 @@ const fileSuggestionListProps = (suggestionProps: {
   },
 })
 
-const skillSuggestionListProps = (suggestionProps: {
+const slashSuggestionListProps = (suggestionProps: {
   query: string
   items: unknown[]
   loading: boolean
   command: (attrs: ReturnType<typeof contextMentionFromNode.toAttrs>) => void
 }) => ({
   query: String(suggestionProps.query ?? ''),
-  items: suggestionProps.items.filter(
-    (item): item is SkillIndexEntry =>
-      Boolean(item) &&
-      typeof item === 'object' &&
-      typeof (item as SkillIndexEntry).name === 'string',
-  ),
+  items: suggestionProps.items.filter((item): item is SlashIndexEntry => {
+    if (!item || typeof item !== 'object') {
+      return false
+    }
+    const record = item as { kind?: unknown; name?: unknown }
+    return (
+      (record.kind === 'skill' || record.kind === 'agent') &&
+      typeof record.name === 'string'
+    )
+  }),
   loading: Boolean(suggestionProps.loading),
   command: (mention: ContextMention) => {
     suggestionProps.command(contextMentionFromNode.toAttrs(mention))
   },
 })
 
-const filterSkills = (query: string): SkillIndexEntry[] => {
-  const needle = query.trim().toLowerCase()
-  if (!needle) {
-    return slashSkills.value
-  }
-  return slashSkills.value.filter(
-    (skill) =>
-      skill.name.toLowerCase().includes(needle) ||
-      skill.description.toLowerCase().includes(needle),
-  )
-}
-
 const createSuggestionRender = (
   listComponent: typeof ChatMentionSuggestionList | typeof ChatSkillSuggestionList,
-  toListProps: typeof fileSuggestionListProps | typeof skillSuggestionListProps,
+  toListProps: typeof fileSuggestionListProps | typeof slashSuggestionListProps,
 ) => {
   return () => ({
     onStart: (suggestionProps: {
@@ -253,10 +221,10 @@ const mentionExtension = createChatMentionExtension([
     char: '/',
     allowSpaces: false,
     debounce: 100,
-    items: ({ query }) => filterSkills(query),
+    items: ({ query }) => slashIndex.filterEntries(query),
     render: createSuggestionRender(
       ChatSkillSuggestionList,
-      skillSuggestionListProps,
+      slashSuggestionListProps,
     ) as never,
   },
 ])

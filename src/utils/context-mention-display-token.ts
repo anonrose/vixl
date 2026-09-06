@@ -18,5 +18,8 @@ export default (mention: ContextMention): MentionHighlight => {
   if (mention.type === 'skill') {
     return { kind: 'skill', token: `/${mention.name}` }
   }
+  if (mention.type === 'agent') {
+    return { kind: 'agent', token: `/${mention.name}` }
+  }
   return { kind: 'mention', token: `@${mentionLabel(mention)}` }
 }

@@ -4,6 +4,7 @@ type ChatMentionTextSegment =
   | { type: 'text'; value: string }
   | { type: 'mention'; value: string }
   | { type: 'skill'; value: string }
+  | { type: 'agent'; value: string }
 
 type MatchedHighlight = {
   index: number

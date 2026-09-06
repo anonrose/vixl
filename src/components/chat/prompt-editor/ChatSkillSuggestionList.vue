@@ -2,10 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import highlightQueryMatches from '@/utils/highlight-query-matches'
 import type { ContextMention } from '@/types/harness/context-mention'
-import type { SkillIndexEntry } from '@/types/skills/skill'
+import type { SlashIndexEntry } from '@/types/chat/slash-index-entry'
 
 const props = defineProps<{
-  items: SkillIndexEntry[]
+  items: SlashIndexEntry[]
   loading?: boolean
   query: string
   command: (mention: ContextMention) => void
@@ -23,19 +23,24 @@ watch(
 const hasItems = computed(() => props.items.length > 0)
 
 const highlightedItems = computed(() =>
-  props.items.map((skill) => ({
-    skill,
-    label: `/${skill.name}`,
-    segments: highlightQueryMatches(`/${skill.name}`, props.query),
+  props.items.map((entry) => ({
+    entry,
+    kindLabel: entry.kind === 'agent' ? 'agent' : 'skill',
+    label: `/${entry.name}`,
+    segments: highlightQueryMatches(`/${entry.name}`, props.query),
   })),
 )
 
 const selectIndex = (index: number): void => {
-  const skill = props.items[index]
-  if (!skill) {
+  const entry = props.items[index]
+  if (!entry) {
     return
   }
-  props.command({ type: 'skill', name: skill.name })
+  if (entry.kind === 'agent') {
+    props.command({ type: 'agent', name: entry.name })
+    return
+  }
+  props.command({ type: 'skill', name: entry.name })
 }
 
 const handlePrimaryAction = (): boolean => {
@@ -82,17 +87,17 @@ defineExpose({
       v-if="loading && !hasItems"
       class="px-2.5 py-1.5 text-xs text-muted-foreground"
     >
-      Loading skills...
+      Loading...
     </p>
     <p
       v-else-if="!hasItems"
       class="px-2.5 py-1.5 text-xs text-muted-foreground"
     >
-      No skills match
+      No matches
     </p>
     <button
       v-for="(item, index) in highlightedItems"
-      :key="`${item.skill.scope}:${item.skill.name}`"
+      :key="`${item.entry.kind}:${item.entry.scope}:${item.entry.name}`"
       type="button"
       class="flex w-full min-w-0 items-center px-2.5 py-1.5 text-left text-sm"
       :class="
@@ -111,9 +116,8 @@ defineExpose({
           :class="segment.matched ? 'chat-skill-match' : 'text-muted-foreground'"
         >{{ segment.text }}</span>
         <span
-          v-if="item.skill.scope === 'internal'"
-          class="ml-1.5 text-[10px] font-sans text-muted-foreground"
-        >internal</span>
+          class="ml-1.5 font-sans text-[10px] text-muted-foreground"
+        >{{ item.kindLabel }}</span>
       </span>
     </button>
   </div>

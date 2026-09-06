@@ -13,7 +13,7 @@ const captureBillableUsage = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<void>>(),
 )
 const resolveAgentDefinition = vi.hoisted(() =>
-  vi.fn<(...args: unknown[]) => Promise<null>>(),
+  vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 )
 const grepExecute = vi.hoisted(() =>
   vi.fn<
@@ -231,5 +231,42 @@ describe('runSubagentGenerate pending approval tagging', () => {
     const nestedCtx = buildHarnessTools.mock.calls[0]?.[0] as HarnessToolContext
     expect(nestedCtx.sessionAllows).toBe(ctx.sessionAllows)
     expect(nestedCtx.sessionDenies).toBe(ctx.sessionDenies)
+  })
+})
+
+describe('runSubagentGenerate agent definition', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createModel.mockResolvedValue({ id: 'stub-model' })
+    captureBillableUsage.mockResolvedValue(undefined)
+    resolveAgentDefinition.mockResolvedValue(null)
+    generateText.mockResolvedValue({ text: 'summary', usage: {} })
+  })
+
+  it('puts Agent definition and body into nested system when resolved', async () => {
+    resolveAgentDefinition.mockResolvedValue({
+      id: 'reviewer',
+      name: 'reviewer',
+      description: 'Reviews diffs',
+      body: 'Review the diff carefully and report risks.',
+      path: '/tmp/project/.vixl/agents/reviewer.md',
+      scope: 'project',
+    })
+
+    await runSubagentGenerate({
+      ctx: baseCtx(),
+      subagentId: 'sub-1',
+      agentName: 'reviewer',
+      prompt: 'review the PR',
+      toolCallId: 'call-1',
+      signal: new AbortController().signal,
+      model: 'local::qwen',
+      capabilities: 'read-only',
+    })
+
+    expect(resolveAgentDefinition).toHaveBeenCalledWith('/tmp/project', 'reviewer')
+    const config = generateText.mock.calls[0]?.[0] as GenerateConfig
+    expect(config.system).toContain('Agent definition:')
+    expect(config.system).toContain('Review the diff carefully and report risks.')
   })
 })

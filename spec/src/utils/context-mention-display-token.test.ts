@@ -9,6 +9,13 @@ describe('contextMentionDisplayToken', () => {
     })
   })
 
+  it('formats agent mentions with a slash', () => {
+    expect(contextMentionDisplayToken({ type: 'agent', name: 'reviewer' })).toEqual({
+      kind: 'agent',
+      token: '/reviewer',
+    })
+  })
+
   it('formats file mentions with @path', () => {
     expect(
       contextMentionDisplayToken({ type: 'file', path: 'src/utils/foo.ts' }),

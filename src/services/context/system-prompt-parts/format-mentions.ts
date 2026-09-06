@@ -43,6 +43,8 @@ export const formatMentionsAsText = (mentions: ContextMention[]): string => {
       lines.push(`Rule ${mention.name}`)
     } else if (mention.type === 'skill') {
       lines.push(`Skill ${mention.name}`)
+    } else if (mention.type === 'agent') {
+      continue
     } else if (mention.type === 'symbol') {
       lines.push(formatSymbolMention(mention))
     } else if (mention.type === 'codebase') {
@@ -70,6 +72,9 @@ export const formatMentionBlocks = (
     }
     if (mention.type === 'skill') {
       skillLines.push(`Skill ${mention.name}`)
+      continue
+    }
+    if (mention.type === 'agent') {
       continue
     }
     if (mention.type === 'rule') {

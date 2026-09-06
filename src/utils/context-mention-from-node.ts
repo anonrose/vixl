@@ -20,6 +20,7 @@ const asType = (value: unknown): ContextMention['type'] | null => {
     value === 'folder' ||
     value === 'rule' ||
     value === 'skill' ||
+    value === 'agent' ||
     value === 'symbol' ||
     value === 'codebase'
   ) {
@@ -59,7 +60,8 @@ const toAttrs = (mention: ContextMention): ChatMentionNodeAttrs => {
   const base: ChatMentionNodeAttrs = {
     id: mentionKey(mention),
     label,
-    mentionSuggestionChar: mention.type === 'skill' ? '/' : '@',
+    mentionSuggestionChar:
+      mention.type === 'skill' || mention.type === 'agent' ? '/' : '@',
     mentionType: mention.type,
     path: null,
     name: null,
@@ -93,14 +95,23 @@ const toAttrs = (mention: ContextMention): ChatMentionNodeAttrs => {
 }
 
 const fromAttrs = (attrs: Partial<ChatMentionNodeAttrs>): ContextMention | null => {
-  // Slash suggestions always insert skills; prefer the trigger char over the
-  // default mentionType ('file') when attrs were partially applied.
-  if (attrs.mentionSuggestionChar === '/' || attrs.mentionType === 'skill') {
-    const name = attrs.name?.trim() || attrs.label?.trim()
-    if (!name) {
+  const slashName = attrs.name?.trim() || attrs.label?.trim() || ''
+
+  // Explicit agent nodes must win even when the slash char is also present.
+  if (attrs.mentionType === 'agent') {
+    if (!slashName) {
       return null
     }
-    return { type: 'skill', name }
+    return { type: 'agent', name: slashName }
+  }
+
+  // Slash suggestions insert skills; prefer the trigger char over the default
+  // mentionType ('file') when attrs were partially applied (legacy nodes).
+  if (attrs.mentionSuggestionChar === '/' || attrs.mentionType === 'skill') {
+    if (!slashName) {
+      return null
+    }
+    return { type: 'skill', name: slashName }
   }
 
   const mentionType = asType(attrs.mentionType)

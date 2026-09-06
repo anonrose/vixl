@@ -47,25 +47,17 @@ export default async (input: SystemPromptInput): Promise<SystemPromptParts> => {
   const rules = input.standalone
     ? []
     : await listVixlFiles('project', 'rules', input.projectRoot).catch(() => [])
-  const agents = input.standalone
-    ? []
-    : await listVixlFiles('project', 'agents', input.projectRoot).catch(() => [])
 
-  let agentCatalog = input.agentCatalog
-  if (agents.length > 0) {
-    const definitions = await listAgentDefinitions(input.projectRoot).catch(() => [])
-    if (definitions.length > 0) {
-      agentCatalog = definitions.map((agent) => ({
-        name: agent.name,
-        description: agent.description,
-      }))
-    } else {
-      agentCatalog = agents.map((agent) => ({
-        name: agent.name,
-        description: agent.description ?? agent.name,
-      }))
-    }
-  }
+  const definitions = await listAgentDefinitions(
+    input.standalone ? null : input.projectRoot,
+  ).catch(() => [])
+  const agentCatalog =
+    definitions.length > 0
+      ? definitions.map((agent) => ({
+          name: agent.name,
+          description: agent.description,
+        }))
+      : input.agentCatalog
 
   const { mentions, skills: mentionSkills } = formatMentionBlocks(input.mentions)
 

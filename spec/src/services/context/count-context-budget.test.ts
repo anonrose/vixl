@@ -12,24 +12,18 @@ vi.mock('tokenlens', () => ({
   getContext: () => ({ maxInput: 100_000, maxTotal: 100_000 }),
 }))
 
-vi.mock('@/services/context/system-prompt-parts', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/services/context/system-prompt-parts')
-  >('@/services/context/system-prompt-parts')
-  return {
-    ...actual,
-    default: async () => ({
-      base: 'base-system',
-      tools: 'Tools are provided as function calls; do not grep the repo for them.',
-      mcp: 'mcp-catalog',
-      agentsMd: '',
-      rules: 'rules-body',
-      subagents: 'subagents',
-      mentions: '',
-      skills: 'skills',
-    }),
-  }
-})
+vi.mock('@/services/context/system-prompt-parts/assemble', () => ({
+  default: async () => ({
+    base: 'base-system',
+    tools: 'Tools are provided as function calls; do not grep the repo for them.',
+    mcp: 'mcp-catalog',
+    agentsMd: '',
+    rules: 'rules-body',
+    subagents: 'subagents',
+    mentions: '',
+    skills: 'skills',
+  }),
+}))
 
 import countContextBudget from '@/services/context/count-context-budget'
 import { mcpListStatuses, readMcpConfig } from '@/services/vixl/vixl-tauri'
