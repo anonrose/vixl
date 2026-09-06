@@ -14,7 +14,10 @@ use super::managed::{find_file_named, managed_bin_path, version_key_for_spec};
 use super::node::{download_bytes, ensure_portable_node};
 use super::paths::managed_server_dir;
 use super::progress::emit_progress;
-use super::resolve::{github_target_token, resolve_github_asset, resolve_http_archive_url};
+use super::resolve::{
+    github_target_token, resolve_github_asset, resolve_http_archive_url,
+    windows_exe_if_extensionless,
+};
 use super::timeout::{with_timeout, INSTALL_TIMEOUT};
 
 async fn timed_output(command: &mut TokioCommand) -> Result<std::process::Output, String> {
@@ -158,6 +161,7 @@ pub(crate) async fn github_install(
     } else if url.ends_with(".zip") {
         extract_zip_bytes(&bytes, &dir)?;
     } else {
+        let dest = dir.join(windows_exe_if_extensionless(dest_name));
         fs::write(&dest, &bytes).map_err(|e| e.to_string())?;
         #[cfg(unix)]
         {

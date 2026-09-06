@@ -1,6 +1,7 @@
 mod documents;
 mod ensure_running;
 mod helpers;
+mod io;
 mod resolve;
 mod rpc;
 mod start;
@@ -11,6 +12,9 @@ pub use ensure_running::start_lock_for;
 pub use helpers::{
     apply_server_disabled_flag, normalize_lsp_params, server_display_label, LspCatalogEntry,
     LspServerStatus, LspWorkspaceProfile,
+};
+pub use io::{
+    append_stderr_snippet, lsp_invalid_stream_error, lsp_request_timeout_error, read_lsp_message,
 };
 pub use resolve::{resolve_lsp_servers, LspServerEntry};
 pub use typescript::{
@@ -42,8 +46,8 @@ use helpers::{
 };
 use resolve::{load_effective_servers, server_binary_available};
 use rpc::{
-    json_rpc_request, read_lsp_message, respond_to_server_request, send_notification, set_state,
-    LspProcess, LSP_SERVERS, LSP_STATES,
+    cancel_pending_requests, json_rpc_request, respond_to_server_request, send_notification,
+    set_state, LspProcess, LSP_SERVERS, LSP_STATES,
 };
 use typescript::{vue_in_play_for, workspace_configuration_response};
 use vue_tsserver::{forward_vue_tsserver_request, mirror_vue_document_to_typescript};
@@ -60,10 +64,10 @@ pub(crate) fn spawn_reader(process: Arc<Mutex<LspProcess>>, server_id: String, a
         };
 
         let mut reader = BufReader::new(stdout);
-        loop {
+        let exit_reason = loop {
             let message = match read_lsp_message(&mut reader).await {
                 Ok(message) => message,
-                Err(_) => break,
+                Err(error) => break cancel_pending_requests(&process, &error).await,
             };
 
             if message.get("id").is_some() && message.get("method").is_some() {
@@ -159,12 +163,12 @@ pub(crate) fn spawn_reader(process: Arc<Mutex<LspProcess>>, server_id: String, a
                     let _ = sender.send(message);
                 }
             }
-        }
+        };
 
         set_state(
             &server_id,
             false,
-            Some("Language server exited".to_string()),
+            Some(exit_reason),
             None,
             Some("exited".to_string()),
         )

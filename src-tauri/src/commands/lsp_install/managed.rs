@@ -6,7 +6,7 @@ use tauri::AppHandle;
 use super::super::lsp_registry::{BuiltinLspSpec, GithubTargetStyle, LspInstallKind};
 use super::native_npm::managed_native_npm_bin;
 use super::paths::managed_server_dir;
-use super::resolve::{github_target_token, host_asset_target};
+use super::resolve::{github_target_token, host_asset_target, windows_exe_if_extensionless};
 
 pub(crate) fn version_key_for_spec(spec: &BuiltinLspSpec) -> String {
     match spec.install {
@@ -59,6 +59,19 @@ pub fn managed_bin_path(app: &AppHandle, spec: &BuiltinLspSpec) -> Option<PathBu
             );
             if nested.is_file() {
                 return Some(nested);
+            }
+            let exe_base = Path::new(github.binary_name)
+                .file_name()
+                .and_then(|n| n.to_str())?;
+            let exe_name = windows_exe_if_extensionless(exe_base);
+            if exe_name != exe_base {
+                let exe = dir.join(&exe_name);
+                if exe.is_file() {
+                    return Some(exe);
+                }
+                if let Some(found) = find_file_named(&dir, &exe_name) {
+                    return Some(found);
+                }
             }
             // lemminx ships as lemminx-{target} (and lemminx-{target}.exe on Windows).
             if github.target_style == GithubTargetStyle::LemminxOs {

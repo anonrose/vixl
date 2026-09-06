@@ -96,11 +96,10 @@ pub fn primary_server_id_for_extension(extension: &str, root: &Path) -> Option<&
         .filter(|spec| {
             spec.id != "typescript-classic"
                 && spec.tier != LspTier::D
-                && spec.extensions.iter().any(|configured| {
-                    configured
-                        .trim_start_matches('.')
-                        .eq_ignore_ascii_case(ext)
-                })
+                && spec
+                    .extensions
+                    .iter()
+                    .any(|configured| configured.trim_start_matches('.').eq_ignore_ascii_case(ext))
         })
         .collect();
     if candidates.is_empty() {

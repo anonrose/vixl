@@ -453,16 +453,27 @@ pub(crate) static BUILTINS: &[BuiltinLspSpec] = &[
     root_markers: &[],
     requires_trust: false,
   },
-  npm_spec!(
-    "sql",
-    &["sql-language-server", "up", "--method", "stdio"],
-    &[".sql"],
-    &["sql"],
-    LspTier::B,
-    &["sql-language-server@1.7.0"],
-    "node_modules/sql-language-server/npm_bin/cli.js",
-    &[]
-  ),
+  BuiltinLspSpec {
+    id: "sql",
+    command: &["postgres-language-server", "lsp-proxy"],
+    extensions: &[".sql"],
+    language_ids: &["sql"],
+    tier: LspTier::B,
+    install: LspInstallKind::GithubRelease,
+    npm: None,
+    github: Some(GithubReleaseSpec {
+      repo: "supabase-community/postgres-language-server",
+      tag: "0.25.7",
+      asset: "postgres-language-server_{target}",
+      binary_name: "postgres-language-server",
+      gzip: false,
+      target_style: GithubTargetStyle::RustTriple,
+    }),
+    http: None,
+    go: None,
+    root_markers: &["postgres-language-server.jsonc"],
+    requires_trust: false,
+  },
   // Tier C toolchain
   BuiltinLspSpec {
     id: "deno",

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use super::super::lsp_registry::{GithubReleaseSpec, GithubTargetStyle, HttpArchiveSpec};
 
 pub fn host_asset_target() -> String {
@@ -105,7 +107,7 @@ pub(crate) fn resolve_http_archive_url(spec: &HttpArchiveSpec) -> Result<String,
     Ok(url)
 }
 
-pub(crate) fn resolve_github_asset(spec: &GithubReleaseSpec) -> Result<(String, String), String> {
+pub fn resolve_github_asset(spec: &GithubReleaseSpec) -> Result<(String, String), String> {
     let target = github_target_token(spec.target_style)?;
     let mut asset = spec.asset.replace("{target}", &target);
     asset = asset.replace("{version}", spec.tag.trim_start_matches('v'));
@@ -125,9 +127,21 @@ pub(crate) fn resolve_github_asset(spec: &GithubReleaseSpec) -> Result<(String, 
         asset = asset.replace(".tar.gz", ".zip");
     }
 
+    asset = windows_exe_if_extensionless(&asset);
+
     let url = format!(
         "https://github.com/{}/releases/download/{}/{}",
         spec.repo, spec.tag, asset
     );
     Ok((url, asset))
+}
+
+/// Windows GitHub releases ship extensionless binaries as `name.exe`.
+/// Leave `.gz` / archive assets (for example rust-analyzer) unchanged.
+pub(crate) fn windows_exe_if_extensionless(name: &str) -> String {
+    if std::env::consts::OS == "windows" && Path::new(name).extension().is_none() {
+        format!("{name}.exe")
+    } else {
+        name.to_string()
+    }
 }

@@ -1,10 +1,12 @@
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use app_lib::commands::lsp_install::{host_asset_target, resolve_github_asset};
 use app_lib::commands::lsp_registry::{
-    builtin_server_map, builtin_spec_by_id, language_id_for_extension, primary_server_id_for_extension,
-    root_marker_score, tier_a_ids, tier_rank, workspace_is_vue_nuxt, workspace_warm_plan,
-    workspace_warm_server_ids, GithubTargetStyle, LspInstallKind, LspTier,
+    builtin_server_map, builtin_spec_by_id, language_id_for_extension,
+    primary_server_id_for_extension, root_marker_score, tier_a_ids, tier_rank,
+    workspace_is_vue_nuxt, workspace_warm_plan, workspace_warm_server_ids, GithubTargetStyle,
+    LspInstallKind, LspTier,
 };
 
 fn temp_dir(label: &str) -> std::path::PathBuf {
@@ -240,7 +242,11 @@ fn typescript_classic_is_hidden_vue_hybrid_install() {
 #[test]
 fn warm_starts_servers_for_present_files_only() {
     let dir = temp_dir("warm-files");
-    fs::write(dir.join("package.json"), r#"{"dependencies":{"react":"19"}}"#).unwrap();
+    fs::write(
+        dir.join("package.json"),
+        r#"{"dependencies":{"react":"19"}}"#,
+    )
+    .unwrap();
     fs::create_dir(dir.join("src")).unwrap();
     fs::write(dir.join("src/App.tsx"), "export const App = () => null").unwrap();
     fs::write(dir.join("README.md"), "# app").unwrap();
@@ -254,7 +260,10 @@ fn warm_starts_servers_for_present_files_only() {
         primary_server_id_for_extension("tsx", &dir),
         Some("typescript")
     );
-    assert_eq!(primary_server_id_for_extension("md", &dir), Some("markdown"));
+    assert_eq!(
+        primary_server_id_for_extension("md", &dir),
+        Some("markdown")
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -284,4 +293,50 @@ fn node_modules_files_do_not_warm_servers() {
     let plan = workspace_warm_plan(&dir);
     assert!(!plan.server_ids.contains(&"typescript".to_string()));
     let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn sql_builtin_is_supabase_postgres_language_server() {
+    let sql = builtin_spec_by_id("sql").unwrap();
+    assert_eq!(sql.command, &["postgres-language-server", "lsp-proxy"]);
+    assert_eq!(sql.extensions, &[".sql"]);
+    assert_eq!(sql.language_ids, &["sql"]);
+    assert_eq!(sql.tier, LspTier::B);
+    assert_eq!(sql.install, LspInstallKind::GithubRelease);
+    assert!(sql.npm.is_none());
+    let github = sql.github.as_ref().unwrap();
+    assert_eq!(github.repo, "supabase-community/postgres-language-server");
+    assert_eq!(github.tag, "0.25.7");
+    assert_eq!(github.asset, "postgres-language-server_{target}");
+    assert_eq!(github.binary_name, "postgres-language-server");
+    assert!(!github.gzip);
+    assert_eq!(github.target_style, GithubTargetStyle::RustTriple);
+    assert_eq!(sql.root_markers, &["postgres-language-server.jsonc"]);
+}
+
+#[test]
+fn sql_github_release_url_matches_host_target() {
+    let sql = builtin_spec_by_id("sql").unwrap();
+    let github = sql.github.as_ref().unwrap();
+    let (url, asset) = resolve_github_asset(github).unwrap();
+    let target = host_asset_target();
+    let expected_asset = if cfg!(windows) {
+        format!("postgres-language-server_{target}.exe")
+    } else {
+        format!("postgres-language-server_{target}")
+    };
+    assert_eq!(asset, expected_asset);
+    assert_eq!(
+        url,
+        format!(
+            "https://github.com/supabase-community/postgres-language-server/releases/download/0.25.7/{expected_asset}"
+        )
+    );
+
+    let rust = builtin_spec_by_id("rust").unwrap();
+    let rust_github = rust.github.as_ref().unwrap();
+    let (rust_url, rust_asset) = resolve_github_asset(rust_github).unwrap();
+    assert!(rust_asset.ends_with(".gz"));
+    assert!(!rust_asset.ends_with(".exe"));
+    assert!(rust_url.ends_with(".gz"));
 }

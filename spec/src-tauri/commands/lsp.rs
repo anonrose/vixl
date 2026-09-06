@@ -4,10 +4,12 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use app_lib::commands::lsp::{
-    apply_server_disabled_flag, compute_vue_in_play, merge_vue_plugin_options,
-    normalize_lsp_params, pick_typescript_tsdk, resolve_lsp_servers, server_display_label,
-    should_inject_vue_typescript_plugin, start_lock_for, tsserver_request_body,
-    typescript_lsp_argv, typescript_version_supports_native_lsp, unwrap_tsserver_request_tuple,
+    append_stderr_snippet, apply_server_disabled_flag, compute_vue_in_play,
+    lsp_invalid_stream_error, lsp_request_timeout_error, merge_vue_plugin_options,
+    normalize_lsp_params, pick_typescript_tsdk, read_lsp_message, resolve_lsp_servers,
+    server_display_label, should_inject_vue_typescript_plugin, start_lock_for,
+    tsserver_request_body, typescript_lsp_argv, typescript_version_supports_native_lsp,
+    unwrap_tsserver_request_tuple,
 };
 use app_lib::commands::lsp_install::{
     looks_like_javascript_bin, should_wrap_npm_bin_with_node, with_timeout,
@@ -149,6 +151,7 @@ fn display_label_is_human_readable() {
         "TypeScript / JavaScript"
     );
     assert_eq!(server_display_label("gopls"), "Go");
+    assert_eq!(server_display_label("sql"), "Postgres");
     assert_eq!(server_display_label("custom-lsp"), "Custom Lsp");
 }
 
@@ -408,4 +411,87 @@ async fn write_timeout_maps_to_error() {
     )
     .await;
     assert_eq!(result.unwrap_err(), "LSP write timed out after 10s");
+}
+
+#[test]
+fn request_timeout_error_includes_method() {
+    assert_eq!(
+        lsp_request_timeout_error(30, "initialize"),
+        "LSP request timed out after 30s (initialize)"
+    );
+}
+
+#[test]
+fn fail_fast_exit_error_includes_stderr_snippet() {
+    let message = append_stderr_snippet(
+        "Language server exited while waiting for initialize".to_string(),
+        "node: not found\n",
+    );
+    assert!(message.contains("exited while waiting for initialize"));
+    assert!(message.contains("node: not found"));
+    assert!(!message.contains("timed out after 30s"));
+}
+
+#[test]
+fn empty_stderr_keeps_base_message() {
+    assert_eq!(
+        append_stderr_snippet("Language server exited".to_string(), "  \n"),
+        "Language server exited"
+    );
+}
+
+#[test]
+fn invalid_stream_error_mentions_not_valid_lsp() {
+    let message = lsp_invalid_stream_error("Invalid LSP header");
+    assert!(message.contains("Invalid LSP header"));
+    assert!(message.contains("stream was not valid LSP"));
+}
+
+#[tokio::test]
+async fn read_lsp_message_rejects_non_lsp_stream() {
+    let (client, mut server) = tokio::io::duplex(16_384);
+    tokio::spawn(async move {
+        use tokio::io::AsyncWriteExt;
+        let _ = server.write_all(&[b'x'; 9000]).await;
+    });
+    let mut reader = tokio::io::BufReader::new(client);
+    let err = read_lsp_message(&mut reader).await.unwrap_err();
+    assert!(
+        err.contains("not valid LSP"),
+        "expected invalid LSP error, got {err}"
+    );
+}
+
+#[tokio::test]
+async fn read_lsp_message_rejects_header_without_content_length() {
+    let (client, mut server) = tokio::io::duplex(128);
+    tokio::spawn(async move {
+        use tokio::io::AsyncWriteExt;
+        let _ = server.write_all(b"Content-Type: text\r\n\r\n").await;
+    });
+    let mut reader = tokio::io::BufReader::new(client);
+    let err = read_lsp_message(&mut reader).await.unwrap_err();
+    assert!(err.contains("not valid LSP"), "got {err}");
+    assert!(err.contains("Content-Length"), "got {err}");
+}
+
+#[tokio::test]
+async fn read_lsp_message_incomplete_header_is_not_valid_lsp() {
+    let (client, mut server) = tokio::io::duplex(128);
+    tokio::spawn(async move {
+        use tokio::io::AsyncWriteExt;
+        let _ = server.write_all(b"not-a-header").await;
+    });
+    let mut reader = tokio::io::BufReader::new(client);
+    let err = read_lsp_message(&mut reader).await.unwrap_err();
+    assert!(err.contains("not valid LSP"), "got {err}");
+}
+
+#[tokio::test]
+async fn read_lsp_message_empty_eof_is_exit() {
+    let (client, server) = tokio::io::duplex(8);
+    drop(server);
+    let mut reader = tokio::io::BufReader::new(client);
+    let err = read_lsp_message(&mut reader).await.unwrap_err();
+    assert_eq!(err, "Language server exited");
 }

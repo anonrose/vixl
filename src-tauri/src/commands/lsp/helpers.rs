@@ -78,7 +78,7 @@ pub fn server_display_label(id: &str) -> String {
         "php" => "PHP".to_string(),
         "kotlin" => "Kotlin".to_string(),
         "xml" => "XML".to_string(),
-        "sql" => "SQL".to_string(),
+        "sql" => "Postgres".to_string(),
         "java" => "Java".to_string(),
         "eslint" => "ESLint".to_string(),
         "oxlint" => "Oxlint".to_string(),

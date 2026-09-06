@@ -116,7 +116,7 @@ pub fn allowlisted_lsp_basenames() -> &'static [&'static str] {
         "intelephense",
         "kotlin-language-server",
         "lemminx",
-        "sql-language-server",
+        "postgres-language-server",
         "deno",
         "ruby-lsp",
         "jdtls",

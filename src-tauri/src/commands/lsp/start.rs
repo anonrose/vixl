@@ -11,6 +11,7 @@ use super::super::config::workspace_is_trusted;
 use super::super::fs::canonical_project_root;
 use super::super::lsp_install::emit_progress;
 use super::helpers::path_to_uri;
+use super::io::spawn_stderr_tail;
 use super::resolve::{resolve_lsp_command, LspServerEntry};
 use super::rpc::{
     json_rpc_request, send_notification, set_state, spawn_keepalive, LspProcess, ManagedLspServer,
@@ -48,7 +49,7 @@ pub(crate) async fn start_server(
         .current_dir(&workspace_root)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .kill_on_drop(true);
 
     for (key, value) in &entry.env {
@@ -65,6 +66,10 @@ pub(crate) async fn start_server(
         .stdin
         .take()
         .ok_or_else(|| "LSP stdin unavailable".to_string())?;
+    let stderr_tail = Arc::new(Mutex::new(String::new()));
+    if let Some(stderr) = child.stderr.take() {
+        spawn_stderr_tail(stderr, stderr_tail.clone());
+    }
 
     let process = Arc::new(Mutex::new(LspProcess {
         child,
@@ -75,10 +80,10 @@ pub(crate) async fn start_server(
         pending: Mutex::new(HashMap::new()),
         next_id: Mutex::new(0),
         uses_classic_typescript: server_id == "typescript" && classic_typescript,
+        stderr_tail,
     }));
 
     super::spawn_reader(process.clone(), server_id.clone(), app.clone());
-    spawn_keepalive(server_id.clone(), process.clone());
 
     let root_uri = path_to_uri(&canonical_project_root(&workspace_root)?);
     let init_options = build_initialization_options(
@@ -156,6 +161,8 @@ pub(crate) async fn start_server(
             }),
         );
     }
+
+    spawn_keepalive(server_id.clone(), process.clone());
 
     set_state(
         &server_id,
