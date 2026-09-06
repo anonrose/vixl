@@ -14,11 +14,13 @@ export type ChatModeMeta = {
 }
 
 export const CHAT_MODES: ChatModeMeta[] = [
-  { value: 'ask', label: 'Ask', icon: CircleHelpIcon },
-  { value: 'plan', label: 'Plan', icon: ListTodoIcon },
   { value: 'agent', label: 'Agent', icon: BotIcon },
+  { value: 'ask', label: 'Ask', icon: CircleHelpIcon },
   { value: 'orchestrator', label: 'Orchestrator', icon: NetworkIcon },
+  { value: 'plan', label: 'Plan', icon: ListTodoIcon },
 ]
 
+const DEFAULT_CHAT_MODE = CHAT_MODES.find((entry) => entry.value === 'agent')!
+
 export const getChatModeMeta = (mode: VixlChatMode): ChatModeMeta =>
-  CHAT_MODES.find((entry) => entry.value === mode) ?? CHAT_MODES[2]!
+  CHAT_MODES.find((entry) => entry.value === mode) ?? DEFAULT_CHAT_MODE
