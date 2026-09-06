@@ -309,13 +309,12 @@ watch(vixlFileChangeToken, async () => {
         @open="openInEditor"
       />
     </div>
-
-    <VixlFileCreateHost
-      v-model:open="formOpen"
-      :kind="kind"
-      :scope="scope"
-      :project-root="projectRoot"
-      @submitted="handleSubmitted"
-    />
   </component>
+  <VixlFileCreateHost
+    v-model:open="formOpen"
+    :kind="kind"
+    :scope="scope"
+    :project-root="projectRoot"
+    @submitted="handleSubmitted"
+  />
 </template>

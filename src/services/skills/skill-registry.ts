@@ -1,6 +1,6 @@
 import type { VixlChatMode } from '@/types/vixl/vixl-settings'
 import type { LoadedSkill, SkillIndexEntry } from '@/types/skills/skill'
-import listAllInternalSkills, {
+import {
   listInternalSkillIndex,
   loadInternalSkill,
 } from '@/services/skills/discover-internal-skills'
@@ -9,6 +9,7 @@ import {
   loadProjectSkill,
 } from '@/services/skills/discover-project-skills'
 import { discoverUserSkillIndex, loadUserSkill } from '@/services/skills/discover-user-skills'
+import isReservedSlashName from '@/services/skills/is-reserved-slash-name'
 import { MAX_SKILL_CONTENT_CHARS } from '@/services/skills/strip-skill-frontmatter'
 
 export const listUserAndProjectSkillIndex = async (
@@ -29,22 +30,10 @@ export const listUserAndProjectSkillIndex = async (
 export const listSlashSkillIndex = async (
   projectRoot: string | null,
 ): Promise<SkillIndexEntry[]> => {
-  const byName = new Map<string, SkillIndexEntry>()
-  for (const skill of listAllInternalSkills()) {
-    byName.set(skill.name.toLowerCase(), skill)
-  }
-  if (!projectRoot) {
-    return [...byName.values()]
-  }
-  const user = await discoverUserSkillIndex()
-  const project = await discoverProjectSkillIndex(projectRoot)
-  for (const skill of user) {
-    byName.set(skill.name.toLowerCase(), skill)
-  }
-  for (const skill of project) {
-    byName.set(skill.name.toLowerCase(), skill)
-  }
-  return [...byName.values()]
+  const skills = projectRoot
+    ? await listUserAndProjectSkillIndex(projectRoot)
+    : await discoverUserSkillIndex()
+  return skills.filter((skill) => !isReservedSlashName(skill.name))
 }
 
 export const listSkillIndex = async (
