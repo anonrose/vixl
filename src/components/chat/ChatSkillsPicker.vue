@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { CheckIcon, ChevronDownIcon, SparklesIcon } from '@lucide/vue'
+import { ChevronDownIcon, SparklesIcon } from '@lucide/vue'
 import { Button } from '@/components/shadcn/ui/button'
 import { Input } from '@/components/shadcn/ui/input'
 import {
@@ -85,10 +85,7 @@ const handleSkillSelect = (name: string): void => {
           class="items-center"
           @select="handleSkillSelect(skill.name)"
         >
-          <div class="flex w-full items-center gap-2">
-            <CheckIcon class="size-3.5 shrink-0 opacity-0" />
-            <span class="truncate font-medium">/{{ skill.name }}</span>
-          </div>
+          <span class="truncate font-medium">/{{ skill.name }}</span>
         </DropdownMenuItem>
         <p
           v-if="!pending && filteredSkills.length === 0"
