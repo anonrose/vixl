@@ -81,7 +81,7 @@ import { joinSystemPromptParts } from '@/services/context/system-prompt-parts'
 import { buildPrefixSnapshot } from '@/services/harness/prefix-contract'
 
 const promptParts = (mode: string): SystemPromptParts => ({
-  base: `You are Vixl, an AI coding agent in ${mode} mode.`,
+  base: `mode:${mode}`,
   tools: 'tools',
   mcp: '',
   agentsMd: '',
@@ -92,7 +92,7 @@ const promptParts = (mode: string): SystemPromptParts => ({
 })
 
 const frozen = (mode: PrefixSnapshot['mode'], systemMode = mode): PrefixSnapshot => ({
-  systemString: `You are Vixl, an AI coding agent in ${systemMode} mode.`,
+  systemString: `mode:${systemMode}`,
   toolSchemasJson: 'tools',
   mcpCatalogSnapshot: '',
   rulesBodies: '',
@@ -277,7 +277,7 @@ describe('prepare-stream prefix freeze vs rebuild', () => {
     const prepared = await prepareStream(input)
 
     expect(assembleSystemPromptParts).toHaveBeenCalled()
-    expect(prepared.system).toContain('in ask mode')
+    expect(prepared.system).toContain('mode:ask')
     expect(updateChatMeta).toHaveBeenCalledWith(
       'proj',
       'chat-1',
@@ -295,7 +295,7 @@ describe('prepare-stream prefix freeze vs rebuild', () => {
     )
   })
 
-  it('rebuilds legacy snapshots when inferred mode differs', async () => {
+  it('rebuilds when stored mode is missing', async () => {
     readChatMeta.mockResolvedValue({
       prefixSnapshot: frozen(undefined, 'agent'),
     })
@@ -303,7 +303,7 @@ describe('prepare-stream prefix freeze vs rebuild', () => {
     const prepared = await prepareStream(buildInput('plan'))
 
     expect(assembleSystemPromptParts).toHaveBeenCalled()
-    expect(prepared.system).toContain('in plan mode')
+    expect(prepared.system).toContain('mode:plan')
   })
 })
 

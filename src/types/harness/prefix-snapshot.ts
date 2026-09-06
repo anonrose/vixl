@@ -8,8 +8,8 @@ export type PrefixSnapshot = {
   rulesBodies: string
   hash: string
   frozenAt: string
-  /** Chat mode at freeze time. Older snapshots may omit this. */
+  /** Chat mode at freeze time. */
   mode?: VixlChatMode
-  /** Bucket-ready parts at freeze time. Older snapshots may omit this. */
+  /** Bucket-ready parts at freeze time. */
   parts?: SystemPromptParts
 }

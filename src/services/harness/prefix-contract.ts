@@ -4,8 +4,6 @@ import type { VixlChatMode } from '@/types/vixl/vixl-settings'
 
 const PREFIX_MODES = ['ask', 'plan', 'agent', 'orchestrator'] as const
 
-const LEGACY_MODE_RE = /in (ask|plan|agent|orchestrator) mode/
-
 type PrefixParts = {
   systemString: string
   toolSchemasJson: string
@@ -73,14 +71,12 @@ const withAgentsMd = (parts: SystemPromptParts): SystemPromptParts => {
   }
 }
 
-/** Rebuild bucket parts from a frozen snapshot (new or legacy). */
+/** Rebuild bucket parts from a frozen snapshot. */
 export const partsFromFrozenPrefix = (snap: PrefixSnapshot): SystemPromptParts => {
   if (snap.parts && isSystemPromptParts(snap.parts)) {
     return withAgentsMd({ ...snap.parts })
   }
 
-  // Legacy snapshots only stored catalog slices; keep systemString as base so
-  // totals stay honest, and leave discrete buckets empty rather than double-count.
   return {
     base: snap.systemString,
     tools: '',
@@ -93,18 +89,10 @@ export const partsFromFrozenPrefix = (snap: PrefixSnapshot): SystemPromptParts =
   }
 }
 
-export const inferPrefixMode = (systemString: string): VixlChatMode | null => {
-  const match = LEGACY_MODE_RE.exec(systemString)
-  return match && isChatMode(match[1]) ? match[1] : null
-}
-
 export const frozenPrefixMatchesMode = (
   snap: PrefixSnapshot,
   mode: VixlChatMode,
-): boolean => {
-  const frozenMode = snap.mode ?? inferPrefixMode(snap.systemString)
-  return frozenMode === mode
-}
+): boolean => snap.mode === mode
 
 export const getFrozenPrefix = (meta: { prefixSnapshot?: unknown }): PrefixSnapshot | null => {
   const snap = meta.prefixSnapshot
