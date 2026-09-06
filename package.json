@@ -37,7 +37,6 @@
     "@ai-sdk/mcp": "^2.0.43",
     "@ai-sdk/openai": "^4.0.15",
     "@ai-sdk/openai-compatible": "^3.0.20",
-    "@comark/vue": "^0.5.1",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@lucide/vue": "^1.24.0",

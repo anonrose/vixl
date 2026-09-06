@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const chatModeSchema = z.enum(['ask', 'plan', 'studio', 'agent', 'orchestrator'])
+const chatModeSchema = z.enum(['ask', 'plan', 'agent', 'orchestrator'])
 
 const systemPromptPartsSchema = z.object({
   base: z.string(),

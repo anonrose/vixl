@@ -1,5 +1,5 @@
 export type ChatArtifact = {
-  kind: 'plan' | 'studio' | 'file'
+  kind: 'plan' | 'file'
   path: string
   label?: string
   startLine?: number

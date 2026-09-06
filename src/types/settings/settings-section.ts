@@ -6,7 +6,6 @@ export type SettingsSectionId =
   | 'graphs'
   | 'agents'
   | 'plans'
-  | 'studio'
   | 'rules'
   | 'skills'
   | 'lsp'
@@ -34,7 +33,6 @@ export const SECTION_LABELS: Record<SettingsSectionId, string> = {
   graphs: 'Graphs',
   agents: 'Agents',
   plans: 'Plans',
-  studio: 'Studio',
   rules: 'Rules',
   skills: 'Skills',
   lsp: 'LSP',

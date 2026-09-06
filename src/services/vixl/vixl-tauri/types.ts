@@ -28,7 +28,6 @@ export type VixlFilesKind =
   | 'rules'
   | 'skills'
   | 'plans'
-  | 'studio'
 
 export type McpToolInfo = {
   name: string

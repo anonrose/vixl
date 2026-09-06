@@ -36,7 +36,6 @@ export const TOOL_DESCRIPTIONS: Record<string, string> = {
   create_plan: 'Create a plan document',
   update_plan_todo: 'Update a plan todo item',
   update_todos: 'Create, update, complete, cancel, or remove in-chat todos (full list)',
-  write_studio_artifact: 'Write a studio artifact',
   spawn_subagent: 'Spawn sub-agent (background: end turn, harness resumes)',
   resolve_models:
     'Look up allowed model refs by query and optional provider (capped)',

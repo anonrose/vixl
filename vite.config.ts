@@ -35,7 +35,6 @@ export default defineConfig({
         'src/components/navigation',
         'src/components/project',
         'src/components/settings',
-        'src/components/studio',
         'src/components/terminal',
         'src/components/workbench',
       ],

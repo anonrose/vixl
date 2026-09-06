@@ -6,14 +6,14 @@ import parseSkillFrontmatter, {
 describe('strip-skill-frontmatter', () => {
   it('extracts frontmatter and body', () => {
     const { frontmatter, body } = parseSkillFrontmatter(`---
-name: studio
-description: Studio publishing guide
+name: example
+description: Example skill guide
 ---
 
 # Heading
 `)
-    expect(frontmatter.name).toBe('studio')
-    expect(frontmatter.description).toBe('Studio publishing guide')
+    expect(frontmatter.name).toBe('example')
+    expect(frontmatter.description).toBe('Example skill guide')
     expect(body).toContain('# Heading')
   })
 

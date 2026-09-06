@@ -138,7 +138,6 @@ export const PLAN_GO_BLOCKED_TOOLS = new Set([
   'read_mcp_resource',
   'get_mcp_prompt',
   'spawn_subagent',
-  'write_studio_artifact',
   'create_plan',
 ])
 

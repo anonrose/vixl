@@ -108,10 +108,10 @@ describe('spawn_subagent capability enforcement', () => {
     runSubagentGenerate.mockResolvedValue('ok summary')
   })
 
-  const readOnlyModes: VixlChatMode[] = ['ask', 'plan', 'studio']
+  const readOnlyModes: VixlChatMode[] = ['ask', 'plan']
   const writeAllowedModes: VixlChatMode[] = ['agent', 'orchestrator']
 
-  it('rejects write capabilities in ask, plan, and studio', async () => {
+  it('rejects write capabilities in ask and plan', async () => {
     for (const mode of readOnlyModes) {
       runSubagentGenerate.mockClear()
       await expect(execute(mode, 'write')).rejects.toThrow(writeError(mode))
@@ -119,7 +119,7 @@ describe('spawn_subagent capability enforcement', () => {
     }
   })
 
-  it('allows read-only capabilities in ask, plan, and studio', async () => {
+  it('allows read-only capabilities in ask and plan', async () => {
     for (const mode of readOnlyModes) {
       runSubagentGenerate.mockClear()
       await expect(execute(mode, 'read-only')).resolves.toMatchObject({
@@ -130,7 +130,7 @@ describe('spawn_subagent capability enforcement', () => {
     }
   })
 
-  it('allows omitted capabilities in ask, plan, and studio', async () => {
+  it('allows omitted capabilities in ask and plan', async () => {
     for (const mode of readOnlyModes) {
       runSubagentGenerate.mockClear()
       await expect(execute(mode)).resolves.toMatchObject({

@@ -14,7 +14,6 @@ export type VixlFileKind =
   | 'rules'
   | 'skills'
   | 'plans'
-  | 'studio'
 
 export type VixlFileChange = {
   scope: 'personal' | 'project'

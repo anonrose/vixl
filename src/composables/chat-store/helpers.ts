@@ -64,7 +64,7 @@ export const parseChatArtifact = (value: unknown): ChatArtifact | undefined => {
   const kind = record.kind
   const path = record.path
   if (
-    (kind !== 'plan' && kind !== 'studio' && kind !== 'file') ||
+    (kind !== 'plan' && kind !== 'file') ||
     typeof path !== 'string' ||
     path.length === 0
   ) {

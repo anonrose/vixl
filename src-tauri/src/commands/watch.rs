@@ -64,8 +64,6 @@ fn classify_change(
         "agents-md"
     } else if has_path_segment(path, "plans") {
         "plans"
-    } else if has_path_segment(path, "studio") {
-        "studio"
     } else if has_path_segment(path, "skills") {
         "skills"
     } else if has_path_segment(path, "agents") {

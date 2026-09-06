@@ -145,14 +145,12 @@ vi.mock('@/services/harness/shell/registry', () => ({
   setAgentShellEventEmitter: vi.fn<(chatId: string, handler: unknown) => void>(),
 }))
 
-const openStudio = vi.fn<(projectId: string, slug: string, path: string, label?: string) => void>()
 const resolveProjectIdByRoot = vi.fn<(root: string) => string | null>(() => 'project-1')
 
 vi.mock('@/composables/use-workbench-store', () => ({
   default: () => ({
-    openStudio,
     resolveProjectIdByRoot,
-    refreshPlanStudioTabs: vi.fn<() => void>(),
+    refreshPlanTabs: vi.fn<() => void>(),
   }),
 }))
 

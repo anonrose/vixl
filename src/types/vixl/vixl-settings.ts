@@ -9,7 +9,7 @@ import type { ModelPricingRates } from '@/types/billing/model-pricing-rates'
 
 export type VixlTheme = 'light' | 'dark' | 'system'
 
-export type VixlChatMode = 'ask' | 'plan' | 'studio' | 'agent' | 'orchestrator'
+export type VixlChatMode = 'ask' | 'plan' | 'agent' | 'orchestrator'
 
 export type VixlDuplicateTabBehavior = 'ask' | 'open-existing' | 'open-new'
 
@@ -64,7 +64,6 @@ export type VixlSettings = {
   'models.default'?: string
   'models.ask'?: string
   'models.plan'?: string
-  'models.studio'?: string
   'models.agent'?: string
   'models.orchestrator'?: string
   'models.subagent'?: string
@@ -73,7 +72,6 @@ export type VixlSettings = {
   'models.defaultReasoning'?: string
   'models.askReasoning'?: string
   'models.planReasoning'?: string
-  'models.studioReasoning'?: string
   'models.agentReasoning'?: string
   'models.orchestratorReasoning'?: string
   'models.subagentReasoning'?: string

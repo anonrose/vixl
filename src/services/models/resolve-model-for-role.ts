@@ -5,7 +5,6 @@ import parseModelRef from '@/utils/parse-model-ref'
 const isChatMode = (role: ModelRoleId): role is VixlChatMode =>
   role === 'ask' ||
   role === 'plan' ||
-  role === 'studio' ||
   role === 'agent' ||
   role === 'orchestrator'
 

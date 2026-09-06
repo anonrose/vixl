@@ -14,19 +14,18 @@ import type { VixlChatMode } from '@/types/vixl/vixl-settings'
 const TOOLS_HINT =
   'Tools are provided as function calls; do not grep the repo for them.'
 
-const MODES: VixlChatMode[] = ['ask', 'plan', 'studio', 'agent', 'orchestrator']
+const MODES: VixlChatMode[] = ['ask', 'plan', 'agent', 'orchestrator']
 
 /**
  * Empty-project (standalone, no rules, no MCP) ceilings after adding
  * move_workspace (agent tool defs) and the workspace tool-guidance bullet.
  * Measured totals (system join + builtin tool defs, chars/4):
- * ask 4470, plan 5041, studio 5254, agent 6632, orchestrator 4855.
+ * ask 4470, plan 5041, agent 6632, orchestrator 4855.
  * Headroom is about 3 percent so waste cannot return unnoticed.
  */
 const TOTAL_CEILINGS: Record<VixlChatMode, number> = {
   ask: 4605,
   plan: 5195,
-  studio: 5415,
   agent: 6835,
   orchestrator: 5005,
 }
@@ -34,7 +33,6 @@ const TOTAL_CEILINGS: Record<VixlChatMode, number> = {
 const BASE_CEILINGS: Record<VixlChatMode, number> = {
   ask: 890,
   plan: 960,
-  studio: 965,
   agent: 1265,
   orchestrator: 1110,
 }
@@ -42,7 +40,6 @@ const BASE_CEILINGS: Record<VixlChatMode, number> = {
 const SKILLS_CEILINGS: Record<VixlChatMode, number> = {
   ask: 50,
   plan: 50,
-  studio: 80,
   agent: 25,
   orchestrator: 25,
 }
@@ -50,7 +47,6 @@ const SKILLS_CEILINGS: Record<VixlChatMode, number> = {
 const TOOL_DEF_CEILINGS: Record<VixlChatMode, number> = {
   ask: 3590,
   plan: 4100,
-  studio: 4290,
   agent: 5525,
   orchestrator: 3790,
 }
@@ -112,12 +108,12 @@ describe('system prompt token snapshot (empty project)', () => {
     },
   )
 
-  it('orders ask below studio below agent by total tokens', async () => {
+  it('orders ask below plan below agent by total tokens', async () => {
     const ask = await measureMode('ask')
-    const studio = await measureMode('studio')
+    const plan = await measureMode('plan')
     const agent = await measureMode('agent')
-    expect(ask.total).toBeLessThan(studio.total)
-    expect(studio.total).toBeLessThan(agent.total)
+    expect(ask.total).toBeLessThan(plan.total)
+    expect(plan.total).toBeLessThan(agent.total)
   })
 
   it('includes MCP and shell guidance but omits patch and embedded browser from ask', async () => {
@@ -127,13 +123,5 @@ describe('system prompt token snapshot (empty project)', () => {
     expect(snapshot.systemString).not.toContain('browser_cdp')
     expect(snapshot.systemString).not.toContain('browser_lock')
     expect(snapshot.systemString).not.toContain('apply_patch')
-  })
-
-  it('keeps the Comark block catalog out of the always-on studio skill', async () => {
-    const snapshot = await measureMode('studio')
-    expect(snapshot.parts.base).toContain('load_skill("studio-blocks")')
-    expect(snapshot.parts.base).not.toContain('::chart')
-    expect(snapshot.parts.base).not.toContain('::page-header')
-    expect(snapshot.parts.skills).toContain('studio-blocks')
   })
 })

@@ -15,7 +15,7 @@ const projectRoot = '/tmp/vixl'
 const personalDir = '/tmp/personal-vixl'
 
 const input = (
-  mode: 'ask' | 'plan' | 'agent' | 'studio' | 'orchestrator',
+  mode: 'ask' | 'plan' | 'agent' | 'orchestrator',
   extra: { standalone?: boolean } = {},
 ) => ({
   mode,
@@ -107,21 +107,6 @@ describe('assemble system prompt parts', () => {
     expect(parts.base).toContain('run_terminal only')
     expect(parts.base).toContain('get_mcp_tools if stale')
     expect(parts.base).toContain('apply_patch is OpenCode-style')
-  })
-
-  it('includes MCP and shell but not patch or embedded browser for studio', async () => {
-    const parts = await assembleSystemPromptParts(input('studio'))
-    expect(parts.base).toContain('get_mcp_tools if stale')
-    expect(parts.base).toContain('run_terminal only')
-    expect(parts.base).not.toContain('browser_lock')
-    expect(parts.base).not.toContain('apply_patch is OpenCode-style')
-  })
-
-  it('keeps studio block catalog out of the always-on base', async () => {
-    const parts = await assembleSystemPromptParts(input('studio'))
-    expect(parts.base).toContain('load_skill("studio-blocks")')
-    expect(parts.base).not.toContain('::page-header')
-    expect(parts.skills).toContain('studio-blocks')
   })
 
   it('injects listed .vixl/AGENTS.md into agentsMd', async () => {

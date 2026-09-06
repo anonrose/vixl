@@ -152,7 +152,6 @@ fn list_files_for_kind(base: &Path, kind: &str) -> Result<Vec<ProjectFileEntry>,
         "agents-md" => list_agents_md_file(base),
         "skills" => list_skill_files(&base.join("skills")),
         "plans" => list_nested_markdown_files(&base.join("plans"), "PLAN.md"),
-        "studio" => list_studio_files(&base.join("studio")),
         _ => Err(format!("unknown kind: {kind}")),
     }
 }
@@ -223,61 +222,6 @@ fn list_skill_files(dir: &Path) -> Result<Vec<ProjectFileEntry>, String> {
 
     entries.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(entries)
-}
-
-fn list_studio_files(studio_dir: &Path) -> Result<Vec<ProjectFileEntry>, String> {
-    if !studio_dir.exists() {
-        return Ok(vec![]);
-    }
-
-    let mut entries = Vec::new();
-    collect_studio_index_files(studio_dir, studio_dir, &mut entries, 0)?;
-    entries.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok(entries)
-}
-
-fn collect_studio_index_files(
-    studio_root: &Path,
-    dir: &Path,
-    entries: &mut Vec<ProjectFileEntry>,
-    depth: usize,
-) -> Result<(), String> {
-    if depth > 4 {
-        return Ok(());
-    }
-
-    for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        if !entry.file_type().map_err(|e| e.to_string())?.is_dir() {
-            continue;
-        }
-
-        let path = entry.path();
-        let index_path = path.join("index.md");
-        if index_path.exists() {
-            let rel = path
-                .strip_prefix(studio_root)
-                .unwrap_or(&path)
-                .to_string_lossy()
-                .to_string();
-            let description = read_studio_entry_description(&index_path);
-            entries.push(ProjectFileEntry {
-                name: rel,
-                path: index_path.to_string_lossy().to_string(),
-                description,
-            });
-            continue;
-        }
-
-        collect_studio_index_files(studio_root, &path, entries, depth + 1)?;
-    }
-
-    Ok(())
-}
-
-fn read_studio_entry_description(path: &Path) -> Option<String> {
-    let content = fs::read_to_string(path).ok()?;
-    read_frontmatter_field(&content, "title").or_else(|| read_first_description(path))
 }
 
 fn read_frontmatter_field(content: &str, field: &str) -> Option<String> {

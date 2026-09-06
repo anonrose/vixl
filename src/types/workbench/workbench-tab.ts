@@ -2,7 +2,6 @@ export type WorkbenchTabType =
   | 'changes'
   | 'editor'
   | 'terminal'
-  | 'studio'
   | 'plan'
   | 'agent-shell'
 
@@ -22,11 +21,6 @@ export type PlanPayload = {
   path: string
 }
 
-export type StudioPayload = {
-  artifactSlug: string
-  path: string
-}
-
 export type AgentShellPayload = {
   shellId: string
 }
@@ -37,7 +31,6 @@ export type WorkbenchTabPayload =
   | EditorPayload
   | TerminalPayload
   | PlanPayload
-  | StudioPayload
   | AgentShellPayload
   | ChangesPayload
 

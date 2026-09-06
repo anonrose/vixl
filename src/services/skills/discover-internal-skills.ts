@@ -12,8 +12,6 @@ const INTERNAL_SKILL_MODE_GATES: Record<string, VixlChatMode[]> = {
   ask: ['ask'],
   plan: ['plan'],
   agent: ['agent'],
-  studio: ['studio'],
-  'studio-blocks': ['studio'],
   orchestrator: ['orchestrator'],
 }
 

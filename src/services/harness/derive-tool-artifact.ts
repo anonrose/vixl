@@ -109,14 +109,6 @@ export default (
     return { kind: 'plan', path, label }
   }
 
-  if (name === 'write_studio_artifact') {
-    const path = typeof result.path === 'string' ? result.path : undefined
-    if (!path) {
-      return undefined
-    }
-    return { kind: 'studio', path }
-  }
-
   if (
     name === 'write_file' ||
     name === 'edit_file' ||

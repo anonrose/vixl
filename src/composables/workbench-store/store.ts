@@ -28,7 +28,6 @@ import {
   openDiff,
   openEditor,
   openPlan,
-  openStudio,
   openTerminal,
 } from './open-tabs'
 import {
@@ -46,7 +45,7 @@ import {
   closeOthers,
   closeTab,
   getActiveTerminalSessionId,
-  refreshPlanStudioTabs,
+  refreshPlanTabs,
   registerTerminalSession,
   reorderTabs,
   unregisterTerminalSession,
@@ -64,7 +63,7 @@ const hasMultipleProjects = computed(() => {
 })
 
 watch(vixlFileChangeToken, () => {
-  refreshPlanStudioTabs()
+  refreshPlanTabs()
 })
 
 startWorkbenchPersist()
@@ -85,7 +84,6 @@ const useWorkbenchStore = () => ({
   openDiff,
   openTerminal,
   openPlan,
-  openStudio,
   openAgentShell,
   openChanges,
   closeTab,
@@ -97,7 +95,7 @@ const useWorkbenchStore = () => ({
   unregisterTerminalSession,
   getActiveTerminalSessionId,
   writeToActiveTerminal,
-  refreshPlanStudioTabs,
+  refreshPlanTabs,
   setRightSidebarOpen,
   toggleRightSidebar,
   getProject,

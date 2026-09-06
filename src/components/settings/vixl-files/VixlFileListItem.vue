@@ -27,12 +27,6 @@ const emit = defineEmits<{
       <p class="font-medium">
         {{ kind === 'skills' ? file.name : (file.description ?? file.name) }}
       </p>
-      <p
-        v-if="kind === 'studio' && file.description && file.description !== file.name"
-        class="text-xs text-muted-foreground"
-      >
-        {{ file.name }}
-      </p>
     </div>
     <div class="flex items-center gap-0.5">
       <Tooltip>

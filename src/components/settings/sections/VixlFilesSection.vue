@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, toRef, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { FileText, Folder, FolderSymlink, MessageSquare, Plus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/shadcn/ui/button'
@@ -63,7 +63,6 @@ const scope = computed<'personal' | 'project'>(() =>
 
 const { handleSelectChat } = useStartVixlFilesChat({
   scope,
-  kind: toRef(props, 'kind'),
 })
 
 const projectRoot = computed(() =>
@@ -71,12 +70,11 @@ const projectRoot = computed(() =>
 )
 
 const usesCreateMenu = computed(
-  () => props.kind === 'plans' || props.kind === 'studio',
+  () => props.kind === 'plans',
 )
 
 const NEW_ITEM_TOOLTIPS: Record<VixlFilesKind, string> = {
   plans: 'New plan',
-  studio: 'New studio',
   skills: 'New skill',
   agents: 'New agent',
   'agents-md': 'New AGENTS.md',
@@ -181,16 +179,6 @@ const openInEditor = (file: ProjectFileEntry): void => {
 
   if (props.kind === 'plans') {
     workbench.openPlan(projectId, file.name, relativePath, file.name)
-    return
-  }
-
-  if (props.kind === 'studio') {
-    workbench.openStudio(
-      projectId,
-      file.name,
-      relativePath,
-      file.description ?? file.name,
-    )
     return
   }
 

@@ -2,9 +2,9 @@ import type { SystemPromptParts } from '@/services/context/system-prompt-parts'
 import type { PrefixSnapshot } from '@/types/harness/prefix-snapshot'
 import type { VixlChatMode } from '@/types/vixl/vixl-settings'
 
-const PREFIX_MODES = ['ask', 'plan', 'studio', 'agent', 'orchestrator'] as const
+const PREFIX_MODES = ['ask', 'plan', 'agent', 'orchestrator'] as const
 
-const LEGACY_MODE_RE = /in (ask|plan|studio|agent|orchestrator) mode/
+const LEGACY_MODE_RE = /in (ask|plan|agent|orchestrator) mode/
 
 type PrefixParts = {
   systemString: string

@@ -74,10 +74,6 @@ const TOOL_CATEGORIES: Array<{ label: string; tools: string[] }> = [
     tools: ['create_plan', 'update_plan_todo', 'update_todos'],
   },
   {
-    label: 'Studio',
-    tools: ['write_studio_artifact'],
-  },
-  {
     label: 'Subagents',
     tools: ['spawn_subagent'],
   },

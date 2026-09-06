@@ -3,7 +3,6 @@ import type {
   ChangesPayload,
   EditorPayload,
   PlanPayload,
-  StudioPayload,
   TerminalPayload,
   WorkbenchTab,
 } from '@/types/workbench/workbench-tab'
@@ -17,7 +16,6 @@ import {
   findTab,
   focusTab,
   getProject,
-  updateTab,
 } from './helpers'
 import { tabs } from './state'
 
@@ -144,37 +142,6 @@ export const openPlan = (
     projectId,
     label: label ?? planId,
     payload: { planId, path } satisfies PlanPayload,
-  }
-  tabs.value.push(tab)
-  focusTab(tab.id)
-}
-
-export const openStudio = (
-  projectId: string,
-  artifactSlug: string,
-  path: string,
-  label?: string,
-): void => {
-  const existing = findTab(
-    (tab) =>
-      tab.type === 'studio' &&
-      (tab.payload as StudioPayload).artifactSlug === artifactSlug,
-  )
-  if (existing) {
-    updateTab(existing.id, {
-      label: label ?? artifactSlug,
-      payload: { artifactSlug, path } satisfies StudioPayload,
-    })
-    focusTab(existing.id)
-    return
-  }
-
-  const tab: WorkbenchTab = {
-    id: createId(),
-    type: 'studio',
-    projectId,
-    label: label ?? artifactSlug,
-    payload: { artifactSlug, path } satisfies StudioPayload,
   }
   tabs.value.push(tab)
   focusTab(tab.id)

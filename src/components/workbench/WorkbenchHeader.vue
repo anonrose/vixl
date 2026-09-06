@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { Plus } from '@lucide/vue'
 import {
-  ChartBar,
   FileCode,
   FileText,
   GitBranch,
@@ -35,8 +34,6 @@ const tabIcon = (type: WorkbenchTabType) => {
       return Terminal
     case 'changes':
       return GitBranch
-    case 'studio':
-      return ChartBar
     case 'plan':
       return FileText
     default:

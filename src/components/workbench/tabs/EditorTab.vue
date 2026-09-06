@@ -648,8 +648,6 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
           >
             <WorkbenchEditorMarkdownPreview
               :key="selectedPath"
-              :path="selectedPath"
-              :project-root="projectRoot"
               :content="fileContent"
             />
           </div>

@@ -83,7 +83,7 @@ const updatePlanTodo = (ctx: HarnessToolContext) =>
           resolvedPlanPath,
           parsed.frontmatter!.title,
         )
-        workbench.refreshPlanStudioTabs()
+        workbench.refreshPlanTabs()
       }
       return { planPath: resolvedPlanPath, todos }
     },

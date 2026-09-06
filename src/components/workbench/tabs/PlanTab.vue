@@ -13,7 +13,6 @@ import {
   TooltipTrigger,
 } from '@/components/shadcn/ui/tooltip'
 import WorkbenchPlansOrchestratePlanDialog from '@/components/workbench/plans/OrchestratePlanDialog.vue'
-import StudioBlocksMermaid from '@/components/studio/blocks/StudioBlocksMermaid.vue'
 import useVixlConfig from '@/composables/use-vixl-config'
 import useStartPlanBuild from '@/composables/use-start-plan-build'
 import useWorkbenchStore from '@/composables/use-workbench-store'
@@ -305,7 +304,7 @@ watch([planPayload, projectRoot, refreshToken], () => {
             :content="segment.content"
             :enable-animate="false"
           />
-          <StudioBlocksMermaid v-else-if="segment.type === 'mermaid'" :code="segment.content" />
+          <PlanMermaid v-else-if="segment.type === 'mermaid'" :code="segment.content" />
         </template>
       </div>
     </template>

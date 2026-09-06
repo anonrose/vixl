@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
 import mermaid from 'mermaid'
 
@@ -26,7 +25,7 @@ const renderDiagram = async (): Promise<void> => {
     return
   }
 
-  const id = `studio-mermaid-${Math.random().toString(36).slice(2)}`
+  const id = `plan-mermaid-${Math.random().toString(36).slice(2)}`
   try {
     const { svg } = await mermaid.render(id, source)
     rendered.value = sanitizeMermaidSvg(svg)

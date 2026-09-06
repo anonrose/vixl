@@ -5,7 +5,6 @@ import ProjectChatsSection from '@/components/project/sections/ChatsSection.vue'
 import ProjectCodeGraphSection from '@/components/project/sections/CodeGraphSection.vue'
 import McpServersSection from '@/components/settings/sections/McpServersSection.vue'
 import PlansSection from '@/components/settings/sections/PlansSection.vue'
-import StudioSection from '@/components/settings/sections/StudioSection.vue'
 import SkillsSection from '@/components/settings/sections/SkillsSection.vue'
 import AgentsSection from '@/components/settings/sections/AgentsSection.vue'
 import RulesSection from '@/components/settings/sections/RulesSection.vue'
@@ -31,8 +30,6 @@ const sectionComponent = computed(() => {
       return ProjectCodeGraphSection
     case 'plans':
       return PlansSection
-    case 'studio':
-      return StudioSection
     case 'skills':
       return SkillsSection
     case 'agents':

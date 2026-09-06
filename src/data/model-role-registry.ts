@@ -54,14 +54,6 @@ export const MODEL_ROLE_REGISTRY: ModelRoleDefinition[] = [
     group: 'chatModes',
   },
   {
-    id: 'studio',
-    settingsKey: 'models.studio',
-    reasoningSettingsKey: 'models.studioReasoning',
-    label: 'Studio',
-    description: 'Default model for Studio mode chats.',
-    group: 'chatModes',
-  },
-  {
     id: 'agent',
     settingsKey: 'models.agent',
     reasoningSettingsKey: 'models.agentReasoning',

@@ -9,7 +9,7 @@ describe('loadToolGuidanceForMode', () => {
   })
 
   it('includes MCP guidance in all modes and omits embedded browser guidance', () => {
-    for (const mode of ['ask', 'plan', 'studio', 'agent', 'orchestrator'] as const) {
+    for (const mode of ['ask', 'plan', 'agent', 'orchestrator'] as const) {
       const text = loadToolGuidanceForMode(mode)
       expect(text).toContain('get_mcp_tools if stale')
       expect(text).not.toContain('browser_lock')

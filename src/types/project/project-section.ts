@@ -3,7 +3,6 @@ export type ProjectSectionId =
   | 'mcp'
   | 'codegraph'
   | 'plans'
-  | 'studio'
   | 'skills'
   | 'agents'
   | 'rules'
@@ -13,7 +12,6 @@ export const PROJECT_SECTIONS: ProjectSectionId[] = [
   'mcp',
   'codegraph',
   'plans',
-  'studio',
   'skills',
   'agents',
   'rules',
@@ -24,7 +22,6 @@ export const PROJECT_SECTION_LABELS: Record<ProjectSectionId, string> = {
   mcp: 'MCP',
   codegraph: 'Graph',
   plans: 'Plans',
-  studio: 'Studio',
   skills: 'Skills',
   agents: 'Agents',
   rules: 'Rules',

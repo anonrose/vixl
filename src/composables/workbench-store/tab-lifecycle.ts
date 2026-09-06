@@ -100,9 +100,9 @@ export const writeToActiveTerminal = async (data: string): Promise<boolean> => {
   return true
 }
 
-export const refreshPlanStudioTabs = (): void => {
+export const refreshPlanTabs = (): void => {
   for (const tab of tabs.value) {
-    if (tab.type === 'plan' || tab.type === 'studio') {
+    if (tab.type === 'plan') {
       tabRefreshTokens.value[tab.id] = (tabRefreshTokens.value[tab.id] ?? 0) + 1
     }
   }

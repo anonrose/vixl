@@ -3,7 +3,6 @@ import AgentCreateForm from '@/components/settings/vixl-files/AgentCreateForm.vu
 import PlanCreateForm from '@/components/settings/vixl-files/PlanCreateForm.vue'
 import RuleCreateForm from '@/components/settings/vixl-files/RuleCreateForm.vue'
 import SkillCreateForm from '@/components/settings/vixl-files/SkillCreateForm.vue'
-import StudioCreateForm from '@/components/settings/vixl-files/StudioCreateForm.vue'
 import type { VixlFilesKind } from '@/services/vixl/vixl-tauri'
 
 defineProps<{
@@ -46,14 +45,6 @@ const emit = defineEmits<{
   />
   <RuleCreateForm
     v-else-if="kind === 'rules'"
-    :open="open"
-    :scope="scope"
-    :project-root="projectRoot"
-    @update:open="emit('update:open', $event)"
-    @submitted="emit('submitted')"
-  />
-  <StudioCreateForm
-    v-else-if="kind === 'studio'"
     :open="open"
     :scope="scope"
     :project-root="projectRoot"

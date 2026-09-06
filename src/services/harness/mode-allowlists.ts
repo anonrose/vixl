@@ -73,17 +73,6 @@ const ORCHESTRATOR_TOOLS = [
 export const MODE_TOOL_ALLOWLIST: Record<VixlChatMode, string[]> = {
   ask: [...ASK_TOOLS],
   plan: [...PLAN_TOOLS],
-  studio: [
-    ...PLAN_TOOLS,
-    'write_studio_artifact',
-    'call_mcp_tool',
-    'get_mcp_tools',
-    'list_mcp_resources',
-    'read_mcp_resource',
-    'get_mcp_prompt',
-    'spawn_subagent',
-    'resolve_models',
-  ],
   agent: [
     'read_file',
     'write_file',
@@ -122,7 +111,6 @@ export const MODE_TOOL_ALLOWLIST: Record<VixlChatMode, string[]> = {
     'create_plan',
     'update_plan_todo',
     'update_todos',
-    'write_studio_artifact',
     'spawn_subagent',
     'resolve_models',
   ],

@@ -289,7 +289,6 @@ declare global {
   const useStepper: typeof import('@vueuse/core').useStepper
   const useStorage: typeof import('@vueuse/core').useStorage
   const useStorageAsync: typeof import('@vueuse/core').useStorageAsync
-  const useStudioRenderer: typeof import('./composables/use-studio-renderer').default
   const useStyleTag: typeof import('@vueuse/core').useStyleTag
   const useSupported: typeof import('@vueuse/core').useSupported
   const useSwipe: typeof import('@vueuse/core').useSwipe
@@ -374,9 +373,6 @@ declare global {
   // @ts-ignore
   export type { PlanExecutionMode, StartPlanBuildInput } from './composables/use-start-plan-build'
   import('./composables/use-start-plan-build')
-  // @ts-ignore
-  export type { StudioRendererState } from './composables/use-studio-renderer'
-  import('./composables/use-studio-renderer')
   // @ts-ignore
   export type { SettingsTab } from './composables/use-vixl-config'
   import('./composables/use-vixl-config')
@@ -671,7 +667,6 @@ declare module 'vue' {
     readonly useStepper: UnwrapRef<typeof import('@vueuse/core')['useStepper']>
     readonly useStorage: UnwrapRef<typeof import('@vueuse/core')['useStorage']>
     readonly useStorageAsync: UnwrapRef<typeof import('@vueuse/core')['useStorageAsync']>
-    readonly useStudioRenderer: UnwrapRef<typeof import('./composables/use-studio-renderer')['default']>
     readonly useStyleTag: UnwrapRef<typeof import('@vueuse/core')['useStyleTag']>
     readonly useSupported: UnwrapRef<typeof import('@vueuse/core')['useSupported']>
     readonly useSwipe: UnwrapRef<typeof import('@vueuse/core')['useSwipe']>

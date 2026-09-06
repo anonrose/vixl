@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { FileCodeIcon, FileTextIcon, SparklesIcon } from '@lucide/vue'
+import { FileCodeIcon, FileTextIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import type { ChatArtifact } from '@/types/chat/chat-artifact'
 import { Button } from '@/components/shadcn/ui/button'
@@ -39,12 +39,6 @@ const displayLabel = computed(() => {
   if (props.artifact.label) {
     return props.artifact.label
   }
-  if (props.artifact.kind === 'studio') {
-    const match = props.artifact.path.match(/^\.vixl\/studio\/([^/]+)\//)
-    if (match?.[1]) {
-      return match[1]
-    }
-  }
   if (props.artifact.kind === 'plan') {
     const match = props.artifact.path.match(/^\.vixl\/plans\/([^/]+)\//)
     if (match?.[1]) {
@@ -59,9 +53,6 @@ const displayLabel = computed(() => {
 const icon = computed(() => {
   if (props.artifact.kind === 'plan') {
     return FileTextIcon
-  }
-  if (props.artifact.kind === 'studio') {
-    return SparklesIcon
   }
   return FileCodeIcon
 })
@@ -84,14 +75,6 @@ const handleOpen = async (event: MouseEvent): Promise<void> => {
         props.artifact.path.match(/^\.vixl\/plans\/([^/]+)\//)?.[1] ??
         displayLabel.value
       workbench.openPlan(id, planId, props.artifact.path, props.artifact.label)
-      return
-    }
-
-    if (props.artifact.kind === 'studio') {
-      const slug =
-        props.artifact.path.match(/^\.vixl\/studio\/([^/]+)\//)?.[1] ??
-        displayLabel.value
-      workbench.openStudio(id, slug, props.artifact.path, props.artifact.label)
       return
     }
 
