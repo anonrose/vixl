@@ -95,7 +95,6 @@ export default async (input: SystemPromptInput): Promise<SystemPromptParts> => {
 
   const base = [
     loadPrompt('system/base.md', {
-      mode: input.mode,
       projectName: input.projectName,
       projectRoot: input.projectRoot,
     }),

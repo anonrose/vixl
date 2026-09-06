@@ -20,21 +20,21 @@ const MODES: VixlChatMode[] = ['ask', 'plan', 'agent', 'orchestrator']
  * Empty-project (standalone, no rules, no MCP) ceilings after adding
  * move_workspace (agent tool defs) and the workspace tool-guidance bullet.
  * Measured totals (system join + builtin tool defs, chars/4):
- * ask 4470, plan 5041, agent 6632, orchestrator 4855.
+ * ask 4440, plan 5014, agent 6422, orchestrator 4826.
  * Headroom is about 3 percent so waste cannot return unnoticed.
  */
 const TOTAL_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 4605,
-  plan: 5195,
-  agent: 6835,
-  orchestrator: 5005,
+  ask: 4575,
+  plan: 5165,
+  agent: 6615,
+  orchestrator: 4975,
 }
 
 const BASE_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 890,
-  plan: 960,
-  agent: 1265,
-  orchestrator: 1110,
+  ask: 865,
+  plan: 935,
+  agent: 1240,
+  orchestrator: 1080,
 }
 
 const SKILLS_CEILINGS: Record<VixlChatMode, number> = {

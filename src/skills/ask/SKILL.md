@@ -17,4 +17,4 @@ Read-only exploration and explanation. Everything except editing.
 
 ## Response
 
-Be direct. Cite files/symbols. Suggest agent or plan mode when a change is needed.
+Cite files/symbols. Suggest agent or plan mode when a change is needed.
