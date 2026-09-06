@@ -1,6 +1,11 @@
 const isWhitespace = (ch: string): boolean =>
   ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t'
 
+type PartialToolFields = {
+  path?: string
+  tool?: string
+}
+
 const unescapeJsonString = (raw: string): string | null => {
   let result = ''
   for (let i = 0; i < raw.length; i += 1) {
@@ -77,15 +82,30 @@ const readJsonString = (
   return null
 }
 
-const extractCompletePath = (partialJson: string): string | null => {
+const assignField = (
+  fields: PartialToolFields,
+  keyName: string,
+  value: string,
+): void => {
+  if (keyName === 'path') {
+    fields.path = value
+    return
+  }
+  if (keyName === 'tool') {
+    fields.tool = value
+  }
+}
+
+const extractCompleteFields = (partialJson: string): PartialToolFields | null => {
   let i = 0
   let depth = 0
+  const fields: PartialToolFields = {}
   while (i < partialJson.length) {
     const ch = partialJson[i]!
     if (ch === '"') {
       const key = readJsonString(partialJson, i)
       if (!key) {
-        return null
+        break
       }
       let j = key.end
       while (j < partialJson.length && isWhitespace(partialJson[j]!)) {
@@ -97,15 +117,21 @@ const extractCompletePath = (partialJson: string): string | null => {
         while (j < partialJson.length && isWhitespace(partialJson[j]!)) {
           j += 1
         }
-        if (keyName === 'path') {
+        if (keyName === 'path' || keyName === 'tool') {
           if (partialJson[j] !== '"') {
-            return null
+            i = j
+            continue
           }
           const value = readJsonString(partialJson, j)
           if (!value) {
-            return null
+            break
           }
-          return unescapeJsonString(value.raw)
+          const unescaped = unescapeJsonString(value.raw)
+          if (unescaped !== null && unescaped.length > 0) {
+            assignField(fields, keyName, unescaped)
+          }
+          i = value.end
+          continue
         }
         i = j
         continue
@@ -120,15 +146,18 @@ const extractCompletePath = (partialJson: string): string | null => {
     }
     i += 1
   }
-  return null
+  if (fields.path === undefined && fields.tool === undefined) {
+    return null
+  }
+  return fields
 }
 
 export default (
   buffers: Map<string, string>,
   toolCallId: string,
   delta: string,
-): string | null => {
+): PartialToolFields | null => {
   const next = `${buffers.get(toolCallId) ?? ''}${delta}`
   buffers.set(toolCallId, next)
-  return extractCompletePath(next)
+  return extractCompleteFields(next)
 }

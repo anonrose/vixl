@@ -14,7 +14,7 @@ import {
 import { getPlanExecutionSession } from '@/services/harness/plan-execution-session'
 import toCachedInstructions from '@/services/models/to-cached-instructions'
 import emitContextUsage from './emit-context-usage'
-import extractPartialToolPath from './extract-partial-tool-path'
+import extractPartialToolFields from './extract-partial-tool-fields'
 import {
   nowIso,
   resolveStreamError,
@@ -193,13 +193,13 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
     }
 
     if (part.type === 'tool-input-delta') {
-      const path = extractPartialToolPath(toolInputBuffers, part.id, part.delta)
-      if (path) {
+      const fields = extractPartialToolFields(toolInputBuffers, part.id, part.delta)
+      if (fields) {
         onEvent({
           type: 'tool-input-delta',
           toolCallId: part.id,
           name: toolInputNames.get(part.id) ?? '',
-          args: { path },
+          args: fields,
         })
       }
       continue

@@ -1,6 +1,7 @@
 import type { ToolRun } from '@/types/harness/tool-run'
 import { clipTerminalLabel } from '@/utils/clip-terminal-label'
 import filePathBasename from '@/utils/file-path-basename'
+import humanizeToolName from '@/utils/humanize-tool-name'
 
 const PATH_BASENAME_TOOLS = new Set(['write_file', 'edit_file', 'delete_file', 'move_file'])
 const HOLD_PATH_TOOLS = new Set(['write_file', 'edit_file'])
@@ -29,7 +30,6 @@ const TOOL_LABELS_DONE: Record<string, string> = {
   run_terminal: 'Ran command',
   terminal_output: 'Read shell output',
   stop_terminal: 'Stopped shell',
-  call_mcp_tool: 'Called MCP tool',
   get_mcp_tools: 'Listed MCP tools',
   create_plan: 'Created plan',
   update_plan_todo: 'Updated plan',
@@ -65,7 +65,6 @@ const TOOL_LABELS_RUNNING: Record<string, string> = {
   run_terminal: 'Running command',
   terminal_output: 'Reading shell output',
   stop_terminal: 'Stopping shell',
-  call_mcp_tool: 'Calling MCP tool',
   get_mcp_tools: 'Listing MCP tools',
   create_plan: 'Writing plan',
   update_plan_todo: 'Updating plan',
@@ -123,6 +122,13 @@ const formatArgsHint = (
   return null
 }
 
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
 const formatSpawnSubagentLabel = (run: ToolRun): string => {
   const hint = formatArgsHint(run.args, run.name)
   const name = hint?.trim() || 'Sub-agent'
@@ -135,13 +141,22 @@ const formatSpawnSubagentLabel = (run: ToolRun): string => {
   return name
 }
 
-const humanizeToolName = (name: string): string => name.replaceAll('_', ' ')
+const mcpToolName = (args: unknown): string | null => {
+  const record = asRecord(args)
+  const tool = record?.tool
+  return typeof tool === 'string' && tool.length > 0 ? tool : null
+}
 
-const asRecord = (value: unknown): Record<string, unknown> | null => {
-  if (!value || typeof value !== 'object') {
-    return null
+const formatCallMcpToolLabel = (run: ToolRun): string => {
+  const raw = mcpToolName(run.args)
+  const humanized = raw ? humanizeToolName(raw) : 'MCP tool'
+  if (run.status === 'running') {
+    return `Calling ${humanized}…`
   }
-  return value as Record<string, unknown>
+  if (run.status === 'rejected') {
+    return `Called ${humanized} (rejected)`
+  }
+  return `Called ${humanized}`
 }
 
 const formatTerminalRunLabel = (run: ToolRun, isRunning: boolean): string => {
@@ -166,6 +181,10 @@ const formatTerminalRunLabel = (run: ToolRun, isRunning: boolean): string => {
 export default (run: ToolRun, options?: { omitPathHint?: boolean }): string => {
   if (run.name === 'spawn_subagent') {
     return formatSpawnSubagentLabel(run)
+  }
+
+  if (run.name === 'call_mcp_tool') {
+    return formatCallMcpToolLabel(run)
   }
 
   const isRunning = run.status === 'running'

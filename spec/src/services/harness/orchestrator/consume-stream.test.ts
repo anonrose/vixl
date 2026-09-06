@@ -369,4 +369,87 @@ describe('consumeStream tool-input-delta', () => {
       .filter((event) => (event as { type?: string }).type === 'tool-input-delta')
     expect(deltaEvents).toEqual([])
   })
+
+  it('forwards a tool from tool-input-delta JSON', async () => {
+    streamText.mockImplementation(() => ({
+      fullStream: (async function* () {
+        yield { type: 'tool-input-start', id: 'call-1', toolName: 'call_mcp_tool' }
+        yield {
+          type: 'tool-input-delta',
+          id: 'call-1',
+          delta: '{"serverId":"brave","tool":"brave_web_search","args":{',
+        }
+        yield { type: 'tool-input-delta', id: 'call-1', delta: '"query":"hi"}}' }
+        yield {
+          type: 'tool-call',
+          toolCallId: 'call-1',
+          toolName: 'call_mcp_tool',
+          input: {
+            serverId: 'brave',
+            tool: 'brave_web_search',
+            args: { query: 'hi' },
+          },
+        }
+      })(),
+      text: Promise.resolve(''),
+      responseMessages: Promise.resolve([]),
+      usage: Promise.resolve(undefined),
+    }))
+
+    const prepared = makePrepared()
+    await consumeStream(prepared)
+
+    expect(prepared.onEvent).toHaveBeenCalledWith({
+      type: 'tool-input-delta',
+      toolCallId: 'call-1',
+      name: 'call_mcp_tool',
+      args: { tool: 'brave_web_search' },
+    })
+  })
+
+  it('does not emit tool-input-delta before the tool string is complete', async () => {
+    streamText.mockImplementation(() => ({
+      fullStream: (async function* () {
+        yield { type: 'tool-input-start', id: 'call-1', toolName: 'call_mcp_tool' }
+        yield { type: 'tool-input-delta', id: 'call-1', delta: '{"tool":"brave_web_' }
+      })(),
+      text: Promise.resolve(''),
+      responseMessages: Promise.resolve([]),
+      usage: Promise.resolve(undefined),
+    }))
+
+    const prepared = makePrepared()
+    await consumeStream(prepared)
+
+    const deltaEvents = prepared.onEvent.mock.calls
+      .map((call) => call[0])
+      .filter((event) => (event as { type?: string }).type === 'tool-input-delta')
+    expect(deltaEvents).toEqual([])
+  })
+
+  it('forwards path and tool together when both are complete', async () => {
+    streamText.mockImplementation(() => ({
+      fullStream: (async function* () {
+        yield { type: 'tool-input-start', id: 'call-1', toolName: 'write_file' }
+        yield {
+          type: 'tool-input-delta',
+          id: 'call-1',
+          delta: '{"path":"src/a.ts","tool":"note","content":"',
+        }
+      })(),
+      text: Promise.resolve(''),
+      responseMessages: Promise.resolve([]),
+      usage: Promise.resolve(undefined),
+    }))
+
+    const prepared = makePrepared()
+    await consumeStream(prepared)
+
+    expect(prepared.onEvent).toHaveBeenCalledWith({
+      type: 'tool-input-delta',
+      toolCallId: 'call-1',
+      name: 'write_file',
+      args: { path: 'src/a.ts', tool: 'note' },
+    })
+  })
 })
