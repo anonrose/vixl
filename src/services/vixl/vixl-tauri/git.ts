@@ -1,6 +1,12 @@
+import type { GitHeadChanged } from '@/types/git/git-head-changed'
 import type { GitStatusResult } from '@/types/git/git-status-result'
 import { call } from './helpers'
 import type { GitCommitResult } from './types'
+
+export type { GitHeadChanged }
+
+export const watchGitHead = (rootPath?: string | null): Promise<void> =>
+  call('watch_git_head', { rootPath: rootPath ?? null })
 
 export const gitStatus = (projectRoot: string): Promise<GitStatusResult> =>
   call('git_status', { projectRoot })

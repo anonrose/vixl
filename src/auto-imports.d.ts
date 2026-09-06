@@ -214,6 +214,7 @@ declare global {
   const useGamepad: typeof import('@vueuse/core').useGamepad
   const useGeolocation: typeof import('@vueuse/core').useGeolocation
   const useGitBranches: typeof import('./composables/use-git-branches').default
+  const useGitHeadSync: typeof import('./composables/use-git-head-sync').default
   const useGitStatus: typeof import('./composables/use-git-status').default
   const useGraphs: typeof import('./composables/use-graphs').default
   const useId: typeof import('vue').useId
@@ -592,6 +593,7 @@ declare module 'vue' {
     readonly useGamepad: UnwrapRef<typeof import('@vueuse/core')['useGamepad']>
     readonly useGeolocation: UnwrapRef<typeof import('@vueuse/core')['useGeolocation']>
     readonly useGitBranches: UnwrapRef<typeof import('./composables/use-git-branches')['default']>
+    readonly useGitHeadSync: UnwrapRef<typeof import('./composables/use-git-head-sync')['default']>
     readonly useGitStatus: UnwrapRef<typeof import('./composables/use-git-status')['default']>
     readonly useGraphs: UnwrapRef<typeof import('./composables/use-graphs')['default']>
     readonly useId: UnwrapRef<typeof import('vue')['useId']>

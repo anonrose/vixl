@@ -115,11 +115,11 @@ describe('mode allowlists mutations', () => {
 })
 
 describe('mode allowlists move_workspace', () => {
-  it('includes move_workspace in agent only', () => {
+  it('includes move_workspace in agent and orchestrator parent', () => {
     expect(MODE_TOOL_ALLOWLIST.agent).toContain('move_workspace')
+    expect(MODE_TOOL_ALLOWLIST.orchestrator).toContain('move_workspace')
     expect(MODE_TOOL_ALLOWLIST.ask).not.toContain('move_workspace')
     expect(MODE_TOOL_ALLOWLIST.plan).not.toContain('move_workspace')
-    expect(MODE_TOOL_ALLOWLIST.orchestrator).not.toContain('move_workspace')
   })
 
   it('does not include move_workspace in subagent tool sets', () => {

@@ -26,10 +26,10 @@ use commands::{
     registry_set_active_project, registry_update_project_root, resolve_launch_path,
     reveal_in_folder, set_secret, shell_kill_pty, shell_kill_tracked, shell_resize_pty,
     shell_spawn_pty, shell_spawn_tracked, shell_write_pty, truncate_chat_log, update_chat_meta,
-    watch_vixl_paths, web_fetch, workbench_load_session, workbench_replace_session, workspace_glob,
-    workspace_grep, write_chat_usage, write_json_file, write_lsp_config, write_mcp_config,
-    write_settings, write_temp_bytes, write_temp_handoff, write_text_file, OAuthLoopbackState,
-    WatchState,
+    watch_git_head, watch_vixl_paths, web_fetch, workbench_load_session, workbench_replace_session,
+    workspace_glob, workspace_grep, write_chat_usage, write_json_file, write_lsp_config,
+    write_mcp_config, write_settings, write_temp_bytes, write_temp_handoff, write_text_file,
+    GitHeadWatchState, OAuthLoopbackState, WatchState,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -49,6 +49,7 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
 
     let builder = builder
         .manage(WatchState::new())
+        .manage(GitHeadWatchState::new())
         .manage(HttpStreamRegistry::default())
         .manage(OAuthLoopbackState::new())
         .setup(move |app| {
@@ -147,6 +148,7 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
         oauth_begin_loopback,
         oauth_cancel_loopback,
         watch_vixl_paths,
+        watch_git_head,
         create_chat,
         list_chats,
         read_chat_meta,

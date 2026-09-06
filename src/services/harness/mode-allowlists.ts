@@ -68,6 +68,7 @@ const ORCHESTRATOR_TOOLS = [
   'update_todos',
   'spawn_subagent',
   'resolve_models',
+  'move_workspace',
 ] as const
 
 export const MODE_TOOL_ALLOWLIST: Record<VixlChatMode, string[]> = {

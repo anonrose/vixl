@@ -241,6 +241,7 @@
     "useGamepad": true,
     "useGeolocation": true,
     "useGitBranches": true,
+    "useGitHeadSync": true,
     "useGitStatus": true,
     "useGraphs": true,
     "useId": true,

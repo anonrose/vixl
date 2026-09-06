@@ -7,8 +7,11 @@ import {
   type InjectionKey,
   type Ref,
 } from 'vue'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import gitStatus from '@/services/git/git-status'
+import { isTauri } from '@/services/vixl/vixl-tauri'
 import type { GitFileDecoration } from '@/types/git/git-file-decoration'
+import type { GitHeadChanged } from '@/types/git/git-head-changed'
 import type { GitStatusEntry } from '@/types/git/git-status-entry'
 import buildGitDecorationMaps, {
   decorationClass,
@@ -39,6 +42,8 @@ export default (projectRoot: Ref<string | null> | ComputedRef<string | null>) =>
 
   let refreshGeneration = 0
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let unlistenGitHead: UnlistenFn | null = null
+  let gitHeadListenCancelled = false
 
   const clearState = (): void => {
     entries.value = []
@@ -118,6 +123,29 @@ export default (projectRoot: Ref<string | null> | ComputedRef<string | null>) =>
     }
   }
 
+  const subscribeGitHeadChanged = async (): Promise<void> => {
+    if (!isTauri()) {
+      return
+    }
+
+    const unlisten = await listen<GitHeadChanged>(
+      'git-head-changed',
+      (event) => {
+        if (event.payload.rootPath !== projectRoot.value) {
+          return
+        }
+        refreshDebounced()
+      },
+    )
+
+    if (gitHeadListenCancelled) {
+      unlisten()
+      return
+    }
+
+    unlistenGitHead = unlisten
+  }
+
   onMounted(() => {
     refreshNow().catch((err) => {
       if (!error.value) {
@@ -129,9 +157,21 @@ export default (projectRoot: Ref<string | null> | ComputedRef<string | null>) =>
     // app is focused again so decorations match the working tree.
     window.addEventListener('focus', handleWindowFocus)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    subscribeGitHeadChanged().catch((err) => {
+      if (gitHeadListenCancelled || error.value) {
+        return
+      }
+      error.value =
+        err instanceof Error
+          ? err.message
+          : 'Failed to subscribe to git head changes'
+    })
   })
 
   onUnmounted(() => {
+    gitHeadListenCancelled = true
+    unlistenGitHead?.()
+    unlistenGitHead = null
     window.removeEventListener('focus', handleWindowFocus)
     document.removeEventListener('visibilitychange', handleVisibilityChange)
     if (debounceTimer !== null) {

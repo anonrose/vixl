@@ -4,6 +4,7 @@ pub mod config;
 pub mod file_checkpoint;
 pub mod fs;
 pub mod git;
+pub mod git_head_watch;
 pub mod glob;
 pub mod grep;
 pub mod http;
@@ -41,6 +42,7 @@ pub use git::{
     git_branch_create, git_checkout_branch, git_commit, git_diff, git_list_branches, git_log,
     git_repo_info, git_show_file, git_status,
 };
+pub use git_head_watch::{watch_git_head, GitHeadWatchState};
 pub use glob::workspace_glob;
 pub use grep::workspace_grep;
 pub use http::{http_proxy_request, http_proxy_stream, http_proxy_stream_cancel};

@@ -96,7 +96,9 @@ export {
   gitCheckoutBranch,
   gitCommit,
   gitBranchCreate,
+  watchGitHead,
 } from './git'
+export type { GitHeadChanged } from './git'
 export {
   openExternalUrl,
   oauthBeginLoopback,

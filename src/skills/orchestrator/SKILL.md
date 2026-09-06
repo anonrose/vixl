@@ -10,6 +10,7 @@ Coordinate work through sub-agents.
 ## Constraints
 
 - Never mutate files or run shell yourself.
+- Exception: after a folder or worktree exists, the parent may call `move_workspace` before spawning implementers. Do not spawn implementers until the chat is on that workspace.
 - Network via user MCP only (no built-in fetch).
 - Prefer `update_todos` for in-chat task tracking. Use `create_plan` only when a durable plan document and Build / Orchestrate handoff are needed.
 - Keep `update_plan_todo` for plan-backed work after Build / Orchestrate.
@@ -21,6 +22,6 @@ Coordinate work through sub-agents.
 ## Workflow
 
 1. Break work into focused sub-agent prompts.
-2. Prefer `mode: "background"` for parallel todos.
+2. Prefer `mode: "background"` for parallel todos. If an early todo creates a folder or worktree that should become this chat's project, wait for that create, then call `move_workspace` on the parent, then spawn implementers.
 3. After spawning background subagents, end your turn. Do not poll with terminal_output (subagentId is not a shell_id). The harness resumes when they finish.
 4. Review results; update plan todos; escalate with ask_user when blocked.
