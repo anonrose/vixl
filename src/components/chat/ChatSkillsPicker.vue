@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import { CheckIcon, ChevronDownIcon, SparklesIcon } from '@lucide/vue'
 import { Button } from '@/components/shadcn/ui/button'
 import { Input } from '@/components/shadcn/ui/input'
-import { Badge } from '@/components/shadcn/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +12,6 @@ import {
 import useChatSkills from '@/composables/use-chat-skills'
 import useChatPromptBridge from '@/composables/use-chat-prompt-bridge'
 import type { VixlChatMode } from '@/types/vixl/vixl-settings'
-import type { SkillIndexEntry } from '@/types/skills/skill'
 
 defineProps<{
   mode?: VixlChatMode
@@ -24,9 +22,6 @@ const searchQuery = ref('')
 const chatPromptBridge = useChatPromptBridge()
 
 const { skills, pending, refresh } = useChatSkills()
-
-const scopeLabel = (skill: SkillIndexEntry): string =>
-  skill.scope === 'user' ? 'User' : 'Project'
 
 const filteredSkills = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -93,9 +88,6 @@ const handleSkillSelect = (name: string): void => {
           <div class="flex w-full items-center gap-2">
             <CheckIcon class="size-3.5 shrink-0 opacity-0" />
             <span class="truncate font-medium">/{{ skill.name }}</span>
-            <Badge variant="outline" class="ml-auto shrink-0">
-              {{ scopeLabel(skill) }}
-            </Badge>
           </div>
         </DropdownMenuItem>
         <p
