@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModelMessage } from 'ai'
+import type { LanguageModel, ModelMessage, ToolSet } from 'ai'
 import type { ModelRef } from '@/types/models/model-ref'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import type { HarnessEvent } from '@/types/harness/harness-event'
-import { compactBudgets } from '@/services/harness/compact'
 
-const summarizeTranscript = vi.hoisted(() =>
+const generateCheckpoint = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 )
 const rewriteModelMessages = vi.hoisted(() =>
@@ -15,8 +14,8 @@ const captureBillableUsage = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<void>>(),
 )
 
-vi.mock('@/services/harness/compact/summarize-transcript', () => ({
-  default: (...args: unknown[]) => summarizeTranscript(...args),
+vi.mock('@/services/harness/compact/generate-checkpoint', () => ({
+  default: (...args: unknown[]) => generateCheckpoint(...args),
 }))
 
 vi.mock('@/services/harness/compact/rewrite-model-messages', () => ({
@@ -32,6 +31,12 @@ import prepareCompactStep from '@/services/harness/subagent/prepare-compact-step
 const childModelRef: ModelRef = {
   providerId: 'local',
   modelId: 'qwen',
+}
+
+const stubModel = { id: 'chat-model' } as unknown as LanguageModel
+const stubTools: ToolSet = {}
+const stubProviderOptions = {
+  anthropic: { cacheControl: { type: 'ephemeral' } },
 }
 
 const settings = {
@@ -63,10 +68,12 @@ const baseInput = () => {
     onBillEvent,
     input: {
       settings,
+      model: stubModel,
       modelRef: childModelRef,
       system: 'You are a child subagent.',
+      providerOptions: stubProviderOptions,
+      tools: stubTools,
       signal: new AbortController().signal,
-      chatModel: 'local::qwen',
       projectSlug: 'demo',
       chatId: 'chat-1',
       turnId: 'turn-1',
@@ -79,10 +86,10 @@ const baseInput = () => {
 
 describe('prepareCompactStep', () => {
   beforeEach(() => {
-    summarizeTranscript.mockReset()
+    generateCheckpoint.mockReset()
     rewriteModelMessages.mockReset()
     captureBillableUsage.mockReset()
-    summarizeTranscript.mockResolvedValue(compactedResult)
+    generateCheckpoint.mockResolvedValue(compactedResult)
     rewriteModelMessages.mockReturnValue([
       { role: 'user', content: 'rewritten' },
     ])
@@ -98,13 +105,13 @@ describe('prepareCompactStep', () => {
     })
 
     expect(result).toBeUndefined()
-    expect(summarizeTranscript).not.toHaveBeenCalled()
+    expect(generateCheckpoint).not.toHaveBeenCalled()
     expect(rewriteModelMessages).not.toHaveBeenCalled()
     expect(captureBillableUsage).not.toHaveBeenCalled()
     expect(emitNestedEvent).not.toHaveBeenCalled()
   })
 
-  it('summarizes once when over budget, rewrites, emits, and bills compaction', async () => {
+  it('checkpoints once when over budget, rewrites, emits, and bills compaction', async () => {
     const { emitNestedEvent, onBillEvent, input } = baseInput()
     const prepareStep = prepareCompactStep(input)
     const messages: ModelMessage[] = [
@@ -114,18 +121,17 @@ describe('prepareCompactStep', () => {
 
     const result = await prepareStep({ messages })
 
-    expect(summarizeTranscript).toHaveBeenCalledTimes(1)
-    const summarizeArg = summarizeTranscript.mock.calls[0]?.[0] as {
-      transcript: string
-      focus: string
-      chatModel?: string
-    }
-    expect(summarizeArg.focus).toBe('subagent')
-    expect(summarizeArg.chatModel).toBe('local::qwen')
-    expect(summarizeArg.transcript.length).toBeLessThanOrEqual(
-      compactBudgets.TRANSCRIPT_TOKEN_BUDGET * 4,
-    )
-    expect(summarizeArg.transcript).not.toContain(hugeContent)
+    expect(generateCheckpoint).toHaveBeenCalledTimes(1)
+    expect(generateCheckpoint).toHaveBeenCalledWith({
+      model: stubModel,
+      modelRef: childModelRef,
+      system: 'You are a child subagent.',
+      providerOptions: stubProviderOptions,
+      tools: stubTools,
+      messages,
+      focus: 'subagent',
+      signal: input.signal,
+    })
 
     expect(rewriteModelMessages).toHaveBeenCalledWith(
       messages,
@@ -200,7 +206,7 @@ describe('prepareCompactStep', () => {
     ).rejects.toThrow(
       'Subagent context still exceeds the model window after compaction',
     )
-    expect(summarizeTranscript).toHaveBeenCalledTimes(1)
+    expect(generateCheckpoint).toHaveBeenCalledTimes(1)
     expect(captureBillableUsage).not.toHaveBeenCalled()
     expect(emitNestedEvent).toHaveBeenCalledWith({ type: 'compaction-started' })
     expect(emitNestedEvent).toHaveBeenCalledWith({ type: 'compaction-ended' })

@@ -2,14 +2,14 @@ import { toast } from 'vue-sonner'
 import type { ModelMessage } from 'ai'
 import type { ModelRef } from '@/types/models/model-ref'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
+import type { GenerateCheckpointInput } from '@/types/harness/generate-checkpoint'
 import type { HarnessEvent } from '@/types/harness/harness-event'
 import captureBillableUsage from '@/services/billing/capture-billable-usage'
 import {
-  buildModelTranscript,
   estimatePromptTokens,
+  generateCheckpoint,
   rewriteModelMessages,
   resolveCompactHighWater,
-  summarizeTranscript,
 } from '@/services/harness/compact'
 
 type PrepareCompactStepInput = {
@@ -17,14 +17,13 @@ type PrepareCompactStepInput = {
   modelRef: ModelRef
   system: string
   signal: AbortSignal
-  chatModel?: string
   projectSlug: string
   chatId: string
   turnId: string
   subagentId: string
   emitNestedEvent: (event: HarnessEvent) => void
   onBillEvent: (event: HarnessEvent) => void
-}
+} & Pick<GenerateCheckpointInput, 'model' | 'tools' | 'providerOptions'>
 
 export default (input: PrepareCompactStepInput) =>
   async (options: {
@@ -40,13 +39,15 @@ export default (input: PrepareCompactStepInput) =>
 
     input.emitNestedEvent({ type: 'compaction-started' })
     try {
-      const transcript = buildModelTranscript(options.messages)
-      const compacted = await summarizeTranscript({
-        settings,
-        transcript,
+      const compacted = await generateCheckpoint({
+        model: input.model,
+        modelRef,
+        system,
+        providerOptions: input.providerOptions,
+        tools: input.tools,
+        messages: options.messages,
         focus: 'subagent',
         signal: input.signal,
-        chatModel: input.chatModel,
       })
       const rewritten = rewriteModelMessages(options.messages, compacted.summary)
       const compactedEstimate = estimatePromptTokens(system, rewritten)

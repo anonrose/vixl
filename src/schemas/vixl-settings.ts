@@ -67,7 +67,6 @@ export const vixlSettingsSchema = z
     'models.orchestrator': modelRefStringSchema.optional(),
     'models.subagent': modelRefStringSchema.optional(),
     'models.title': modelRefStringSchema.optional(),
-    'models.compaction': modelRefStringSchema.optional(),
     'models.defaultReasoning': reasoningSettingSchema.optional(),
     'models.askReasoning': reasoningSettingSchema.optional(),
     'models.planReasoning': reasoningSettingSchema.optional(),
@@ -75,7 +74,6 @@ export const vixlSettingsSchema = z
     'models.orchestratorReasoning': reasoningSettingSchema.optional(),
     'models.subagentReasoning': reasoningSettingSchema.optional(),
     'models.titleReasoning': reasoningSettingSchema.optional(),
-    'models.compactionReasoning': reasoningSettingSchema.optional(),
     'models.catalogOptions': modelCatalogOptionsMapSchema.optional(),
     'models.catalogMeta': modelCatalogMetaMapSchema.optional(),
   })

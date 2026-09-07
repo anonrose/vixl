@@ -8,7 +8,6 @@ export type ModelRoleId =
   | VixlChatMode
   | 'subagent'
   | 'title'
-  | 'compaction'
 
 export type ModelRoleDefinition = {
   id: ModelRoleId
@@ -87,15 +86,6 @@ export const MODEL_ROLE_REGISTRY: ModelRoleDefinition[] = [
     group: 'backgroundTasks',
     recommendCheapModel: true,
     sideTaskKind: 'generate-chat-title',
-  },
-  {
-    id: 'compaction',
-    settingsKey: 'models.compaction',
-    reasoningSettingsKey: 'models.compactionReasoning',
-    label: 'Compaction',
-    description: 'Summarizes conversation history when context limits are reached.',
-    group: 'backgroundTasks',
-    recommendCheapModel: true,
   },
 ]
 

@@ -149,10 +149,12 @@ const runSubagentGenerate = async (args: {
     stopWhen: [isLoopFinished()],
     prepareStep: prepareCompactStep({
       settings: ctx.settings,
+      model,
       modelRef: callModel.optionRef,
       system,
+      providerOptions: callOptions.providerOptions,
+      tools: cappedTools,
       signal,
-      chatModel: serializedModel,
       projectSlug: ctx.projectSlug,
       chatId: ctx.chatId,
       turnId: ctx.turnId ?? `session:${ctx.chatId}`,

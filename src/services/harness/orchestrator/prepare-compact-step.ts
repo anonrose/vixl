@@ -1,18 +1,18 @@
 import { toast } from 'vue-sonner'
 import type { ModelMessage, UIMessage } from 'ai'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
+import type { GenerateCheckpointInput } from '@/types/harness/generate-checkpoint'
 import type { HarnessEvent } from '@/types/harness/harness-event'
 import type { HarnessWorkspace } from '@/types/harness/harness-workspace'
+import type { ModelRef } from '@/types/models/model-ref'
 import captureBillableUsage from '@/services/billing/capture-billable-usage'
 import {
-  buildModelTranscript,
   estimatePromptTokens,
+  generateCheckpoint,
   persistCompactionCheckpoint,
   rewriteModelMessages,
   resolveCompactHighWater,
-  summarizeTranscript,
 } from '@/services/harness/compact'
-import { MODEL_REF_SEPARATOR, type ModelRef } from '@/types/models/model-ref'
 
 type PrepareParentCompactStepInput = {
   settings: VixlSettings
@@ -24,7 +24,7 @@ type PrepareParentCompactStepInput = {
   turnId: string
   messages: UIMessage[]
   onEvent: (event: HarnessEvent) => void
-}
+} & Pick<GenerateCheckpointInput, 'model' | 'tools' | 'providerOptions'>
 
 export default (input: PrepareParentCompactStepInput) =>
   async (options: {
@@ -44,13 +44,15 @@ export default (input: PrepareParentCompactStepInput) =>
 
     input.onEvent({ type: 'compaction-started' })
     try {
-      const transcript = buildModelTranscript(options.messages)
-      const compacted = await summarizeTranscript({
-        settings,
-        transcript,
+      const compacted = await generateCheckpoint({
+        model: input.model,
+        modelRef,
+        system,
+        providerOptions: input.providerOptions,
+        tools: input.tools,
+        messages: options.messages,
         focus: 'parent',
         signal: input.signal,
-        chatModel: `${modelRef.providerId}${MODEL_REF_SEPARATOR}${modelRef.modelId}`,
       })
       const rewritten = rewriteModelMessages(options.messages, compacted.summary)
       const compactedEstimate = estimatePromptTokens(system, rewritten)

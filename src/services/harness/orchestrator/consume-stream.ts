@@ -89,8 +89,11 @@ export default async (prepared: PreparedHarnessStream): Promise<void> => {
     ],
     prepareStep: prepareParentCompactStep({
       settings,
+      model,
       modelRef: callModel.optionRef,
       system,
+      providerOptions: callOptions.providerOptions,
+      tools,
       signal,
       workspace,
       chatId,

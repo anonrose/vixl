@@ -223,6 +223,14 @@ describe('sessionOps compactChat', () => {
     await compactChat()
 
     expect(compactSession).toHaveBeenCalledTimes(1)
+    expect(compactSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [],
+        timeline: [],
+        chatModel: 'local::qwen',
+      }),
+    )
+    expect(compactSession.mock.calls[0]?.[0]).not.toHaveProperty('transcript')
     expect(toastSuccess).toHaveBeenCalled()
   })
 })
@@ -295,6 +303,7 @@ describe('sessionOps createHandoff', () => {
     await createHandoff()
 
     expect(compactSession).toHaveBeenCalledTimes(1)
+    expect(compactSession.mock.calls[0]?.[0]).not.toHaveProperty('transcript')
     expect(writeHandoff).toHaveBeenCalledWith(
       expect.objectContaining({ summary: compactResult.summary }),
     )

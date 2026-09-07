@@ -23,7 +23,6 @@ describe('resolveModelForRole', () => {
 
   it('resolves background task roles', () => {
     expect(resolveModelForRole('title', settings)).toBe('google::gemini-2.0-flash')
-    expect(resolveModelForRole('compaction', settings)).toBe('anthropic::claude-sonnet-4-5')
   })
 
   it('resolves subagent with agent fallback', () => {

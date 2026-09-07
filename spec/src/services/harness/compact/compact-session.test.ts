@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { UIMessage } from 'ai'
+import type { ModelMessage, UIMessage } from 'ai'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
-import type { ChatTimelineItem } from '@/types/chat/chat-timeline-item'
+import { mockVixlTauri } from '../../../test-utils/mocks/vixl-tauri'
 
-const summarizeTranscript = vi.hoisted(() =>
+const generateCheckpoint = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<{
     summary: string
     usage: undefined
@@ -19,31 +19,79 @@ const persistCompactionCheckpoint = vi.hoisted(() =>
     checkpointLineId: string
   }>>(),
 )
+const createModel = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+)
+const resolveModelVision = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<boolean>>(),
+)
+const readChatMeta = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+)
 
-vi.mock('@/services/harness/compact', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/services/harness/compact')>()
-  return {
-    ...actual,
-    summarizeTranscript: (...args: unknown[]) => summarizeTranscript(...args),
-    persistCompactionCheckpoint: (...args: unknown[]) =>
-      persistCompactionCheckpoint(...args),
-  }
-})
+vi.mock('@/services/harness/compact/generate-checkpoint', () => ({
+  default: (...args: unknown[]) => generateCheckpoint(...args),
+}))
 
+vi.mock('@/services/harness/compact/persist-checkpoint', () => ({
+  default: (...args: unknown[]) => persistCompactionCheckpoint(...args),
+}))
+
+vi.mock('@/services/providers/create-model', () => ({
+  default: (...args: unknown[]) => createModel(...args),
+}))
+
+vi.mock('@/services/harness/resolve-model-vision', () => ({
+  default: (...args: unknown[]) => resolveModelVision(...args),
+}))
+
+vi.mock('@/services/vixl/vixl-tauri', () =>
+  mockVixlTauri({
+    readChatMeta: (...args: unknown[]) => readChatMeta(...args),
+  }),
+)
+
+import { compactBudgets } from '@/services/harness/compact'
 import compactSession from '@/services/harness/compact-session'
 
-const settings = (): VixlSettings => ({ version: 1 })
+const settings = (): VixlSettings =>
+  ({
+    version: 1,
+    'models.default': 'ollama::qwen',
+  }) as VixlSettings
 
-const userMessage = (id: string, text: string): UIMessage => ({
+const userMessage = (id: string, text: string, createdAt?: string): UIMessage => ({
   id,
   role: 'user',
   parts: [{ type: 'text', text }],
+  ...(createdAt ? { metadata: { createdAt } } : {}),
+})
+
+const assistantMessage = (id: string, text: string): UIMessage => ({
+  id,
+  role: 'assistant',
+  parts: [{ type: 'text', text }],
+})
+
+const compactInput = (
+  overrides?: Partial<Parameters<typeof compactSession>[0]>,
+): Parameters<typeof compactSession>[0] => ({
+  projectSlug: 'proj',
+  chatId: 'chat-1',
+  projectRoot: '/tmp/proj',
+  settings: settings(),
+  messages: [],
+  timeline: [],
+  ...overrides,
 })
 
 describe('compactSession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    summarizeTranscript.mockResolvedValue({
+    createModel.mockResolvedValue({ id: 'stub-model' })
+    resolveModelVision.mockResolvedValue(false)
+    readChatMeta.mockResolvedValue(null)
+    generateCheckpoint.mockResolvedValue({
       summary: 'recap',
       usage: undefined,
       providerMetadata: undefined,
@@ -57,67 +105,91 @@ describe('compactSession', () => {
     })
   })
 
-  it('throws before summarizing when the timeline transcript is empty', async () => {
-    await expect(
-      compactSession({
-        projectSlug: 'proj',
-        chatId: 'chat-1',
-        projectRoot: '/tmp/proj',
-        settings: settings(),
-        messages: [],
-        timeline: [],
-      }),
-    ).rejects.toThrow('Nothing to compact')
+  it('throws before generating a checkpoint when there is nothing to compact', async () => {
+    await expect(compactSession(compactInput())).rejects.toThrow(
+      'Nothing to compact',
+    )
 
-    expect(summarizeTranscript).not.toHaveBeenCalled()
+    expect(generateCheckpoint).not.toHaveBeenCalled()
     expect(persistCompactionCheckpoint).not.toHaveBeenCalled()
+    expect(createModel).not.toHaveBeenCalled()
   })
 
-  it('summarizes a tool-inclusive timeline transcript', async () => {
-    const timeline: ChatTimelineItem[] = [
+  it('converts UI messages through the native model pipeline', async () => {
+    const messages = [
+      userMessage('u1', 'check the file'),
       {
-        type: 'user',
-        message: userMessage('u1', 'check the file'),
-      },
-      {
-        type: 'agent-turn',
-        turn: {
-          id: 'a1',
-          text: 'done',
-          steps: [
-            {
-              id: 's1',
-              text: '',
-              reasoning: '',
-              tools: [
-                {
-                  toolCallId: 't1',
-                  name: 'read_file',
-                  status: 'done',
-                  args: { path: '/tmp/a.txt' },
-                  result: { content: 'hello-tool-result' },
-                },
-              ],
-            },
-          ],
-        },
+        id: 'a1',
+        role: 'assistant' as const,
+        parts: [
+          { type: 'text' as const, text: 'done' },
+          {
+            type: 'dynamic-tool' as const,
+            toolName: 'read_file',
+            toolCallId: 't1',
+            state: 'output-available' as const,
+            input: { path: '/tmp/a.txt' },
+            output: { content: 'hello-tool-result' },
+          },
+        ],
       },
     ]
 
-    await compactSession({
-      projectSlug: 'proj',
-      chatId: 'chat-1',
-      projectRoot: '/tmp/proj',
-      settings: settings(),
-      messages: [userMessage('u1', 'check the file')],
-      timeline,
-    })
+    await compactSession(compactInput({ messages }))
 
-    expect(summarizeTranscript).toHaveBeenCalledTimes(1)
-    const call = summarizeTranscript.mock.calls[0]?.[0] as {
-      transcript: string
+    expect(generateCheckpoint).toHaveBeenCalledTimes(1)
+    const call = generateCheckpoint.mock.calls[0]?.[0] as {
+      messages: ModelMessage[]
+      system: string
+      tools: Record<string, unknown>
+      focus: string
+      modelRef: { providerId: string; modelId: string }
     }
-    expect(call.transcript).toContain('read_file')
-    expect(call.transcript).toContain('hello-tool-result')
+    expect(call.system).toBe('')
+    expect(call.tools).toEqual({})
+    expect(call.focus).toBe('none')
+    expect(call.modelRef).toEqual({ providerId: 'ollama', modelId: 'qwen' })
+    expect(createModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerId: 'ollama',
+        modelId: 'qwen',
+      }),
+    )
+    const serialized = JSON.stringify(call.messages)
+    expect(serialized).toContain('check the file')
+    expect(serialized).toContain('read_file')
+    expect(serialized).toContain('hello-tool-result')
+    expect(call.messages.every((message) => 'role' in message)).toBe(true)
+    expect(call.messages.some((message) => 'parts' in message)).toBe(false)
+  })
+
+  it('prepends the active checkpoint like the orchestrator run path', async () => {
+    readChatMeta.mockResolvedValue({
+      activeContext: {
+        checkpointLineId: 'cp-old',
+        includeFromCreatedAt: '2026-06-01T00:00:00.000Z',
+        summary: 'prior recap',
+      },
+    })
+    const messages = [
+      userMessage('old', 'stale turn', '2026-05-01T00:00:00.000Z'),
+      userMessage('u2', 'new work', '2026-07-01T00:00:00.000Z'),
+      assistantMessage('a2', 'working'),
+    ]
+
+    await compactSession(compactInput({ messages, focus: 'parent' }))
+
+    const call = generateCheckpoint.mock.calls[0]?.[0] as {
+      messages: ModelMessage[]
+      focus: string
+    }
+    expect(call.focus).toBe('parent')
+    expect(call.messages[0]).toEqual({
+      role: 'user',
+      content: `${compactBudgets.CHECKPOINT_PREFIX}\nprior recap`,
+    })
+    const serialized = JSON.stringify(call.messages)
+    expect(serialized).toContain('new work')
+    expect(serialized).not.toContain('stale turn')
   })
 })

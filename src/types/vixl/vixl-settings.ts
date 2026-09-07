@@ -68,7 +68,6 @@ export type VixlSettings = {
   'models.orchestrator'?: string
   'models.subagent'?: string
   'models.title'?: string
-  'models.compaction'?: string
   'models.defaultReasoning'?: string
   'models.askReasoning'?: string
   'models.planReasoning'?: string
@@ -76,7 +75,6 @@ export type VixlSettings = {
   'models.orchestratorReasoning'?: string
   'models.subagentReasoning'?: string
   'models.titleReasoning'?: string
-  'models.compactionReasoning'?: string
   'models.catalogOptions'?: ModelCatalogOptionsMap
   'models.catalogMeta'?: ModelCatalogMetaMap
   [key: `providers.${string}.apiKeyRef`]: string | undefined

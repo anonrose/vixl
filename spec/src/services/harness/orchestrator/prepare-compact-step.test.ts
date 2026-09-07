@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ModelMessage } from 'ai'
+import type { LanguageModel, ModelMessage, ToolSet } from 'ai'
 import type { ModelRef } from '@/types/models/model-ref'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import type { HarnessEvent } from '@/types/harness/harness-event'
-import { compactBudgets } from '@/services/harness/compact'
 
-const summarizeTranscript = vi.hoisted(() =>
+const generateCheckpoint = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 )
 const rewriteModelMessages = vi.hoisted(() =>
@@ -18,8 +17,8 @@ const captureBillableUsage = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<void>>(),
 )
 
-vi.mock('@/services/harness/compact/summarize-transcript', () => ({
-  default: (...args: unknown[]) => summarizeTranscript(...args),
+vi.mock('@/services/harness/compact/generate-checkpoint', () => ({
+  default: (...args: unknown[]) => generateCheckpoint(...args),
 }))
 
 vi.mock('@/services/harness/compact/rewrite-model-messages', () => ({
@@ -39,6 +38,12 @@ import prepareParentCompactStep from '@/services/harness/orchestrator/prepare-co
 const parentModelRef: ModelRef = {
   providerId: 'local',
   modelId: 'qwen',
+}
+
+const stubModel = { id: 'chat-model' } as unknown as LanguageModel
+const stubTools: ToolSet = {}
+const stubProviderOptions = {
+  anthropic: { cacheControl: { type: 'ephemeral' } },
 }
 
 const settings = {
@@ -68,8 +73,11 @@ const baseInput = () => {
     onEvent,
     input: {
       settings,
+      model: stubModel,
       modelRef: parentModelRef,
       system: 'You are the parent agent.',
+      providerOptions: stubProviderOptions,
+      tools: stubTools,
       signal: new AbortController().signal,
       workspace: { projectSlug: 'demo', projectRoot: '/tmp/demo', projectName: 'demo' },
       chatId: 'chat-1',
@@ -82,11 +90,11 @@ const baseInput = () => {
 
 describe('prepareParentCompactStep', () => {
   beforeEach(() => {
-    summarizeTranscript.mockReset()
+    generateCheckpoint.mockReset()
     rewriteModelMessages.mockReset()
     persistCompactionCheckpoint.mockReset()
     captureBillableUsage.mockReset()
-    summarizeTranscript.mockResolvedValue(compactedResult)
+    generateCheckpoint.mockResolvedValue(compactedResult)
     rewriteModelMessages.mockReturnValue([
       { role: 'user', content: 'rewritten' },
     ])
@@ -107,7 +115,7 @@ describe('prepareParentCompactStep', () => {
     })
 
     expect(result).toBeUndefined()
-    expect(summarizeTranscript).not.toHaveBeenCalled()
+    expect(generateCheckpoint).not.toHaveBeenCalled()
     expect(persistCompactionCheckpoint).not.toHaveBeenCalled()
     expect(onEvent).not.toHaveBeenCalled()
   })
@@ -122,21 +130,30 @@ describe('prepareParentCompactStep', () => {
 
     const result = await prepareStep({ messages })
 
-    expect(summarizeTranscript).toHaveBeenCalledTimes(1)
-    const summarizeArg = summarizeTranscript.mock.calls[0]?.[0] as {
-      transcript: string
-      focus: string
-    }
-    expect(summarizeArg.focus).toBe('parent')
-    expect(summarizeArg.transcript.length).toBeLessThanOrEqual(
-      compactBudgets.TRANSCRIPT_TOKEN_BUDGET * 4,
-    )
+    expect(generateCheckpoint).toHaveBeenCalledTimes(1)
+    expect(generateCheckpoint).toHaveBeenCalledWith({
+      model: stubModel,
+      modelRef: parentModelRef,
+      system: 'You are the parent agent.',
+      providerOptions: stubProviderOptions,
+      tools: stubTools,
+      messages,
+      focus: 'parent',
+      signal: input.signal,
+    })
     expect(persistCompactionCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
         projectSlug: 'demo',
         chatId: 'chat-1',
         summary: compactedResult.summary,
         focus: 'parent',
+      }),
+    )
+    expect(captureBillableUsage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'compaction',
+        providerId: compactedResult.modelRef.providerId,
+        modelId: compactedResult.modelRef.modelId,
       }),
     )
     expect(onEvent).toHaveBeenCalledWith({

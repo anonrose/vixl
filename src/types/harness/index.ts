@@ -7,6 +7,10 @@ export type {
 } from '@/types/harness/orchestrator-input'
 export type { AgentHarnessOptions } from '@/types/harness/agent-harness-options'
 export type {
+  GenerateCheckpointInput,
+  GenerateCheckpointResult,
+} from '@/types/harness/generate-checkpoint'
+export type {
   ConvertWebContentInput,
   ConvertWebContentResult,
   TruncateWebTextInput,

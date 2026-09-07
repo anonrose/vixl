@@ -42,7 +42,7 @@ export const resolveModelForRole = (
     )
   }
 
-  if (isChatMode(role) || role === 'title' || role === 'compaction') {
+  if (isChatMode(role) || role === 'title') {
     return readSettingsModel(settings, 'models.default')
   }
 
