@@ -17,38 +17,38 @@ const TOOLS_HINT =
 const MODES: VixlChatMode[] = ['ask', 'plan', 'agent', 'orchestrator']
 
 /**
- * Empty-project (standalone, no rules, no MCP) ceilings after adding
- * move_workspace to agent and orchestrator parent.
+ * Empty-project (standalone, no rules, no MCP) ceilings after slim prompts
+ * and builtin tool descriptions.
  * Measured totals (system join + builtin tool defs, chars/4):
- * ask 4440, plan 5014, agent 6422, orchestrator 5059.
+ * ask 2851, plan 3214, agent 4053, orchestrator 3142.
  * Headroom is about 3 percent so waste cannot return unnoticed.
  */
 const TOTAL_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 4575,
-  plan: 5165,
-  agent: 6615,
-  orchestrator: 5215,
+  ask: 2940,
+  plan: 3315,
+  agent: 4175,
+  orchestrator: 3240,
 }
 
 const BASE_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 865,
-  plan: 935,
-  agent: 1240,
-  orchestrator: 1170,
+  ask: 290,
+  plan: 315,
+  agent: 270,
+  orchestrator: 365,
 }
 
 const SKILLS_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 50,
-  plan: 50,
-  agent: 25,
-  orchestrator: 25,
+  ask: 17,
+  plan: 17,
+  agent: 15,
+  orchestrator: 19,
 }
 
 const TOOL_DEF_CEILINGS: Record<VixlChatMode, number> = {
-  ask: 3590,
-  plan: 4100,
-  agent: 5525,
-  orchestrator: 4000,
+  ask: 2615,
+  plan: 2970,
+  agent: 3880,
+  orchestrator: 2835,
 }
 
 type ModeSnapshot = {
@@ -116,10 +116,9 @@ describe('system prompt token snapshot (empty project)', () => {
     expect(plan.total).toBeLessThan(agent.total)
   })
 
-  it('includes MCP and shell guidance but omits patch and embedded browser from ask', async () => {
+  it('includes shared tool guidance and omits patch and embedded browser from ask', async () => {
     const snapshot = await measureMode('ask')
-    expect(snapshot.systemString).toContain('get_mcp_tools if stale')
-    expect(snapshot.systemString).toContain('run_terminal only')
+    expect(snapshot.systemString).toContain('codebase_explore')
     expect(snapshot.systemString).not.toContain('browser_cdp')
     expect(snapshot.systemString).not.toContain('browser_lock')
     expect(snapshot.systemString).not.toContain('apply_patch')

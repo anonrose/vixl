@@ -4,23 +4,13 @@ import { fsEditFile, fsStagePreviewEdit } from '@/services/vixl/vixl-tauri'
 import { gateToolPermission } from '@/services/harness/permission/gate'
 import { fsWriteCapability } from '@/services/harness/permission/policy'
 import captureBaselinesBeforeMutate from '@/services/harness/capture-baselines-before-mutate'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import mapDiffs from '@/services/harness/shared/map-diffs'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const editFile = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      'Edit a file with exact string replacement. old_string must match the file uniquely.',
-      [
-        {
-          path: 'src/services/harness/tool-catalog.ts',
-          old_string: "edit_file: 'Edit a file with search/replace',",
-          new_string: "edit_file: 'Edit a file with exact string replacement',",
-        },
-      ],
-    ),
+    description: 'Edit a file with exact string replacement.',
     inputSchema: z.object({
       path: z.string().describe('Workspace-relative file path'),
       old_string: z.string().describe('Exact text to find (must be unique in the file)'),

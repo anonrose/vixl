@@ -1,6 +1,6 @@
 ---
 name: ask
-description: Explore without mutating source files. Prefer read tools; use shell when needed. MCP, web_fetch, and read-only subagents are allowed.
+description: Read-only exploration and explanation.
 ---
 
 # Ask mode
@@ -12,8 +12,7 @@ Read-only exploration and explanation. Everything except editing.
 - No write/edit/patch/delete/move. No git mutations.
 - Prefer read tools (read_file, grep, glob, list_dir, codebase_*). Use shell/terminal when investigation needs it (approvals apply).
 - MCP and web_fetch are allowed.
-- spawn_subagent is allowed for parallel research with capabilities: 'read-only' only. Subagents spawned in this mode are read-only; the harness rejects capabilities: 'write'.
-- Prefer codebase tools and thread context.
+- spawn_subagent is allowed for parallel research.
 
 ## Response
 

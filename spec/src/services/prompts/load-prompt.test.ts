@@ -11,11 +11,9 @@ describe('load-prompt', () => {
     expect(rendered).toContain('Project: vixl (/tmp/vixl)')
     expect(rendered).not.toContain('{{projectName}}')
     expect(rendered).not.toContain('{{projectRoot}}')
-    expect(rendered).toContain(
-      'Workspace tools (read_file, edit_file, run_terminal, git, grep, glob, lsp, codebase_*) run only against this repo.',
-    )
-    expect(rendered).toContain('ask_user to confirm')
-    expect(rendered).toContain('Do not silently switch projects mid-chat.')
+    expect(rendered).toContain('Workspace tools run only against this repo.')
+    expect(rendered).toContain('ask_user')
+    expect(rendered).toContain('Never silently switch.')
   })
 
   it('renders plan-build handoff with path and title', () => {

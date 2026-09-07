@@ -9,8 +9,8 @@ const gitBranchCreate = (ctx: HarnessToolContext) =>
   tool({
     description: 'Create a new git branch',
     inputSchema: z.object({
-      name: z.string(),
-      checkout: z.boolean().optional(),
+      name: z.string().describe('New branch name'),
+      checkout: z.boolean().optional().describe('Checkout after create'),
     }),
     execute: async ({ name, checkout }, { toolCallId }) => {
       const allowed = await gateToolPermission({

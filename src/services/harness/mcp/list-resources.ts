@@ -9,8 +9,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const listMcpResources = (ctx: HarnessToolContext) =>
   tool({
-    description:
-      'List resources from a connected HTTP or SSE MCP server. Requires trust. Use get_mcp_tools to confirm the server is connected.',
+    description: 'List resources from a trusted connected MCP server.',
     inputSchema: z.object({
       serverId: z.string().describe('MCP server id'),
     }),

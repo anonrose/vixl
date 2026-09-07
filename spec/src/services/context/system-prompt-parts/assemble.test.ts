@@ -91,22 +91,14 @@ describe('assemble system prompt parts', () => {
     expect(parts.base).not.toContain('- read_file:')
   })
 
-  it('includes MCP and shell but not patch or embedded browser guidance for ask and plan', async () => {
-    for (const mode of ['ask', 'plan'] as const) {
+  it('loads shared tool guidance and omits patch and embedded browser for all modes', async () => {
+    for (const mode of ['ask', 'plan', 'agent', 'orchestrator'] as const) {
       const parts = await assembleSystemPromptParts(input(mode))
-      expect(parts.base).toContain('get_mcp_tools if stale')
-      expect(parts.base).toContain('run_terminal only')
+      expect(parts.base).toContain('codebase_explore')
       expect(parts.base).not.toContain('browser_lock')
-      expect(parts.base).not.toContain('apply_patch is OpenCode-style')
+      expect(parts.base).not.toContain('browser_cdp')
+      expect(parts.base).not.toContain('apply_patch')
     }
-  })
-
-  it('includes allowlisted tool guidance for agent', async () => {
-    const parts = await assembleSystemPromptParts(input('agent'))
-    expect(parts.base).not.toContain('browser_lock')
-    expect(parts.base).toContain('run_terminal only')
-    expect(parts.base).toContain('get_mcp_tools if stale')
-    expect(parts.base).toContain('apply_patch is OpenCode-style')
   })
 
   it('injects listed .vixl/AGENTS.md into agentsMd', async () => {

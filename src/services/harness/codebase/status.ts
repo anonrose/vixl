@@ -6,8 +6,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const codebaseStatus = (ctx: HarnessToolContext) =>
   tool({
-    description:
-      'Check CodeGraph index health (ready, pending sync, errors). Use when the index may be missing or stale.',
+    description: 'Check CodeGraph index health (ready, pending sync, errors).',
     inputSchema: z.object({}),
     execute: async (input, { toolCallId }) => {
       const called = await callManagedCodegraphTool(ctx, {

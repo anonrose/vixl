@@ -9,8 +9,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const getMcpPrompt = (ctx: HarnessToolContext) =>
   tool({
-    description:
-      'Retrieve a prompt template from a connected HTTP or SSE MCP server (experimental MCP prompts).',
+    description: 'Retrieve a prompt template from a connected MCP server.',
     inputSchema: z.object({
       serverId: z.string(),
       name: z.string().describe('Prompt name'),

@@ -6,10 +6,9 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const codebaseSearch = (ctx: HarnessToolContext) =>
   tool({
-    description:
-      'Search the CodeGraph index for symbols by name. Returns locations only. Prefer codebase_explore when you need source context.',
+    description: 'Search the CodeGraph index for symbols by name (locations only).',
     inputSchema: z.object({
-      query: z.string().describe('Symbol name or partial name to search'),
+      query: z.string().describe('Symbol or partial name'),
     }),
     execute: async ({ query }, { toolCallId }) => {
       const called = await callManagedCodegraphTool(ctx, {

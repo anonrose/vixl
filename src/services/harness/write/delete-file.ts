@@ -13,8 +13,8 @@ const deleteFile = (ctx: HarnessToolContext) =>
   tool({
     description: 'Delete a file from the workspace (requires approval)',
     inputSchema: z.object({
-      path: z.string(),
-      recursive: z.boolean().optional(),
+      path: z.string().describe('File to delete'),
+      recursive: z.boolean().optional().describe('Delete directories recursively'),
     }),
     execute: async ({ path, recursive }, { toolCallId }) => {
       let diffs: FileDiff[]

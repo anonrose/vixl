@@ -2,7 +2,6 @@ import { tool } from 'ai'
 import { z } from 'zod'
 import { parseLspDiagnosticItems } from '@/services/harness/lsp/parse-diagnostics'
 import summarizeWorkspace from '@/services/harness/lsp/summarize-workspace'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import {
   lspEnsureServer,
   lspRequest,
@@ -90,13 +89,10 @@ const executeFile = async (
 
 const diagnostics = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      'Read LSP diagnostics. Omit path for project-wide issues (50 cap, errors first; truncated means more). Pass path for one file. open_documents is already-analyzed files only; full typecheck is tsc --noEmit or vue-tsc. Retry if installing.',
-      [{}],
-    ),
+    description: 'Read LSP diagnostics, project-wide or one file.',
     inputSchema: z.object({
-      path: z.string().optional(),
-      extension: z.string().optional(),
+      path: z.string().optional().describe('Omit for project-wide'),
+      extension: z.string().optional().describe('Override extension'),
     }),
     execute: async ({ path, extension }) => {
       const trimmed = path?.trim() ?? ''

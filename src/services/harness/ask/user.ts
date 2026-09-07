@@ -7,8 +7,8 @@ const askUser = (ctx: HarnessToolContext) =>
   tool({
     description: 'Ask the user a clarifying question',
     inputSchema: z.object({
-      question: z.string(),
-      options: z.array(z.string()).optional(),
+      question: z.string().describe('Question for the user'),
+      options: z.array(z.string()).optional().describe('Optional answer choices'),
     }),
     execute: async ({ question, options }, { toolCallId }) => {
       if (ctx.signal?.aborted) {

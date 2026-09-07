@@ -5,24 +5,10 @@ import {
   LSP_DIAGNOSTICS_METHODS,
   parseLspDiagnosticItems,
 } from '@/services/harness/lsp/parse-diagnostics'
-import withToolExamples from '@/services/harness/with-tool-examples'
+
 const lspQuery = () =>
   tool({
-    description: withToolExamples(
-      'LSP query for precise code intelligence. Prefer over grep for definitions, references, types, and symbols. Methods: goToDefinition, findReferences, hover, symbols, workspaceSymbol, diagnostics. Position line/character are 0-based (not read_file 1-based lines). findReferences always sends context.includeDeclaration (default true). workspaceSymbol requires query. Prefer codebase_* for structural "where is X".',
-      [
-        {
-          method: 'goToDefinition',
-          path: 'src/services/harness/build-tools.ts',
-          position: { line: 1594, character: 2 },
-        },
-        {
-          method: 'workspaceSymbol',
-          path: 'src/services/harness/build-tools.ts',
-          query: 'buildTools',
-        },
-      ],
-    ),
+    description: 'LSP query for precise code intelligence.',
     inputSchema: z.object({
       method: z.enum([
         'goToDefinition',

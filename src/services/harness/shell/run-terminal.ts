@@ -14,39 +14,23 @@ import {
   wrapWithSandboxingFooter,
 } from '@/services/harness/shell/sandbox-result'
 import { runTerminalCommand } from '@/services/harness/shell/run-command'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 import { clipTerminalLabel } from '@/utils/clip-terminal-label'
 
 const runTerminal = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      'Run a shell command on the user machine (project cwd). Use for system reports, profiling, benchmarks, process/memory inspection, dev servers, and local agent monitoring, not only repo tasks. Default is blocking until exit. For long-running sampling (memory over a minute, log tailing, npm run dev), set is_background to true and poll with terminal_output. Append | cat for pagers. Do not use for file edits. If the OS jail blocked the command, this tool retries unsandboxed in the same execute. Do not wait for a second approval. Do not retry the same sandboxed command yourself.',
-      [
-        {
-          command: 'git status --short',
-          description: 'Working tree status',
-        },
-        {
-          command: 'npm run dev',
-          is_background: true,
-          description: 'Start Vite dev server',
-        },
-      ],
-    ),
+    description:
+      'Run a shell command in the project cwd. If the sandbox blocks the command it retries unsandboxed in the same execute; do not retry yourself. is_background returns shell_id; poll with terminal_output.',
     inputSchema: z.object({
       command: z.string().describe('Shell command to run in the project cwd'),
-      is_background: z
-        .boolean()
-        .optional()
-        .describe('If true, return shell_id and poll with terminal_output'),
+      is_background: z.boolean().optional().describe('Return shell_id without waiting'),
       timeout_ms: z.number().optional().describe('Optional max wait for blocking runs'),
       description: z
         .string()
         .min(1)
         .max(48)
-        .describe('Required 2-6 word UI title above the terminal. Not the command.'),
+        .describe('2-6 word UI title'),
     }),
     execute: async ({ command, is_background, timeout_ms, description }, { toolCallId }) => {
       const uiTitle = clipTerminalLabel(description ?? '') || command

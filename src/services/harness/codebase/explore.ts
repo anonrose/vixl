@@ -7,13 +7,9 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const codebaseExplore = (ctx: HarnessToolContext) =>
   tool({
     description:
-      'Explore the CodeGraph index for architecture, flows, and "where is X" questions. Prefer over grep/read loops for structural context. Returns normalized spans with path and line ranges when possible.',
+      'Explore the CodeGraph index for architecture, flows, and where-is-X questions.',
     inputSchema: z.object({
-      query: z
-        .string()
-        .describe(
-          'Natural-language question or bag of symbol/file names (for example "AuthService loginUser" or "how does MCP trust work")',
-        ),
+      query: z.string().describe('Question or symbol/file names'),
     }),
     execute: async ({ query }, { toolCallId }) => {
       const called = await callManagedCodegraphTool(ctx, {

@@ -6,7 +6,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const readFile = (ctx: HarnessToolContext) =>
   tool({
     description:
-      'Read a file from the workspace. For image files (.png, .jpg, .jpeg, .gif, .webp, .svg), returns image metadata and optional base64 instead of plain text.',
+      'Read a file from the workspace (images return metadata, optionally base64).',
     inputSchema: z.object({
       path: z.string().describe('Workspace-relative file path'),
       offset: z.number().optional().describe('1-based start line'),

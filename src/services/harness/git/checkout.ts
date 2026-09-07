@@ -8,7 +8,9 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const gitCheckout = (ctx: HarnessToolContext) =>
   tool({
     description: 'Checkout a git branch or ref',
-    inputSchema: z.object({ branch: z.string() }),
+    inputSchema: z.object({
+      branch: z.string().describe('Branch or ref'),
+    }),
     execute: async ({ branch }, { toolCallId }) => {
       const allowed = await gateToolPermission({
         ctx: toPermCtx(ctx),

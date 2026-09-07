@@ -7,23 +7,12 @@ import {
   assertCreatePlanNotAwaitingPlanGo,
   markCreatedPlanThisTurn,
 } from '@/services/harness/plan-execution-session'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const createPlanTool = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      'Create a plan file under .vixl/plans/. After success, stop and wait for the user to click Build now or Orchestrate.',
-      [
-        {
-          title: 'Add harness tool examples',
-          body: '## Goal\nSurface usage examples on high-friction tools.\n',
-          todos: [
-            { id: 'helper', content: 'Add with-tool-examples helper', status: 'pending' },
-          ],
-        },
-      ],
-    ),
+    description:
+      'Create a plan under .vixl/plans/. After success, stop and wait for Build or Orchestrate.',
     inputSchema: createPlanInputSchema,
     execute: async ({ title, body, todos }) => {
       assertCreatePlanNotAwaitingPlanGo(ctx.projectSlug, ctx.chatId)

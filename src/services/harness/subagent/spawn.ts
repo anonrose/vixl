@@ -16,63 +16,33 @@ import {
 import resolveSpawnModel from '@/services/harness/subagent/resolve-spawn-model'
 import runSubagentGenerate from '@/services/harness/subagent/run-generate'
 import { READ_ONLY_SPAWN_MODES } from '@/services/harness/subagent/constants'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import linkAbortSignal from '@/utils/link-abort-signal'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const spawnSubagent = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      "Spawn a subagent. Default mode is blocking (waits until complete). Set mode to background to run concurrently: return immediately, end your turn, and do not poll with terminal_output (subagentId is not a shell_id). The harness resumes this chat with the summary when all background subagents finish. Default capabilities are read-only. Edit, write, modify, delete, move, or shell/git mutations REQUIRE capabilities: 'write'. A read-only subagent can only report; it cannot make changes. In Ask and Plan modes, subagents are restricted to read-only; the write capability is rejected. When spawning a catalog agent, agentName MUST be the catalog name (frontmatter name, filename stem, or slug). Verb-phrase labels are only for generic helpers that are not in the catalog.",
-      [
-        {
-          agentName: 'reviewer',
-          prompt: 'Review the auth changes and report findings.',
-          mode: 'blocking',
-        },
-        {
-          agentName: 'Reading auth',
-          prompt: 'Find where MCP trust is granted and summarize the flow.',
-          mode: 'blocking',
-          model: 'anthropic::claude-sonnet-4',
-        },
-        {
-          agentName: 'Scanning permissions',
-          prompt: 'List shell and MCP permission gates.',
-          mode: 'background',
-        },
-        {
-          agentName: 'Editing config',
-          prompt: 'Update the timeout in the harness settings file.',
-          mode: 'blocking',
-          capabilities: 'write',
-        },
-      ],
-    ),
+    description:
+      'Spawn a subagent. background returns immediately; end your turn; harness resumes when done; do not poll terminal_output.',
     inputSchema: z.object({
       agentName: z
         .string()
         .describe(
-          'Catalog name (frontmatter name, filename stem, or slug) when spawning a defined agent. Verb phrases such as "Reading auth" are only for generic helpers that are not in the catalog.',
+          'Catalog name (frontmatter name, filename stem, or slug). Verb phrases only for generic helpers not in the catalog.',
         ),
       prompt: z.string().describe('Task instructions for the subagent'),
       mode: z
         .enum(['blocking', 'background'])
         .default('blocking')
-        .describe(
-          'blocking waits inline; background returns running, then end your turn and wait for harness resume',
-        ),
+        .describe('blocking (default) or background'),
       model: z
         .string()
         .optional()
-        .describe(
-          'Exact provider::modelId from resolve_models (for example anthropic::claude-sonnet-4). Fuzzy names are rejected.',
-        ),
+        .describe('Exact provider::modelId from resolve_models. Fuzzy names are rejected.'),
       capabilities: z
         .enum(['read-only', 'write'])
         .default('read-only')
         .describe(
-          "REQUIRED 'write' for edit/write/modify/delete/move or shell/git mutations. read-only (default) can only report, not change. write grants file edit, apply_patch, delete/move, run_terminal, and git commit/checkout/branch.",
+          "write required for edit/write/delete/move or shell/git mutations; read-only (default) can only report",
         ),
     }),
     execute: async (

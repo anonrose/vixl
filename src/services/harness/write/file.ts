@@ -4,19 +4,14 @@ import { fsStagePreviewWrite, fsWriteFile } from '@/services/vixl/vixl-tauri'
 import { gateToolPermission } from '@/services/harness/permission/gate'
 import { fsWriteCapability } from '@/services/harness/permission/policy'
 import captureBaselinesBeforeMutate from '@/services/harness/capture-baselines-before-mutate'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import mapDiffs from '@/services/harness/shared/map-diffs'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const writeFile = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples('Create or overwrite a file (requires approval). Prefer edit_file for small changes.', [
-      {
-        path: 'src/utils/format-date.ts',
-        content: "export default (value: Date): string => value.toISOString()\n",
-      },
-    ]),
+    description:
+      'Create or overwrite a file (requires approval). Prefer edit_file for small changes.',
     inputSchema: z.object({
       path: z.string().describe('Workspace-relative file path'),
       content: z.string().describe('Full file contents to write'),

@@ -9,7 +9,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const readMcpResource = (ctx: HarnessToolContext) =>
   tool({
-    description: 'Read a resource URI from a connected HTTP or SSE MCP server.',
+    description: 'Read a resource URI from a connected MCP server.',
     inputSchema: z.object({
       serverId: z.string(),
       uri: z.string().describe('Resource URI from list_mcp_resources'),

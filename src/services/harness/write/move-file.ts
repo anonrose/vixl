@@ -12,8 +12,8 @@ const moveFile = (ctx: HarnessToolContext) =>
   tool({
     description: 'Move or rename a workspace file (requires approval)',
     inputSchema: z.object({
-      from: z.string(),
-      to: z.string(),
+      from: z.string().describe('Current path'),
+      to: z.string().describe('New path'),
     }),
     execute: async ({ from, to }, { toolCallId }) => {
       const diffs: FileDiff[] = [

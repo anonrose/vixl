@@ -6,7 +6,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const loadSkillTool = (ctx: HarnessToolContext) =>
   tool({
     description: 'Load the full instructions for a skill by name',
-    inputSchema: z.object({ name: z.string() }),
+    inputSchema: z.object({ name: z.string().describe('Skill name') }),
     execute: async ({ name }) => {
       const result = await loadSkill(name, ctx.projectRoot)
       if ('error' in result) {

@@ -11,8 +11,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const getMcpTools = (ctx: HarnessToolContext) =>
   tool({
-    description:
-      'List configured MCP servers and their tools (name, description, inputSchema, inputExamples). Call before call_mcp_tool when unsure. No arguments.',
+    description: 'List configured MCP servers and their tools.',
     inputSchema: z.object({}),
     execute: async () => {
       const personal = migrateMcpConfig(await readMcpConfig('personal', null))

@@ -7,11 +7,10 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const gitCommit = (ctx: HarnessToolContext) =>
   tool({
-    description:
-      'Stage specific paths and commit with a message. paths is required — use git_status to identify changed files before committing.',
+    description: 'Stage paths and commit with a message',
     inputSchema: z.object({
-      message: z.string(),
-      paths: z.array(z.string()).min(1),
+      message: z.string().describe('Commit message'),
+      paths: z.array(z.string()).min(1).describe('Paths to stage'),
     }),
     execute: async ({ message, paths }, { toolCallId }) => {
       const allowed = await gateToolPermission({

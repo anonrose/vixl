@@ -6,7 +6,9 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const gitDiff = (ctx: HarnessToolContext) =>
   tool({
     description: 'Git diff',
-    inputSchema: z.object({ path: z.string().optional() }),
+    inputSchema: z.object({
+      path: z.string().optional().describe('Optional path'),
+    }),
     execute: async ({ path }) => gitDiffCommand({ projectRoot: ctx.projectRoot, path }),
   })
 

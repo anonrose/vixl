@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { toast } from 'vue-sonner'
 import { moveChatToWorkspace, updateChatMeta } from '@/services/vixl/vixl-tauri'
 import { gateWorkspaceMovePermission } from '@/services/harness/permission'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
 import filePathBasename from '@/utils/file-path-basename'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
@@ -48,14 +47,8 @@ const resolveRootPath = (
 
 const moveWorkspace = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      [
-        'Move this chat onto a different project folder (always user-approved).',
-        'If you created or selected a folder that should become this chat\'s project, call move_workspace BEFORE more edits.',
-        'Pass that folder path. Writing under a nested path is not a move.',
-      ].join(' '),
-      [{ rootPath: 'apps/new-project' }],
-    ),
+    description:
+      'Move this chat onto a different project folder (always user-approved).',
     inputSchema: z.object({
       rootPath: z
         .string()

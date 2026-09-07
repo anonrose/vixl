@@ -3,17 +3,16 @@ import loadToolGuidanceForMode from '@/services/context/system-prompt-parts/load
 
 describe('loadToolGuidanceForMode', () => {
   it('always includes shared codebase and LSP guidance', () => {
-    const ask = loadToolGuidanceForMode('ask')
+    const ask = loadToolGuidanceForMode()
     expect(ask).toContain('codebase_explore')
-    expect(ask).toContain('goToDefinition')
+    expect(ask).toContain('lsp')
   })
 
-  it('includes MCP guidance in all modes and omits embedded browser guidance', () => {
-    for (const mode of ['ask', 'plan', 'agent', 'orchestrator'] as const) {
-      const text = loadToolGuidanceForMode(mode)
-      expect(text).toContain('get_mcp_tools if stale')
-      expect(text).not.toContain('browser_lock')
-      expect(text).not.toContain('browser_cdp')
-    }
+  it('loads tool-guidance.md and omits embedded browser and patch', () => {
+    const text = loadToolGuidanceForMode()
+    expect(text).toContain('codebase_explore')
+    expect(text).not.toContain('browser_lock')
+    expect(text).not.toContain('browser_cdp')
+    expect(text).not.toContain('apply_patch')
   })
 })

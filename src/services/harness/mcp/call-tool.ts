@@ -13,32 +13,13 @@ import {
   mcpAuthKindForError,
 } from '@/services/harness/mcp/auth'
 import resolveTrustedMcpServer from '@/services/harness/mcp/resolve-trusted-server'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const callMcpTool = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      'Call an MCP tool on a running trusted server. Use get_mcp_tools first for inputSchema and inputExamples. Pass the MCP tool fields flat inside args (one object). Do not nest a field inside itself (wrong: args.query.query; right: args.query as a string when the schema says string).',
-      [
-        {
-          serverId: 'brave',
-          tool: 'brave_web_search',
-          args: { query: 'Brave Search API' },
-        },
-        {
-          serverId: 'nuxt-docs',
-          tool: 'get-page',
-          args: { path: '/getting-started/installation' },
-        },
-        {
-          serverId: 'shadcn',
-          tool: 'search_items_in_registries',
-          args: { registries: ['@shadcn'], query: 'button' },
-        },
-      ],
-    ),
+    description:
+      'Call an MCP tool on a running trusted server. Pass fields flat in args, never nested like query.query.',
     inputSchema: z.object({
       serverId: z.string().describe('MCP server id from config / get_mcp_tools'),
       tool: z.string().describe('Tool name from that server'),
@@ -46,9 +27,7 @@ const callMcpTool = (ctx: HarnessToolContext) =>
         .object({})
         .passthrough()
         .default({})
-        .describe(
-          'Flat object matching that MCP tool inputSchema exactly. Example for brave_web_search: {"query":"search text"} where query is a string. Never wrap values as {"query":{"query":"..."}}.',
-        ),
+        .describe('Object matching the tool inputSchema'),
     }),
     execute: async ({ serverId, tool: toolName, args }, { toolCallId }) => {
       const trust = await resolveTrustedMcpServer(ctx, serverId)

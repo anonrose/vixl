@@ -98,7 +98,7 @@ export default async (input: SystemPromptInput): Promise<SystemPromptParts> => {
       projectName: input.projectName,
       projectRoot: input.projectRoot,
     }),
-    loadToolGuidanceForMode(input.mode),
+    loadToolGuidanceForMode(),
     modeSkillBlock,
   ]
     .filter(Boolean)

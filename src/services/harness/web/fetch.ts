@@ -7,7 +7,6 @@ import truncateWebText from '@/services/harness/web/truncate'
 import wrapUntrustedWebContent from '@/services/harness/web/wrap-untrusted'
 import { gateToolPermission } from '@/services/harness/permission/gate'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import webFetch from '@/services/vixl/vixl-tauri/web-fetch'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 import type { WebFetchFormat } from '@/types/harness/web-content'
@@ -32,17 +31,8 @@ const headerValue = (
 
 const webFetchTool = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      [
-        'Fetch an http(s) URL and return markdown (default), text, or html. Plain HTTP GET, no JavaScript.',
-        'Works for any host including git forges (GitLab, Gitea, Forgejo, Bitbucket, Codeberg, github.com). Do not refuse github.com.',
-        'If this machine has gh and the URL is github.com, the shell tool with gh pr view / gh issue view / gh api can be better for private GitHub data. Otherwise fetch the URL.',
-      ].join(' '),
-      [
-        { url: 'https://example.com/docs' },
-        { url: 'https://example.com/page', format: 'text', max_length: 8000 },
-      ],
-    ),
+    description:
+      'Fetch an http(s) URL as markdown (default), text, or html. No JavaScript.',
     inputSchema: z.object({
       url: z.string().describe('http or https URL to fetch'),
       max_length: z

@@ -4,24 +4,16 @@ import { fsApplyPatch, fsStagePreviewApplyPatch } from '@/services/vixl/vixl-tau
 import { gateToolPermission } from '@/services/harness/permission/gate'
 import { fsWriteCapability } from '@/services/harness/permission/policy'
 import captureBaselinesBeforeMutate from '@/services/harness/capture-baselines-before-mutate'
-import withToolExamples from '@/services/harness/with-tool-examples'
 import mapDiffs from '@/services/harness/shared/map-diffs'
 import toPermCtx from '@/services/harness/shared/to-perm-ctx'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
 const applyPatch = (ctx: HarnessToolContext) =>
   tool({
-    description: withToolExamples(
-      'Apply an OpenCode-style patch (NOT git diff). Use headers like *** Update File: path/to/file.ts with +/- hunks.',
-      [
-        {
-          patch:
-            '*** Update File: src/utils/hello.ts\n@@\n-export const hello = () => "hi"\n+export const hello = () => "hello"\n',
-        },
-      ],
-    ),
+    description:
+      'Apply an OpenCode-style patch (not git diff). Format: *** Update File: path, then @@ hunks with +/- lines.',
     inputSchema: z.object({
-      patch: z.string().describe('OpenCode-style multi-file patch text'),
+      patch: z.string().describe('OpenCode patch text'),
     }),
     execute: async ({ patch }, { toolCallId }) => {
       const diffs = mapDiffs(

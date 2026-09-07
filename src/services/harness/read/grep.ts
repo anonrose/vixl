@@ -7,8 +7,8 @@ const grep = (ctx: HarnessToolContext) =>
   tool({
     description: 'Search workspace with ripgrep',
     inputSchema: z.object({
-      pattern: z.string(),
-      glob: z.string().optional(),
+      pattern: z.string().describe('Ripgrep pattern'),
+      glob: z.string().optional().describe('Optional glob filter'),
     }),
     execute: async ({ pattern, glob }) =>
       workspaceGrep({ projectRoot: ctx.projectRoot, pattern, glob }),

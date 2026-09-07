@@ -6,7 +6,7 @@ import type { HarnessToolContext } from '@/types/harness/tool-context'
 const globFiles = (ctx: HarnessToolContext) =>
   tool({
     description: 'Glob files in workspace',
-    inputSchema: z.object({ pattern: z.string() }),
+    inputSchema: z.object({ pattern: z.string().describe('Glob pattern') }),
     execute: async ({ pattern }) => workspaceGlob(ctx.projectRoot, pattern),
   })
 
