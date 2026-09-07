@@ -12,6 +12,7 @@ describe('detectMonacoLanguage', () => {
     expect(detectMonacoLanguage('src/Main.java')).toBe('java')
     expect(detectMonacoLanguage('src/app.tsx')).toBe('tsx')
     expect(detectMonacoLanguage('styles/app.scss')).toBe('scss')
+    expect(detectMonacoLanguage('.vixl/rules/always.mdc')).toBe('markdown')
   })
 
   it('maps basename-only files', () => {

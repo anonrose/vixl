@@ -99,7 +99,7 @@ const { isMissing, refreshMissing } = useEditorMissingPaths(projectRoot, openPat
 
 const isMarkdownFile = computed(() => {
   const path = selectedPath.value
-  return path.endsWith('.md') || path.endsWith('.markdown')
+  return path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.mdc')
 })
 
 const showPreview = computed(() => isMarkdownFile.value && editorMode.value === 'preview')
@@ -388,7 +388,7 @@ const loadFileContent = async (): Promise<void> => {
 }
 
 watch(selectedPath, (path) => {
-  if (!path.endsWith('.md') && !path.endsWith('.markdown')) {
+  if (!path.endsWith('.md') && !path.endsWith('.markdown') && !path.endsWith('.mdc')) {
     editorMode.value = 'edit'
   }
 })

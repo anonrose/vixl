@@ -167,7 +167,7 @@ pub(crate) fn list_agents_md_file(base: &Path) -> Result<Vec<ProjectFileEntry>, 
 
     for entry in fs::read_dir(base).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
-        if !entry.file_type().map_err(|e| e.to_string())?.is_file() {
+        if !entry.path().is_file() {
             continue;
         }
         let name = entry.file_name();
@@ -294,7 +294,11 @@ fn list_flat_markdown_files(dir: &Path) -> Result<Vec<ProjectFileEntry>, String>
     for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        let is_markdown = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext == "md" || ext == "mdc");
+        if !is_markdown {
             continue;
         }
         let name = entry.file_name().to_string_lossy().to_string();
@@ -312,6 +316,9 @@ fn list_flat_markdown_files(dir: &Path) -> Result<Vec<ProjectFileEntry>, String>
 
 fn read_first_description(path: &Path) -> Option<String> {
     let content = fs::read_to_string(path).ok()?;
+    if let Some(description) = read_frontmatter_field(&content, "description") {
+        return Some(description);
+    }
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.starts_with("---") {
@@ -571,6 +578,58 @@ mod tests {
         assert_eq!(from_nested, nested.join(".vixl"));
         assert_ne!(from_project, home_vixl);
         assert_ne!(from_nested, home_vixl);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn lists_symlinked_agents_md() {
+        let dir = TempVixlDir::new();
+        write_file(&dir.path, "real-agents.md", "Linked agents body.");
+        std::os::unix::fs::symlink(dir.path.join("real-agents.md"), dir.path.join("agents.md"))
+            .expect("symlink agents.md");
+
+        let entries = list_agents_md_file(&dir.path).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "agents.md");
+        assert!(entries[0].path.ends_with("agents.md"));
+        assert_eq!(
+            entries[0].description.as_deref(),
+            Some("Linked agents body.")
+        );
+    }
+
+    #[test]
+    fn list_flat_markdown_files_includes_mdc() {
+        let dir = TempVixlDir::new();
+        write_file(&dir.path, "plain.md", "A markdown rule.");
+        write_file(&dir.path, "cursor.mdc", "An mdc rule.");
+        write_file(&dir.path, "ignored.txt", "Not a rule.");
+
+        let entries = list_flat_markdown_files(&dir.path).unwrap();
+        let names: Vec<&str> = entries.iter().map(|entry| entry.name.as_str()).collect();
+        assert_eq!(names, vec!["cursor.mdc", "plain.md"]);
+    }
+
+    #[test]
+    fn read_first_description_prefers_frontmatter_then_body() {
+        let dir = TempVixlDir::new();
+        write_file(
+            &dir.path,
+            "with-frontmatter.mdc",
+            "---\ndescription: \"Ship the app\"\nglobs: \"**/*.ts\"\n---\n\n# Heading\nBody line.\n",
+        );
+        write_file(
+            &dir.path,
+            "without-frontmatter.md",
+            "# Heading\n\nFirst text line.\n",
+        );
+
+        let entries = list_flat_markdown_files(&dir.path).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].name, "with-frontmatter.mdc");
+        assert_eq!(entries[0].description.as_deref(), Some("Ship the app"));
+        assert_eq!(entries[1].name, "without-frontmatter.md");
+        assert_eq!(entries[1].description.as_deref(), Some("First text line."));
     }
 
     #[test]

@@ -16,6 +16,7 @@ const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
   yaml: 'yaml',
   yml: 'yaml',
   md: 'markdown',
+  mdc: 'markdown',
   markdown: 'markdown',
   css: 'css',
   scss: 'scss',
