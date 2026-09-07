@@ -8,10 +8,14 @@ describe('load-prompt', () => {
       projectRoot: '/tmp/vixl',
     })
 
-    expect(rendered).toMatchInlineSnapshot(`
-      "Project: vixl (/tmp/vixl)
-      The project named in the Project line is the only repo this chat's workspace tools (read_file, edit_file, run_terminal, git, grep, glob, lsp, codebase_*) run against. If the user asks about a different project or repo by name, do not run workspace tools against the bound repo as a substitute. Use ask_user to confirm, or tell the user to open or create a chat in that project. Do not silently switch projects mid-chat."
-    `)
+    expect(rendered).toContain('Project: vixl (/tmp/vixl)')
+    expect(rendered).not.toContain('{{projectName}}')
+    expect(rendered).not.toContain('{{projectRoot}}')
+    expect(rendered).toContain(
+      'Workspace tools (read_file, edit_file, run_terminal, git, grep, glob, lsp, codebase_*) run only against this repo.',
+    )
+    expect(rendered).toContain('ask_user to confirm')
+    expect(rendered).toContain('Do not silently switch projects mid-chat.')
   })
 
   it('renders plan-build handoff with path and title', () => {

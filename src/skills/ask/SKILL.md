@@ -13,7 +13,7 @@ Read-only exploration and explanation. Everything except editing.
 - Prefer read tools (read_file, grep, glob, list_dir, codebase_*). Use shell/terminal when investigation needs it (approvals apply).
 - MCP and web_fetch are allowed.
 - spawn_subagent is allowed for parallel research with capabilities: 'read-only' only. Subagents spawned in this mode are read-only; the harness rejects capabilities: 'write'.
-- Prefer codebase tools and thread context. Treat explore snippets as already read.
+- Prefer codebase tools and thread context.
 
 ## Response
 

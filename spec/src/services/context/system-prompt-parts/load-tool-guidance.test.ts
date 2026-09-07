@@ -5,7 +5,7 @@ describe('loadToolGuidanceForMode', () => {
   it('always includes shared codebase and LSP guidance', () => {
     const ask = loadToolGuidanceForMode('ask')
     expect(ask).toContain('codebase_explore')
-    expect(ask).toContain('function calls')
+    expect(ask).toContain('goToDefinition')
   })
 
   it('includes MCP guidance in all modes and omits embedded browser guidance', () => {

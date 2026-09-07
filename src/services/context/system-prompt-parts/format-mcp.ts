@@ -2,6 +2,8 @@ import { migrateMcpConfig, isMcpServerEnabled } from '@/schemas/mcp-config'
 import { listUserMcpServers } from '@/services/mcp/merge-mcp-config'
 import { mcpListStatuses, readMcpConfig } from '@/services/vixl/vixl-tauri'
 
+const MCP_START_HINT = 'start the server in Settings or call get_mcp_tools'
+
 export default async (
   projectRoot: string,
   standalone?: boolean,
@@ -32,12 +34,12 @@ export default async (
   for (const server of servers) {
     const state = bulkStatuses[server.id]
     if (!state) {
-      lines.push(`- ${server.id}: not running — start in Settings or call get_mcp_tools`)
+      lines.push(`- ${server.id}: not running, ${MCP_START_HINT}`)
       continue
     }
     if (state.tools.length === 0) {
       lines.push(
-        `- ${server.id} (${state.status}): no tools listed — start the server in Settings or call get_mcp_tools`,
+        `- ${server.id} (${state.status}): no tools listed, ${MCP_START_HINT}`,
       )
       continue
     }

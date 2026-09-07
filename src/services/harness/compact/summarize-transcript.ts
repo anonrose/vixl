@@ -60,7 +60,7 @@ export default async (
 
     const system =
       frozenSystem ??
-      'You are a context compaction assistant. Summarize the conversation concisely.'
+      'Context compaction assistant. Summarize the conversation concisely.'
 
     const result = await generateText({
       model,
