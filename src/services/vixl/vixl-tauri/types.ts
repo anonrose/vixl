@@ -131,11 +131,7 @@ export type GrepMatch = {
   path: string
   lineNumber: number
   line: string
-  contextBefore?: string[]
-  contextAfter?: string[]
-  /** 1-based character column from rg submatch byte start. */
   startColumn?: number
-  /** 1-based character column from rg submatch byte end (exclusive). */
   endColumn?: number
 }
 
@@ -146,7 +142,6 @@ export type WorkspaceGrepResult = {
 
 export type GlobFileEntry = {
   path: string
-  modifiedMs?: number
 }
 
 export type WorkspaceGlobResult = {

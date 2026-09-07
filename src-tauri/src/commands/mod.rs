@@ -5,8 +5,6 @@ pub mod file_checkpoint;
 pub mod fs;
 pub mod git;
 pub mod git_head_watch;
-pub mod glob;
-pub mod grep;
 pub mod http;
 pub mod keychain;
 pub mod lsp;
@@ -18,6 +16,7 @@ pub mod paths;
 pub mod registry;
 #[cfg(target_os = "macos")]
 pub mod sandbox;
+pub mod search;
 pub mod shell;
 pub mod watch;
 pub mod web_fetch;
@@ -43,8 +42,6 @@ pub use git::{
     git_repo_info, git_show_file, git_status,
 };
 pub use git_head_watch::{watch_git_head, GitHeadWatchState};
-pub use glob::workspace_glob;
-pub use grep::workspace_grep;
 pub use http::{http_proxy_request, http_proxy_stream, http_proxy_stream_cancel};
 pub use keychain::{delete_secret, get_secret, set_secret};
 pub use lsp::{
@@ -68,6 +65,7 @@ pub use registry::{
     registry_list_projects, registry_remove_project, registry_set_active_project,
     registry_update_project_root, resolve_launch_path,
 };
+pub use search::{workspace_glob, workspace_grep};
 pub use shell::{
     reveal_in_folder, shell_kill_pty, shell_kill_tracked, shell_resize_pty, shell_spawn_pty,
     shell_spawn_tracked, shell_write_pty,

@@ -46,6 +46,13 @@ tar = "0.4.46"
 which = "8.0.5"
 sha2 = "0.10.9"
 rusqlite = { version = "0.32", features = ["bundled"] }
+ignore = "0.4"
+grep-regex = "0.1"
+grep-searcher = "0.1"
+grep-matcher = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -66,6 +73,14 @@ path = "../spec/src-tauri/commands/sandbox.rs"
 [[test]]
 name = "commands_fs"
 path = "../spec/src-tauri/commands/fs.rs"
+
+[[test]]
+name = "commands_glob"
+path = "../spec/src-tauri/commands/glob.rs"
+
+[[test]]
+name = "commands_grep"
+path = "../spec/src-tauri/commands/grep.rs"
 
 [[test]]
 name = "commands_git"

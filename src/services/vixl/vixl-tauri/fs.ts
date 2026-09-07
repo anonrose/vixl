@@ -192,11 +192,9 @@ export const workspaceGrep = async (args: {
   projectRoot: string
   pattern: string
   glob?: string
-  context?: number
   path?: string
   caseInsensitive?: boolean
   maxResults?: number
-  /** When false, literal match (`--fixed-strings`). Omitted defaults to regex on the Rust side. */
   regex?: boolean
   wholeWord?: boolean
   excludeGlob?: string

@@ -20,7 +20,7 @@ describe('vixl-tauri IPC adapters', () => {
 
   it('wraps workspace_glob request and returns result', async () => {
     invoke.mockResolvedValueOnce({
-      files: [{ path: 'src/main.ts', modifiedMs: 1 }],
+      files: [{ path: 'src/main.ts' }],
       truncated: false,
     })
 
