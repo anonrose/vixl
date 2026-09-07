@@ -197,6 +197,7 @@ declare module 'vue' {
     FileTreeIcon: typeof import('./components/ai-elements/file-tree/FileTreeIcon.vue')['default']
     FileTreeName: typeof import('./components/ai-elements/file-tree/FileTreeName.vue')['default']
     FileTreeNode: typeof import('./components/workbench/FileTreeNode.vue')['default']
+    FileTreeSymlinkBadge: typeof import('./components/workbench/FileTreeSymlinkBadge.vue')['default']
     GeneralSection: typeof import('./components/settings/sections/GeneralSection.vue')['default']
     GitBranchSelect: typeof import('./components/chat/GitBranchSelect.vue')['default']
     Github: typeof import('./components/ai-elements/open-in-chat/providers/icons/Github.vue')['default']

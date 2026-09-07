@@ -59,7 +59,10 @@ const fileDecoration = computed(() => {
 const nameClass = computed(() => {
   const decoration = fileDecoration.value
   if (!decoration) {
-    return 'min-w-0 flex-1 truncate font-sans text-[13px]'
+    return cn(
+      'min-w-0 flex-1 truncate font-sans text-[13px]',
+      props.node.kind === 'symlink' && 'text-violet-400 dark:text-violet-300',
+    )
   }
   return cn(
     'min-w-0 flex-1 truncate font-sans text-[13px] font-medium',
@@ -165,9 +168,17 @@ const handleRenameBlur = (): void => {
             :class="nameClass"
           >{{ node.name }}</span>
           <FileTreeActions
-            v-if="fileDecoration && hasDecorationLetter(fileDecoration) && !isRenaming"
+            v-if="
+              !isRenaming &&
+              (node.kind === 'symlink' ||
+                (fileDecoration && hasDecorationLetter(fileDecoration)))
+            "
           >
-            <WorkbenchFileTreeGitLetter :status="fileDecoration" />
+            <FileTreeSymlinkBadge v-if="node.kind === 'symlink'" />
+            <WorkbenchFileTreeGitLetter
+              v-if="fileDecoration && hasDecorationLetter(fileDecoration)"
+              :status="fileDecoration"
+            />
           </FileTreeActions>
         </template>
       </FileTreeFile>
