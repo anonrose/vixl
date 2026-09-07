@@ -1,9 +1,19 @@
 use std::path::PathBuf;
 
-use app_lib::commands::shell::is_reveal_path_allowed;
+use app_lib::commands::shell::{is_reveal_path_allowed, resolve_pty_shell};
 
 fn dummy_user_vixl() -> PathBuf {
     PathBuf::from("/nonexistent-vixl-user-dir")
+}
+
+#[cfg(unix)]
+#[test]
+fn pty_shell_matches_shell_env_or_zsh() {
+    let resolved = resolve_pty_shell();
+    match std::env::var("SHELL") {
+        Ok(shell) => assert_eq!(resolved, shell),
+        Err(_) => assert_eq!(resolved, "/bin/zsh"),
+    }
 }
 
 #[test]

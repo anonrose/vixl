@@ -4,6 +4,8 @@ pub mod config;
 pub mod file_checkpoint;
 pub mod fs;
 pub mod git;
+#[path = "git-binary.rs"]
+pub mod git_binary;
 pub mod git_head_watch;
 pub mod http;
 pub mod keychain;

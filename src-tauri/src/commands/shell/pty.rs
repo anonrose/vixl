@@ -9,6 +9,17 @@ use uuid::Uuid;
 
 use super::super::fs::resolve_workspace_path;
 
+pub fn resolve_pty_shell() -> String {
+    #[cfg(unix)]
+    {
+        std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string())
+    }
+    #[cfg(windows)]
+    {
+        std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string())
+    }
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PtySessionInfo {
@@ -44,8 +55,7 @@ pub fn shell_spawn_pty(
         })
         .map_err(|e| e.to_string())?;
 
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
-    let mut cmd = CommandBuilder::new(shell);
+    let mut cmd = CommandBuilder::new(resolve_pty_shell());
     let work_dir = match cwd {
         Some(relative_cwd) => resolve_workspace_path(&project_root, &relative_cwd)?
             .to_string_lossy()

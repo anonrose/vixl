@@ -2,6 +2,8 @@ use std::process::Command;
 
 use serde::Serialize;
 
+use super::git_binary::git_binary;
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitRepoInfo {
@@ -10,7 +12,8 @@ pub struct GitRepoInfo {
 }
 
 fn run_git(root_path: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+    let git = git_binary()?;
+    let output = Command::new(&git)
         .arg("-C")
         .arg(root_path)
         .args(args)
@@ -219,7 +222,8 @@ pub struct GitLogResult {
 }
 
 async fn run_git_async(root_path: &str, args: &[&str]) -> Result<String, String> {
-    let output = AsyncCommand::new("git")
+    let git = git_binary()?;
+    let output = AsyncCommand::new(&git)
         .arg("-C")
         .arg(root_path)
         .args(args)
@@ -359,7 +363,8 @@ pub async fn git_show_file(
 
     // Do not trim file content: trailing newlines matter for accurate diffs.
     let spec = format!("HEAD:{trimmed}");
-    let output = AsyncCommand::new("git")
+    let git = git_binary()?;
+    let output = AsyncCommand::new(&git)
         .arg("-C")
         .arg(&project_root)
         .args(["show", &spec])

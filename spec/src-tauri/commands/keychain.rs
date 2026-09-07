@@ -1,6 +1,7 @@
 use app_lib::commands::keychain::{
-    merge_legacy_into_map, parse_vault, require_vixl_key, serialize_vault, vault_from_os_read,
-    VaultMap, VAULT_ACCOUNT,
+    choose_secret_backend, merge_legacy_into_map, parse_vault, read_vault_file, require_vixl_key,
+    serialize_vault, vault_file_path, vault_from_file_read, vault_from_os_read, write_vault_file,
+    KeyringAccessFailure, SecretBackendKind, VaultMap, VAULT_ACCOUNT,
 };
 
 #[test]
@@ -110,4 +111,95 @@ fn vault_from_os_read_absent_allows_legacy_probe() {
     let loaded = vault_from_os_read(None).expect("absent vault");
     assert!(loaded.map.is_empty());
     assert!(loaded.allow_legacy_probe);
+}
+
+#[test]
+fn vault_from_file_read_never_allows_legacy_probe() {
+    let loaded = vault_from_file_read(None).expect("missing file");
+    assert!(loaded.map.is_empty());
+    assert!(!loaded.allow_legacy_probe);
+
+    let loaded = vault_from_file_read(Some("")).expect("empty file");
+    assert!(loaded.map.is_empty());
+    assert!(!loaded.allow_legacy_probe);
+
+    let payload = r#"{"vixl:provider:openai":"sk-file"}"#;
+    let loaded = vault_from_file_read(Some(payload)).expect("populated file");
+    assert_eq!(
+        loaded.map.get("vixl:provider:openai").map(String::as_str),
+        Some("sk-file")
+    );
+    assert!(!loaded.allow_legacy_probe);
+}
+
+#[test]
+fn choose_secret_backend_linux_falls_back_on_access_failure() {
+    assert_eq!(
+        choose_secret_backend(true, None),
+        SecretBackendKind::OsKeychain
+    );
+    assert_eq!(
+        choose_secret_backend(true, Some(KeyringAccessFailure::PlatformFailure)),
+        SecretBackendKind::ConfigFile
+    );
+    assert_eq!(
+        choose_secret_backend(true, Some(KeyringAccessFailure::NoStorageAccess)),
+        SecretBackendKind::ConfigFile
+    );
+}
+
+#[test]
+fn choose_secret_backend_non_linux_never_falls_back() {
+    assert_eq!(
+        choose_secret_backend(false, None),
+        SecretBackendKind::OsKeychain
+    );
+    assert_eq!(
+        choose_secret_backend(false, Some(KeyringAccessFailure::PlatformFailure)),
+        SecretBackendKind::OsKeychain
+    );
+    assert_eq!(
+        choose_secret_backend(false, Some(KeyringAccessFailure::NoStorageAccess)),
+        SecretBackendKind::OsKeychain
+    );
+}
+
+#[test]
+fn file_backend_round_trip_in_temp_dir() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_file_path(dir.path());
+    let mut expected = VaultMap::new();
+    expected.insert("vixl:provider:openai".to_string(), "sk-file".to_string());
+
+    write_vault_file(&path, &expected).expect("write");
+    let loaded = read_vault_file(&path).expect("read");
+    assert_eq!(loaded.map, expected);
+    assert!(!loaded.allow_legacy_probe);
+}
+
+#[test]
+fn file_backend_missing_file_is_empty_without_legacy() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_file_path(dir.path());
+    let loaded = read_vault_file(&path).expect("missing file");
+    assert!(loaded.map.is_empty());
+    assert!(!loaded.allow_legacy_probe);
+}
+
+#[cfg(unix)]
+#[test]
+fn file_backend_sets_unix_600_permissions() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = vault_file_path(dir.path());
+    let mut map = VaultMap::new();
+    map.insert("vixl:provider:openai".to_string(), "sk-perm".to_string());
+    write_vault_file(&path, &map).expect("write");
+    let mode = std::fs::metadata(&path)
+        .expect("metadata")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o600);
 }

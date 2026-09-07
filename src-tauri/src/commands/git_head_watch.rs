@@ -6,6 +6,8 @@ use std::time::Duration;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::{AppHandle, Emitter, Manager};
 
+use super::git_binary::git_binary;
+
 #[derive(Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GitHeadChanged {
@@ -30,7 +32,8 @@ fn classify_head_change(path: &Path, git_dir: &Path) -> bool {
 }
 
 fn resolve_git_dir(root_path: &str) -> Option<PathBuf> {
-    let output = Command::new("git")
+    let git = git_binary().ok()?;
+    let output = Command::new(&git)
         .arg("-C")
         .arg(root_path)
         .args(["rev-parse", "--absolute-git-dir"])

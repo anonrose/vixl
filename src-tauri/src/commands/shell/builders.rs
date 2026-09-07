@@ -7,6 +7,7 @@ use super::super::sandbox::generate_seatbelt_profile;
 
 /// Resolve bash for `pipefail` honest pipeline exit codes.
 /// Cached once. Returns `None` when bash is unavailable (caller falls back to `sh`).
+#[cfg(unix)]
 fn resolve_bash() -> Option<&'static str> {
     static BASH: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
     BASH.get_or_init(|| {
@@ -50,6 +51,7 @@ fn append_shell_command(cmd: &mut Command, command: &str) {
     }
 }
 
+#[cfg(unix)]
 fn build_tracked_command(project_root: &str, command: &str) -> Command {
     let mut cmd = match resolve_bash() {
         Some(bash) => {
@@ -66,7 +68,6 @@ fn build_tracked_command(project_root: &str, command: &str) -> Command {
         .stderr(Stdio::piped())
         .kill_on_drop(true);
 
-    #[cfg(unix)]
     unsafe {
         cmd.pre_exec(|| {
             libc::setpgid(0, 0);
@@ -74,6 +75,18 @@ fn build_tracked_command(project_root: &str, command: &str) -> Command {
         });
     }
 
+    cmd
+}
+
+#[cfg(windows)]
+fn build_tracked_command(project_root: &str, command: &str) -> Command {
+    let mut cmd = Command::new("cmd.exe");
+    cmd.arg("/c")
+        .arg(command)
+        .current_dir(project_root)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
     cmd
 }
 

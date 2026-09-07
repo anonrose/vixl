@@ -1,4 +1,13 @@
 use app_lib::commands::git::parse_porcelain_status;
+use app_lib::commands::git_binary::resolve_git_on_sources;
+use std::ffi::OsStr;
+
+#[cfg(unix)]
+use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::path::{Path, PathBuf};
 
 #[test]
 fn parse_unstaged_modified_keeps_leading_space_path() {
@@ -35,4 +44,55 @@ fn parse_rename() {
     assert_eq!(entry.path, "new.ts");
     assert_eq!(entry.old_path.as_deref(), Some("old.ts"));
     assert_eq!(entry.staged_status.as_deref(), Some("R"));
+}
+
+#[cfg(unix)]
+fn write_fake_bin(dir: &Path, name: &str) -> PathBuf {
+    fs::create_dir_all(dir).expect("temp dir");
+    let path = dir.join(name);
+    fs::write(&path, "#!/bin/sh\n").expect("write fake bin");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("chmod");
+    path
+}
+
+#[cfg(unix)]
+#[test]
+fn current_path_wins_over_common_dirs() {
+    let current = tempfile::tempdir().expect("current");
+    let extra = tempfile::tempdir().expect("extra");
+    let current_bin = write_fake_bin(current.path(), "vixl-git");
+    write_fake_bin(extra.path(), "vixl-git");
+
+    let found = resolve_git_on_sources(
+        "vixl-git",
+        Some(current.path().as_os_str()),
+        &[extra.path().to_path_buf()],
+    )
+    .expect("resolve");
+    assert_eq!(found, current_bin);
+}
+
+#[cfg(unix)]
+#[test]
+fn common_dirs_used_when_path_misses() {
+    let extra = tempfile::tempdir().expect("extra");
+    let extra_bin = write_fake_bin(extra.path(), "vixl-git");
+
+    let found = resolve_git_on_sources(
+        "vixl-git",
+        Some(OsStr::new("")),
+        &[extra.path().to_path_buf()],
+    )
+    .expect("resolve");
+    assert_eq!(found, extra_bin);
+}
+
+#[test]
+fn missing_git_uses_clear_error() {
+    let error =
+        resolve_git_on_sources("vixl-missing-git", Some(OsStr::new("")), &[]).expect_err("missing");
+    assert_eq!(
+        error,
+        "git was not found on PATH or common install locations"
+    );
 }

@@ -10,6 +10,7 @@ mod progress;
 mod resolve;
 mod timeout;
 
+pub use archive::{extract_archive_bytes, extract_tar_xz_bytes, extract_zip_bytes};
 pub use ensure::{
     ensure_server_installed, install_source_label, lsp_install_server, lsp_prefetch_defaults,
     managed_classic_typescript_lib, managed_typescript_lib, managed_vue_plugin_path,
