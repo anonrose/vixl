@@ -48,7 +48,7 @@ const toggleTheme = (): void => {
         </Button>
         <Button
           :aria-label="props.isDark ? 'Switch to light theme' : 'Switch to dark theme'"
-          class="h-10 w-10"
+          class="h-10 w-10 cursor-pointer"
           size="icon-sm"
           variant="ghost"
           @click="toggleTheme"

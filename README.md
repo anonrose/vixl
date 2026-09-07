@@ -11,7 +11,6 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="License: MIT" /></a>
   <a href="https://vixl.app/"><img src="https://img.shields.io/badge/status-alpha-orange.svg" alt="Status: Alpha" /></a>
   <a href="https://github.com/vixl-ai/vixl/stargazers"><img src="https://img.shields.io/github/stars/vixl-ai/vixl?style=flat" alt="GitHub stars" /></a>
-  <a href="https://github.com/vixl-ai/vixl/issues"><img src="https://img.shields.io/github/issues/vixl-ai/vixl" alt="GitHub issues" /></a>
 </p>
 
 <p align="center">
@@ -22,7 +21,6 @@
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white" alt="Rust" /></a>
   <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/Vercel%20AI%20SDK-000000?logo=vercel&logoColor=white" alt="Vercel AI SDK" /></a>
   <a href="https://modelcontextprotocol.io/"><img src="https://img.shields.io/badge/MCP-000000?logo=claude&logoColor=white" alt="MCP" /></a>
-  <a href="https://vuepress.vuejs.org/"><img src="https://img.shields.io/badge/VuePress-3eaf7c?logo=vue.js&logoColor=white" alt="VuePress" /></a>
   <a href="https://vixl.app/"><img src="https://img.shields.io/badge/local--first-BYOK-0ea5e9" alt="Local-first BYOK" /></a>
   <a href="https://vixl.app/"><img src="https://img.shields.io/badge/Agents%20UI-desktop-8b5cf6" alt="Agents UI" /></a>
 </p>
@@ -39,5 +37,4 @@
 <p align="center">
   <a href="https://getminds.ai/">Minds</a>
 </p>
-
 
