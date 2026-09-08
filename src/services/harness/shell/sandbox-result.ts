@@ -35,6 +35,8 @@ export const sandboxingFooter = (meta: SandboxResultMeta): string => {
     '- Filesystem: writes limited to the project; devices are isolated (no /dev/disk)',
     `- Network: ${meta.network}`,
     'If this failed due to the jail, the harness retries outside the sandbox if the user already approved this command. Do not retry the same sandboxed command yourself. Do not write a .py workaround.',
+    'Do not create temp or scratch directories inside the project (for example .tmp). Do not redirect TMPDIR, TEMP, or TMP into the repo, and do not edit .gitignore to hide harness artifacts.',
+    'If the jail blocks the command, report the denial instead of working around it.',
   ].join('\n')
 }
 

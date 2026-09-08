@@ -138,6 +138,85 @@ fn container_bin_dir_used_when_path_vars_miss() {
     let _ = fs::remove_dir_all(extra_dir);
 }
 
+fn joined_path(parts: &[&str]) -> OsString {
+    env::join_paths(parts.iter().map(PathBuf::from)).expect("join path")
+}
+
+fn split_merged(merged: &OsString) -> Vec<PathBuf> {
+    env::split_paths(merged).collect()
+}
+
+#[test]
+fn merged_path_puts_login_before_common_and_process() {
+    let login = joined_path(&["/login/bin", "/opt/homebrew/bin"]);
+    let common = vec![
+        PathBuf::from("/opt/homebrew/bin"),
+        PathBuf::from("/usr/local/bin"),
+    ];
+    let process = joined_path(&["/usr/bin", "/process/bin"]);
+
+    let merged =
+        merge_path_from_sources(Some(login.as_os_str()), &common, Some(process.as_os_str()))
+            .expect("merged path");
+    assert_eq!(
+        split_merged(&merged),
+        vec![
+            PathBuf::from("/login/bin"),
+            PathBuf::from("/opt/homebrew/bin"),
+            PathBuf::from("/usr/local/bin"),
+            PathBuf::from("/usr/bin"),
+            PathBuf::from("/process/bin"),
+        ]
+    );
+}
+
+#[test]
+fn merged_path_without_login_uses_common_and_process() {
+    let common = vec![
+        PathBuf::from("/opt/homebrew/bin"),
+        PathBuf::from("/usr/local/bin"),
+    ];
+    let process = joined_path(&["/usr/bin"]);
+
+    let merged = merge_path_from_sources(None, &common, Some(process.as_os_str()))
+        .expect("merged path without login");
+    assert_eq!(
+        split_merged(&merged),
+        vec![
+            PathBuf::from("/opt/homebrew/bin"),
+            PathBuf::from("/usr/local/bin"),
+            PathBuf::from("/usr/bin"),
+        ]
+    );
+}
+
+#[test]
+fn merged_path_without_login_is_never_none_when_sources_exist() {
+    let common = vec![PathBuf::from("/usr/bin")];
+    let process = joined_path(&["/bin"]);
+    assert!(merge_path_from_sources(None, &common, Some(process.as_os_str())).is_some());
+}
+
+#[test]
+fn merged_path_dedups_first_occurrence_wins() {
+    let login = joined_path(&["/shared/bin", "/login/bin"]);
+    let common = vec![PathBuf::from("/shared/bin"), PathBuf::from("/common/bin")];
+    let process = joined_path(&["/login/bin", "/process/bin", "/common/bin"]);
+
+    let merged =
+        merge_path_from_sources(Some(login.as_os_str()), &common, Some(process.as_os_str()))
+            .expect("merged path");
+    assert_eq!(
+        split_merged(&merged),
+        vec![
+            PathBuf::from("/shared/bin"),
+            PathBuf::from("/login/bin"),
+            PathBuf::from("/common/bin"),
+            PathBuf::from("/process/bin"),
+        ]
+    );
+}
+
 #[test]
 fn missing_command_error_names_basename() {
     let error = resolve_on_sources(

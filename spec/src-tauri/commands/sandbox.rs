@@ -44,7 +44,7 @@ fn profile_allows_root_directory_read() {
 fn profile_allows_macos_symlink_reads() {
     let profile =
         generate_seatbelt_profile(false, "/Users/aidanhibbard", "/Users/aidanhibbard/proj");
-    for path in ["/var", "/etc", "/tmp"] {
+    for path in ["/var", "/private/var", "/private", "/etc", "/tmp"] {
         let rule = format!("(allow file-read* (literal \"{path}\"))");
         assert!(
             profile.contains(&rule),
@@ -178,4 +178,66 @@ fn sandbox_cc_version_succeeds_with_profile() {
         stdout.to_lowercase().contains("clang"),
         "expected clang in cc --version stdout, got: {stdout}"
     );
+}
+
+#[test]
+fn sandbox_exec_resolves_and_writes_under_tmpdir() {
+    use std::env;
+    use std::process::Command;
+
+    let home = env::var("HOME").unwrap_or_default();
+    let tmpdir_raw = env::var("TMPDIR").unwrap_or_else(|_| "/tmp".to_string());
+    let tmpdir = std::fs::canonicalize(&tmpdir_raw)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or(tmpdir_raw);
+    let project_root = env::current_dir()
+        .expect("current dir")
+        .to_string_lossy()
+        .to_string();
+    let marker = std::path::Path::new(&tmpdir)
+        .join(format!("vixl-sandbox-tmp-write-{}", std::process::id()));
+    let _ = std::fs::remove_file(&marker);
+
+    let profile = generate_seatbelt_profile(false, &home, &project_root);
+
+    let output = Command::new("/usr/bin/sandbox-exec")
+        .arg("-D")
+        .arg(format!("HOME={home}"))
+        .arg("-D")
+        .arg(format!("PROJECT_ROOT={project_root}"))
+        .arg("-D")
+        .arg(format!("TMPDIR={tmpdir}"))
+        .arg("-p")
+        .arg(&profile)
+        .env("TMPDIR", &tmpdir)
+        .env("VIXL_SANDBOX_MARKER", &marker)
+        .arg("/usr/bin/perl")
+        .arg("-e")
+        .arg(
+            r#"use Cwd "realpath";
+my $d = realpath($ENV{TMPDIR}) or die "realpath: $!\n";
+my $p = $ENV{VIXL_SANDBOX_MARKER};
+die "marker not under tmpdir" unless index($p, $d) == 0;
+open my $f, ">", $p or die "write: $!\n";
+print $f "ok";
+close $f;
+print "ok\n";"#,
+        )
+        .output()
+        .expect("sandbox-exec spawn");
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let wrote = std::fs::read_to_string(&marker);
+    let _ = std::fs::remove_file(&marker);
+
+    assert!(
+        output.status.success(),
+        "sandbox-exec TMPDIR write failed: status={} stderr={} stdout={}",
+        output.status,
+        stderr,
+        stdout
+    );
+    assert_eq!(stdout.trim(), "ok");
+    assert_eq!(wrote.expect("marker file"), "ok");
 }

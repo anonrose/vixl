@@ -21,7 +21,7 @@ import { clipTerminalLabel } from '@/utils/clip-terminal-label'
 const runTerminal = (ctx: HarnessToolContext) =>
   tool({
     description:
-      'Run a shell command in the project cwd. If the sandbox blocks the command it retries unsandboxed in the same execute; do not retry yourself. is_background returns shell_id; poll with terminal_output.',
+      'Run a shell command in the project cwd. If the sandbox blocks the command it retries unsandboxed in the same execute; do not retry yourself. is_background returns shell_id; poll with terminal_output. Do not create project scratch dirs (for example .tmp), redirect TMPDIR, TEMP, or TMP into the repo, or edit .gitignore; if the jail blocks the command, report the denial.',
     inputSchema: z.object({
       command: z.string().describe('Shell command to run in the project cwd'),
       is_background: z.boolean().optional().describe('Return shell_id without waiting'),

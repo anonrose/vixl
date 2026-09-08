@@ -30,6 +30,12 @@ describe('sandbox-result', () => {
     expect(footer).not.toContain('Run outside sandbox')
     expect(footer).toContain('Do not retry the same sandboxed command yourself')
     expect(footer).toContain('Do not write a .py workaround')
+    expect(footer).toContain(
+      'Do not create temp or scratch directories inside the project (for example .tmp)',
+    )
+    expect(footer).toContain('Do not redirect TMPDIR, TEMP, or TMP into the repo')
+    expect(footer).toContain('do not edit .gitignore to hide harness artifacts')
+    expect(footer).toContain('report the denial instead of working around it')
     expect(footer).not.toContain('required_permissions')
   })
 

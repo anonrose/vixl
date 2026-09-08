@@ -105,6 +105,38 @@ ${FSTAB_ONLY}`
     ).toBe('filesystem')
   })
 
+  it('classifies Node EPERM for any syscall, including lowercase and Windows temp paths', () => {
+    expect(
+      detectSandboxRuntimeDenial(
+        "Error: EPERM: operation not permitted, stat '/var/folders/zz/npm-XXXX/T'",
+      ),
+    ).toBe('filesystem')
+    expect(
+      detectSandboxRuntimeDenial(
+        "Error: EPERM: operation not permitted, stat 'C:\\Users\\aidan\\AppData\\Local\\Temp\\npm-123'",
+      ),
+    ).toBe('filesystem')
+    expect(
+      detectSandboxRuntimeDenial(
+        "Error: EPERM: operation not permitted, realpath '/var/folders/zz/T'",
+      ),
+    ).toBe('filesystem')
+    expect(
+      detectSandboxRuntimeDenial(
+        "Error: EPERM: operation not permitted, mkdir '/var/folders/zz/T/build'",
+      ),
+    ).toBe('filesystem')
+    expect(
+      detectSandboxRuntimeDenial(
+        "Error: EPERM: operation not permitted, scandir '/var/folders/zz/T'",
+      ),
+    ).toBe('filesystem')
+    expect(
+      detectSandboxRuntimeDenial('cp: operation not permitted'),
+    ).toBe('filesystem')
+    expect(detectSandboxRuntimeDenial('EPERM: access denied')).toBeNull()
+  })
+
   it('classifies DNS and connect network denials', () => {
     expect(
       detectSandboxRuntimeDenial('curl: (6) Could not resolve host: github.com'),

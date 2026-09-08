@@ -2,8 +2,16 @@ use std::process::Stdio;
 
 use tokio::process::Command;
 
+use crate::commands::mcp::merged_shell_path;
+
 #[cfg(target_os = "macos")]
 use super::super::sandbox::generate_seatbelt_profile;
+
+fn apply_merged_shell_path(cmd: &mut Command) {
+    if let Some(merged) = merged_shell_path() {
+        cmd.env("PATH", merged);
+    }
+}
 
 /// Resolve bash for `pipefail` honest pipeline exit codes.
 /// Cached once. Returns `None` when bash is unavailable (caller falls back to `sh`).
@@ -67,6 +75,7 @@ fn build_tracked_command(project_root: &str, command: &str) -> Command {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    apply_merged_shell_path(&mut cmd);
 
     unsafe {
         cmd.pre_exec(|| {
@@ -87,6 +96,7 @@ fn build_tracked_command(project_root: &str, command: &str) -> Command {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    apply_merged_shell_path(&mut cmd);
     cmd
 }
 
@@ -119,6 +129,8 @@ fn build_sandboxed_command(project_root: &str, command: &str, allow_network: boo
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    apply_merged_shell_path(&mut cmd);
+    cmd.env("TMPDIR", &tmpdir);
 
     #[cfg(unix)]
     unsafe {
@@ -213,6 +225,8 @@ fn build_bubblewrap_command(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+    apply_merged_shell_path(&mut cmd);
+    cmd.env("TMPDIR", "/tmp");
 
     #[cfg(unix)]
     unsafe {

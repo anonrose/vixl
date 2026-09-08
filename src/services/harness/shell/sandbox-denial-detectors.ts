@@ -258,12 +258,8 @@ const detectSandboxRuntimeDenial = (
 ): SandboxRuntimeDenialKind | null => {
   const text = combinedOutput
 
-  const hasNodeLstatEperm =
-    text.includes('EPERM') &&
-    text.includes('operation not permitted') &&
-    text.includes('lstat')
-  const hasGenericOperationNotPermitted = text.includes('Operation not permitted')
-  if (hasNodeLstatEperm || hasGenericOperationNotPermitted) {
+  // Covers Node `EPERM: operation not permitted, <syscall>` on all platforms, plus generic denials.
+  if (/operation not permitted/i.test(text)) {
     return 'filesystem'
   }
 

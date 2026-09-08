@@ -46,6 +46,8 @@ pub fn generate_seatbelt_profile(allow_network: bool, home: &str, project_root: 
 ; macOS symlink targets (var -> /private/var, etc -> /private/etc, tmp -> /private/tmp)
 ; Tools like cc/xcrun/xcode-select read /var/select/developer_dir; allow the symlink itself.
 (allow file-read* (literal "/var"))
+(allow file-read* (literal "/private/var"))
+(allow file-read* (literal "/private"))
 (allow file-read* (literal "/etc"))
 (allow file-read* (literal "/tmp"))
 

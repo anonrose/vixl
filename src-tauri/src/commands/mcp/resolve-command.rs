@@ -61,6 +61,36 @@ pub(crate) fn apply_resolved_path_env(command: &mut Command, program: &Path) {
     }
 }
 
+/// Deduped PATH for agent shell children: login PATH (unix), common bin dirs, process PATH.
+///
+/// Windows skips the login-shell probe and still returns process PATH plus common dirs.
+pub(crate) fn merged_shell_path() -> Option<OsString> {
+    let login = if cfg!(windows) {
+        None
+    } else {
+        cached_login_path().map(OsStr::new)
+    };
+    merge_path_from_sources(login, &common_bin_dirs(), env::var_os("PATH").as_deref())
+}
+
+fn merge_path_from_sources(
+    login_path: Option<&OsStr>,
+    common_dirs: &[PathBuf],
+    process_path: Option<&OsStr>,
+) -> Option<OsString> {
+    let mut entries = Vec::new();
+    if let Some(login) = login_path {
+        entries.extend(env::split_paths(login));
+    }
+    entries.extend(common_dirs.iter().cloned());
+    if let Some(rest) = process_path {
+        entries.extend(env::split_paths(rest));
+    }
+    let mut seen = std::collections::HashSet::new();
+    entries.retain(|entry| seen.insert(entry.clone()));
+    env::join_paths(entries).ok()
+}
+
 fn which_on_path(basename: &str, path: Option<&OsStr>) -> Option<PathBuf> {
     which::which_in_global(basename, path)
         .ok()
@@ -122,7 +152,9 @@ fn common_bin_dirs() -> Vec<PathBuf> {
     ];
     #[cfg(windows)]
     {
-        dirs.push(PathBuf::from(r"C:\Program Files\Docker\Docker\resources\bin"));
+        dirs.push(PathBuf::from(
+            r"C:\Program Files\Docker\Docker\resources\bin",
+        ));
         dirs.push(PathBuf::from(r"C:\Program Files\RedHat\Podman"));
     }
     if let Some(home) = home_dir() {

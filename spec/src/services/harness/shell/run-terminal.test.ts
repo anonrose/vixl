@@ -242,6 +242,12 @@ describe('build-tools run_terminal', () => {
     expect(String((result as { sandboxing: string }).sandboxing)).toContain(
       'the harness retries outside the sandbox if the user already approved this command',
     )
+    expect(String((result as { sandboxing: string }).sandboxing)).toContain(
+      'Do not redirect TMPDIR, TEMP, or TMP into the repo',
+    )
+    expect(tools.run_terminal.description).toContain(
+      'Do not create project scratch dirs (for example .tmp), redirect TMPDIR, TEMP, or TMP into the repo, or edit .gitignore',
+    )
   })
 
   it('reports signal death in command failed errors', async () => {
@@ -593,6 +599,81 @@ describe('build-tools run_terminal', () => {
         network: 'allow',
       },
     })
+  })
+
+  it('retries unsandboxed after Node EPERM stat on a temp dir', async () => {
+    const eperm =
+      "Error: EPERM: operation not permitted, stat '/var/folders/zz/npm-XXXX/T'"
+
+    createAgentShell
+      .mockResolvedValueOnce({
+        shellId: 'shell-1',
+        status: 'running',
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        chatId: 'chat-1',
+        projectRoot: '/project',
+        command: 'npm run build',
+        startedAt: new Date().toISOString(),
+      })
+      .mockResolvedValueOnce({
+        shellId: 'shell-2',
+        status: 'running',
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        chatId: 'chat-1',
+        projectRoot: '/project',
+        command: 'npm run build',
+        startedAt: new Date().toISOString(),
+      })
+    waitForShellExit
+      .mockResolvedValueOnce({ exitCode: 1, timedOut: false })
+      .mockResolvedValueOnce({ exitCode: 0, timedOut: false })
+    getAgentShell
+      .mockReturnValueOnce({
+        shellId: 'shell-1',
+        status: 'failed',
+        stdout: '',
+        stderr: eperm,
+        exitCode: 1,
+      })
+      .mockReturnValueOnce({
+        shellId: 'shell-2',
+        status: 'completed',
+        stdout: 'ok\n',
+        stderr: '',
+        exitCode: 0,
+      })
+
+    const buildTools = (await import('@/services/harness/build-tools')).default
+    const tools = buildTools(ctx)
+    const result = await runTool(tools.run_terminal.execute, {
+      command: 'npm run build',
+    })
+
+    expect(createAgentShell).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sandboxed: false,
+        allowNetwork: true,
+      }),
+    )
+    expect(result).toMatchObject({
+      sandboxed: false,
+      network: 'allow',
+      priorPhase: {
+        sandboxed: true,
+        network: 'allow',
+      },
+    })
+    expect(
+      String((result as { priorPhase: { error: string } }).priorPhase.error),
+    ).toContain('SANDBOX_RUNTIME_BLOCKED:')
+    expect(
+      String((result as { priorPhase: { error: string } }).priorPhase.error),
+    ).toContain('filesystem EPERM')
   })
 
   it('skips the network hop for filesystem jail and goes unsandboxed', async () => {
