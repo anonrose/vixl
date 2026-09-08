@@ -23,6 +23,8 @@ import { appShortcutHelp } from '@/utils/keyboard'
 import formatUnknownError from '@/utils/format-unknown-error'
 import type { VixlTheme } from '@/types/vixl/vixl-settings'
 
+const { VITE_APP_VERSION: appVersion, VITE_GIT_SHA: gitSha } = import.meta.env
+
 const themeOptions = [
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark', label: 'Dark', icon: Moon },
@@ -32,6 +34,14 @@ const themeOptions = [
 const config = useVixlConfig()
 const updater = useAppUpdater()
 const shortcutsOpen = ref(false)
+
+const versionLabel = computed(() => {
+  const version = appVersion || 'unknown'
+  if (gitSha && gitSha !== 'unknown') {
+    return `v${version} (${gitSha})`
+  }
+  return `v${version}`
+})
 
 const theme = computed(
   () => config.effectiveSettings.value['appearance.theme'] ?? 'system',
@@ -168,6 +178,7 @@ const handleDownloadAndRestart = async (): Promise<void> => {
             <TooltipContent>Check for updates</TooltipContent>
           </Tooltip>
         </div>
+        <p class="text-sm text-muted-foreground">Current version: {{ versionLabel }}</p>
         <div
           v-if="updater.updateAvailable.value"
           class="space-y-3 rounded-md border border-border bg-muted/30 p-3"

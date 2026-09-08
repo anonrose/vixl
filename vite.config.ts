@@ -1,3 +1,5 @@
+import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -13,7 +15,22 @@ import Components from 'unplugin-vue-components/vite'
 const enableVueDevTools =
   process.env.NODE_ENV !== 'production' && process.env.VITEST !== 'true'
 
+const tauriConfPath = fileURLToPath(new URL('./src-tauri/tauri.conf.json', import.meta.url))
+const tauriConf = JSON.parse(readFileSync(tauriConfPath, 'utf-8')) as { version: string }
+const appVersion = tauriConf.version
+
+let gitSha = 'unknown'
+try {
+  gitSha = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+} catch {
+  gitSha = 'unknown'
+}
+
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    'import.meta.env.VITE_GIT_SHA': JSON.stringify(gitSha),
+  },
   plugins: [
     AutoImport({
       imports: ['vue', '@vueuse/core'],
