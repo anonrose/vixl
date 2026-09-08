@@ -5,6 +5,7 @@ import parsePlan from '@/services/plans/parse-plan'
 import { updatePlanTodos } from '@/services/plans/write-plan'
 import { fsReadFile, fsWriteFile } from '@/services/vixl/vixl-tauri'
 import useWorkbenchStore from '@/composables/use-workbench-store'
+import { HOME_WORKSPACE_ID, isHomeChatSlug } from '@/constants/home-chat'
 import {
   getPlanExecutionSession,
   resolveUpdatePlanTodoPath,
@@ -56,9 +57,15 @@ const updatePlanTodo = (ctx: HarnessToolContext) =>
         content: nextContent,
       })
       const workbench = useWorkbenchStore()
-      const projectId = workbench.resolveProjectIdByRoot(ctx.projectRoot)
+      let projectId: string | null = null
+      if (isHomeChatSlug(ctx.projectSlug)) {
+        await workbench.ensureHomeRoot()
+        projectId = HOME_WORKSPACE_ID
+      } else {
+        projectId = workbench.resolveProjectIdByRoot(ctx.projectRoot)
+      }
       if (projectId) {
-        workbench.openPlan(
+        await workbench.openPlan(
           projectId,
           parsed.frontmatter!.id,
           resolvedPlanPath,

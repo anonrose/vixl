@@ -5,6 +5,8 @@ import useChatStore from '@/composables/use-chat-store'
 import useFleetRegistry from '@/composables/use-fleet-registry'
 import useVixlConfig from '@/composables/use-vixl-config'
 import { refreshFleetSidebar } from '@/composables/use-fleet-sidebar'
+import { createHomeProject } from '@/composables/workbench-store/helpers'
+import { isHomeChatSlug } from '@/constants/home-chat'
 import resolveModelForRole from '@/services/models/resolve-model-for-role'
 import { resolveReasoningForRole } from '@/services/models/resolve-reasoning-for-call'
 import loadPrompt from '@/services/prompts/load-prompt'
@@ -14,9 +16,11 @@ import {
   clearAwaitingPlanGo,
   setSubagentModelLock,
 } from '@/services/harness/plan-execution-session'
-import { readChatMeta, updateChatMeta } from '@/services/vixl/vixl-tauri'
-import type { VixlChatMode } from '@/types/vixl/vixl-settings'
+import { getUserHomeDir, readChatMeta, updateChatMeta } from '@/services/vixl/vixl-tauri'
+import chatRouteFor from '@/utils/chat-route-for'
+import type { FleetProject } from '@/types/fleet/fleet-project'
 import type { ReasoningLevel } from '@/types/models/reasoning-level'
+import type { VixlChatMode } from '@/types/vixl/vixl-settings'
 
 export type PlanExecutionMode = 'agent' | 'orchestrator'
 
@@ -66,7 +70,19 @@ export default () => {
       return false
     }
 
-    const project = fleet.projects.value.find((item) => item.id === input.projectId)
+    let project: FleetProject | undefined = fleet.projects.value.find(
+      (item) => item.id === input.projectId,
+    )
+    if (!project && isHomeChatSlug(input.projectId)) {
+      try {
+        project = createHomeProject(await getUserHomeDir())
+      } catch (error) {
+        toast.error('Could not start plan build', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+        return false
+      }
+    }
     if (!project) {
       toast.error('Project not found')
       return false
@@ -117,7 +133,9 @@ export default () => {
 
     building.value = true
     try {
-      await fleet.setActiveProject(project.id)
+      if (!isHomeChatSlug(project.id)) {
+        await fleet.setActiveProject(project.id)
+      }
 
       let chatId: string | null = null
       if (!input.freshChat) {
@@ -180,7 +198,7 @@ export default () => {
       })
 
       await refreshFleetSidebar()
-      await router.push(`/project/${project.slug}/chat/${chatId}`)
+      await router.push(chatRouteFor(project.slug, chatId))
       return true
     } catch (error) {
       toast.error('Could not start plan build', {

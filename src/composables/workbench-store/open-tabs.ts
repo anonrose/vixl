@@ -122,12 +122,20 @@ export const openTerminal = async (
   focusTab(tab.id)
 }
 
-export const openPlan = (
+export const openPlan = async (
   projectId: string,
   planId: string,
   path: string,
   label?: string,
-): void => {
+): Promise<void> => {
+  if (isHomeChatSlug(projectId)) {
+    await ensureHomeRoot()
+  }
+
+  const project = getProject(projectId)
+  const planPath =
+    path && project?.rootPath ? toProjectRelativePath(path, project.rootPath) : path
+
   const existing = findTab(
     (tab) => tab.type === 'plan' && (tab.payload as PlanPayload).planId === planId,
   )
@@ -140,8 +148,8 @@ export const openPlan = (
     id: createId(),
     type: 'plan',
     projectId,
-    label: label ?? planId,
-    payload: { planId, path } satisfies PlanPayload,
+    label: label ?? planPath,
+    payload: { planId, path: planPath } satisfies PlanPayload,
   }
   tabs.value.push(tab)
   focusTab(tab.id)

@@ -51,6 +51,12 @@ const updatePlanFrontmatter = vi.hoisted(
 const routerPush = vi.hoisted(
   () => vi.fn<(to: string) => Promise<void>>(async () => undefined),
 )
+const setActiveProject = vi.hoisted(
+  () => vi.fn<(projectId: string | null) => Promise<void>>(async () => undefined),
+)
+const getUserHomeDir = vi.hoisted(
+  () => vi.fn<() => Promise<string>>(async () => '/Users/test-home'),
+)
 
 const sessionStatus = ref<ChatStatus | null>('idle')
 
@@ -86,9 +92,7 @@ vi.mock('@/composables/use-fleet-registry', () => ({
         },
       ],
     },
-    setActiveProject: vi.fn<(projectId: string | null) => Promise<void>>(
-      async () => undefined,
-    ),
+    setActiveProject,
   }),
 }))
 
@@ -140,6 +144,7 @@ vi.mock('@/services/harness/plan-execution-session', () => ({
 }))
 
 vi.mock('@/services/vixl/vixl-tauri', () => ({
+  getUserHomeDir,
   readChatMeta: (projectSlug: string, chatId: string) =>
     readChatMetaMock(projectSlug, chatId),
   updateChatMeta: (
@@ -165,6 +170,9 @@ describe('use-start-plan-build', () => {
     setPendingChatMessageMock.mockClear()
     updatePlanFrontmatter.mockClear()
     routerPush.mockClear()
+    setActiveProject.mockClear()
+    getUserHomeDir.mockClear()
+    getUserHomeDir.mockResolvedValue('/Users/test-home')
     vi.mocked(toast.error).mockClear()
     sessionStatus.value = 'idle'
     createNewChat.mockResolvedValue({ id: 'fresh-chat' })
@@ -217,6 +225,37 @@ describe('use-start-plan-build', () => {
         patch: expect.objectContaining({ lastBuildChatId: 'fresh-chat' }),
       }),
     )
+    expect(setActiveProject).toHaveBeenCalledWith('proj-1')
+    expect(routerPush).toHaveBeenCalledWith('/project/proj/chat/fresh-chat')
+  })
+
+  it('synthesizes the home workspace, skips setActiveProject, and routes to /chat', async () => {
+    const { startPlanBuild } = useStartPlanBuild()
+
+    const result = await startPlanBuild({
+      ...baseInput,
+      projectId: '_home_',
+      freshChat: true,
+    })
+
+    expect(result).toBe(true)
+    expect(getUserHomeDir).toHaveBeenCalled()
+    expect(setActiveProject).not.toHaveBeenCalled()
+    expect(createNewChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectSlug: '_home_',
+        projectRoot: '/Users/test-home',
+        title: 'Example plan',
+      }),
+    )
+    expect(forChat).toHaveBeenCalledWith('_home_', 'fresh-chat')
+    expect(updatePlanFrontmatter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectRoot: '/Users/test-home',
+        path: 'plans/example.md',
+      }),
+    )
+    expect(routerPush).toHaveBeenCalledWith('/chat/fresh-chat')
   })
 
   it('prefers lastBuildChatId over sourceChatId when reusing a chat', async () => {

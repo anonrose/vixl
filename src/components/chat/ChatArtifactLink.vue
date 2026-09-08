@@ -7,6 +7,7 @@ import type { ChatArtifact } from '@/types/chat/chat-artifact'
 import { Button } from '@/components/shadcn/ui/button'
 import useFleetRegistry from '@/composables/use-fleet-registry'
 import useWorkbenchStore from '@/composables/use-workbench-store'
+import { HOME_WORKSPACE_ID, isHomeChatSlug } from '@/constants/home-chat'
 import openAtLine from '@/utils/open-at-line'
 
 const props = defineProps<{
@@ -19,6 +20,13 @@ const workbench = useWorkbenchStore()
 
 const projectId = computed(() => {
   const slug = String(route.params.slug ?? '')
+  const standalone =
+    route.name === 'home-chat' ||
+    route.name === 'home-chat-subagent' ||
+    isHomeChatSlug(slug)
+  if (standalone) {
+    return HOME_WORKSPACE_ID
+  }
   const project = fleet.projects.value.find((item) => item.slug === slug)
   return project?.id ?? fleet.activeProjectId.value
 })
@@ -74,7 +82,7 @@ const handleOpen = async (event: MouseEvent): Promise<void> => {
       const planId =
         props.artifact.path.match(/^\.vixl\/plans\/([^/]+)\//)?.[1] ??
         displayLabel.value
-      workbench.openPlan(id, planId, props.artifact.path, props.artifact.label)
+      await workbench.openPlan(id, planId, props.artifact.path, props.artifact.label)
       return
     }
 

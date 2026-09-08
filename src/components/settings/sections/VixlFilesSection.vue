@@ -33,6 +33,7 @@ import {
   lastVixlFileChange,
   vixlFileChangeToken,
 } from '@/composables/use-vixl-live-sync'
+import { HOME_WORKSPACE_ID } from '@/constants/home-chat'
 import type { VixlFilesKind } from '@/services/vixl/vixl-tauri'
 import {
   fsMkdir,
@@ -159,6 +160,9 @@ const toRelativePath = (absolutePath: string): string => {
 }
 
 const resolveProjectIdForSettings = (): string | null => {
+  if (props.tab === 'personal') {
+    return HOME_WORKSPACE_ID
+  }
   const root = config.activeRootPath.value
   if (props.tab === 'project' && root) {
     const match = fleet.projects.value.find((project) => project.rootPath === root)
@@ -169,7 +173,7 @@ const resolveProjectIdForSettings = (): string | null => {
   return fleet.activeProjectId.value
 }
 
-const openInEditor = (file: ProjectFileEntry): void => {
+const openInEditor = async (file: ProjectFileEntry): Promise<void> => {
   const projectId = resolveProjectIdForSettings()
   if (!projectId) {
     return
@@ -177,12 +181,18 @@ const openInEditor = (file: ProjectFileEntry): void => {
 
   const relativePath = toRelativePath(file.path)
 
-  if (props.kind === 'plans') {
-    workbench.openPlan(projectId, file.name, relativePath, file.name)
-    return
-  }
+  try {
+    if (props.kind === 'plans') {
+      await workbench.openPlan(projectId, file.name, relativePath, file.name)
+      return
+    }
 
-  workbench.openEditor(projectId, relativePath)
+    await workbench.openEditor(projectId, relativePath)
+  } catch (error) {
+    toast.error('Failed to open file', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
 }
 
 const handleSelectForm = (): void => {
