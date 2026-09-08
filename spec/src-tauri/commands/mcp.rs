@@ -8,8 +8,13 @@ fn mcp_command_allowlist() {
     assert!(validate_mcp_spawn("uvx", &["some-server".into()]).is_ok());
     assert!(validate_mcp_spawn("codegraph", &["serve".into(), "--mcp".into()]).is_ok());
     assert!(validate_mcp_spawn("CODEGRAPH", &["serve".into(), "--mcp".into()]).is_ok());
+    assert!(validate_mcp_spawn("docker", &[]).is_ok());
+    assert!(validate_mcp_spawn("podman", &[]).is_ok());
+    assert!(validate_mcp_spawn("nerdctl", &[]).is_ok());
+    assert!(validate_mcp_spawn("bunx", &[]).is_ok());
     assert!(validate_mcp_spawn("/usr/bin/npx", &[]).is_err());
     assert!(validate_mcp_spawn("/usr/local/bin/codegraph", &[]).is_err());
+    assert!(validate_mcp_spawn("/usr/bin/docker", &[]).is_err());
     assert!(validate_mcp_spawn("bash", &["-c".into(), "id".into()]).is_err());
     assert!(validate_mcp_spawn("npx", &["ok\0evil".into()]).is_err());
 }

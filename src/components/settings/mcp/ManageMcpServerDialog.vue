@@ -95,14 +95,14 @@ const {
               placeholder="npx"
             />
             <p class="text-xs text-muted-foreground">
-              PATH basename only (for example npx or uvx). Review before trusting.
+              PATH basename only (for example npx, uvx, or docker). Review before trusting.
             </p>
           </div>
           <div class="space-y-2">
             <Label>Args (comma-separated)</Label>
             <Input
               v-model="argsText"
-              placeholder="-y, @brave/brave-search-mcp-server, --transport, stdio"
+              placeholder="-y, @brave/brave-search-mcp-server or run, -i, --rm, mcp/docker-server"
             />
           </div>
 

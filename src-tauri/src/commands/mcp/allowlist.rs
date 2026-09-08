@@ -1,6 +1,7 @@
 use std::path::Path;
 
 /// Basenames allowed for MCP stdio servers (resolved via PATH). Absolute paths are rejected.
+/// The frontend mirrors this list in `src/services/mcp/allowed-mcp-commands.ts` and must stay in sync.
 const ALLOWED_MCP_COMMANDS: &[&str] = &[
     "npx",
     "npm",
@@ -8,6 +9,7 @@ const ALLOWED_MCP_COMMANDS: &[&str] = &[
     "pnpm",
     "yarn",
     "bun",
+    "bunx",
     "deno",
     "uvx",
     "uv",
@@ -15,6 +17,9 @@ const ALLOWED_MCP_COMMANDS: &[&str] = &[
     "python3",
     "pipx",
     "codegraph",
+    "docker",
+    "podman",
+    "nerdctl",
 ];
 
 pub fn validate_mcp_spawn(command: &str, args: &[String]) -> Result<(), String> {

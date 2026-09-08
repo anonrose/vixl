@@ -8,6 +8,7 @@ import type {
   McpStdioServer,
 } from '@/types/vixl/mcp-config'
 import { isMcpHttpServer, isMcpStdioServer } from '@/types/vixl/mcp-config'
+import validateMcpStdioCommand from '@/services/mcp/validate-mcp-stdio-command'
 import { mcpInputKey } from '@/services/mcp/mcp-keychain-keys'
 import { getSecret } from '@/services/vixl/vixl-tauri'
 
@@ -235,6 +236,11 @@ export default (props: ManageMcpServerDialogProps, emit: ManageMcpServerDialogEm
       }
       if (!stdio.command) {
         toast.error('Command is required')
+        return
+      }
+      const commandError = validateMcpStdioCommand(stdio.command)
+      if (commandError) {
+        toast.error(commandError)
         return
       }
       for (const row of envRows.value) {

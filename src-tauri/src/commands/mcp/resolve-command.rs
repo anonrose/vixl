@@ -118,9 +118,16 @@ fn common_bin_dirs() -> Vec<PathBuf> {
         PathBuf::from("/opt/homebrew/bin"),
         PathBuf::from("/usr/local/bin"),
         PathBuf::from("/usr/bin"),
+        PathBuf::from("/opt/podman/bin"),
     ];
+    #[cfg(windows)]
+    {
+        dirs.push(PathBuf::from(r"C:\Program Files\Docker\Docker\resources\bin"));
+        dirs.push(PathBuf::from(r"C:\Program Files\RedHat\Podman"));
+    }
     if let Some(home) = home_dir() {
         dirs.push(home.join(".local/bin"));
+        dirs.push(home.join(".docker/bin"));
         dirs.push(home.join(".volta/bin"));
         dirs.push(home.join(".fnm/aliases/default/bin"));
         dirs.push(home.join(".local/share/fnm/aliases/default/bin"));

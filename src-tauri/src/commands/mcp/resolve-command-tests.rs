@@ -104,6 +104,41 @@ fn portable_sibling_is_last_fallback() {
 }
 
 #[test]
+fn common_bin_dirs_include_container_runtime_paths() {
+    let dirs = common_bin_dirs();
+    assert!(dirs.contains(&PathBuf::from("/opt/podman/bin")));
+    if let Some(home) = home_dir() {
+        assert!(dirs.contains(&home.join(".docker/bin")));
+    }
+    #[cfg(windows)]
+    {
+        assert!(dirs.contains(&PathBuf::from(
+            r"C:\Program Files\Docker\Docker\resources\bin"
+        )));
+        assert!(dirs.contains(&PathBuf::from(r"C:\Program Files\RedHat\Podman")));
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn container_bin_dir_used_when_path_vars_miss() {
+    let extra_dir = unique_dir("docker-bin");
+    let extra_bin = write_fake_bin(&extra_dir, "docker");
+
+    let found = resolve_on_sources(
+        "docker",
+        Some(OsStr::new("")),
+        Some(OsStr::new("")),
+        &[extra_dir.clone()],
+        None,
+    )
+    .expect("resolve");
+    assert_eq!(found, extra_bin);
+
+    let _ = fs::remove_dir_all(extra_dir);
+}
+
+#[test]
 fn missing_command_error_names_basename() {
     let error = resolve_on_sources(
         "vixl-missing-npx",
