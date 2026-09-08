@@ -7,7 +7,6 @@ pub fn host_asset_target() -> String {
     let os = std::env::consts::OS;
     match (os, arch) {
         ("macos", "aarch64") => "aarch64-apple-darwin".to_string(),
-        ("macos", "x86_64") => "x86_64-apple-darwin".to_string(),
         ("linux", "aarch64") => "aarch64-unknown-linux-gnu".to_string(),
         ("linux", "x86_64") => "x86_64-unknown-linux-gnu".to_string(),
         ("windows", "x86_64") => "x86_64-pc-windows-msvc".to_string(),
@@ -23,7 +22,6 @@ pub(crate) fn github_target_token(style: GithubTargetStyle) -> Result<String, St
         GithubTargetStyle::RustTriple => Ok(host_asset_target()),
         GithubTargetStyle::NodeStyle => Ok(match (os, arch) {
             ("macos", "aarch64") => "darwin-arm64".to_string(),
-            ("macos", "x86_64") => "darwin-x64".to_string(),
             ("linux", "aarch64") => "linux-arm64".to_string(),
             ("linux", "x86_64") => "linux-x64".to_string(),
             ("windows", "x86_64") => "win32-x64".to_string(),
@@ -51,7 +49,6 @@ pub(crate) fn github_target_token(style: GithubTargetStyle) -> Result<String, St
         }),
         GithubTargetStyle::ZigOsArch => Ok(match (os, arch) {
             ("macos", "aarch64") => "aarch64-macos".to_string(),
-            ("macos", "x86_64") => "x86_64-macos".to_string(),
             ("linux", "aarch64") => "aarch64-linux".to_string(),
             ("linux", "x86_64") => "x86_64-linux".to_string(),
             ("windows", "x86_64") => "x86_64-windows".to_string(),
@@ -60,7 +57,6 @@ pub(crate) fn github_target_token(style: GithubTargetStyle) -> Result<String, St
         }),
         GithubTargetStyle::TaploOsArch => Ok(match (os, arch) {
             ("macos", "aarch64") => "darwin-aarch64".to_string(),
-            ("macos", "x86_64") => "darwin-x86_64".to_string(),
             ("linux", "aarch64") => "linux-aarch64".to_string(),
             ("linux", "x86_64") => "linux-x86_64".to_string(),
             ("windows", "x86_64") => "windows-x86_64".to_string(),
@@ -69,7 +65,6 @@ pub(crate) fn github_target_token(style: GithubTargetStyle) -> Result<String, St
         }),
         GithubTargetStyle::ClojureNative => Ok(match (os, arch) {
             ("macos", "aarch64") => "macos-aarch64".to_string(),
-            ("macos", "x86_64") => "macos-amd64".to_string(),
             ("linux", "aarch64") => "linux-aarch64".to_string(),
             ("linux", "x86_64") => "linux-amd64".to_string(),
             ("windows", "x86_64") => "windows-amd64".to_string(),
@@ -77,14 +72,12 @@ pub(crate) fn github_target_token(style: GithubTargetStyle) -> Result<String, St
         }),
         GithubTargetStyle::LemminxOs => Ok(match (os, arch) {
             ("macos", "aarch64") => "osx-aarch_64".to_string(),
-            ("macos", "x86_64") => "osx-x86_64".to_string(),
             ("linux", _) => "linux".to_string(),
             ("windows", _) => "win32".to_string(),
             _ => return Err(format!("Unsupported platform for lemminx: {os}/{arch}")),
         }),
         GithubTargetStyle::HashicorpOsArch => Ok(match (os, arch) {
             ("macos", "aarch64") => "darwin_arm64".to_string(),
-            ("macos", "x86_64") => "darwin_amd64".to_string(),
             ("linux", "aarch64") => "linux_arm64".to_string(),
             ("linux", "x86_64") => "linux_amd64".to_string(),
             ("windows", "x86_64") => "windows_amd64".to_string(),

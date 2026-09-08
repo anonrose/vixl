@@ -12,7 +12,6 @@ fn node_dist_name() -> Result<String, String> {
     let version = "v22.14.0";
     match (std::env::consts::OS, std::env::consts::ARCH) {
         ("macos", "aarch64") => Ok(format!("node-{version}-darwin-arm64")),
-        ("macos", "x86_64") => Ok(format!("node-{version}-darwin-x64")),
         ("linux", "aarch64") => Ok(format!("node-{version}-linux-arm64")),
         ("linux", "x86_64") => Ok(format!("node-{version}-linux-x64")),
         ("windows", "x86_64") => Ok(format!("node-{version}-win-x64")),

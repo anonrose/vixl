@@ -22,20 +22,10 @@ jobs:
             rust_targets: aarch64-apple-darwin
             cache_key: macos-latest-aarch64-apple-darwin-release
           - platform: macos-latest
-            label: macOS x86_64 dmg
-            args: '--target x86_64-apple-darwin --bundles dmg'
-            rust_targets: x86_64-apple-darwin
-            cache_key: macos-latest-x86_64-apple-darwin-release
-          - platform: macos-latest
             label: macOS aarch64 app
             args: '--target aarch64-apple-darwin --bundles app'
             rust_targets: aarch64-apple-darwin
             cache_key: macos-latest-aarch64-apple-darwin-release
-          - platform: macos-latest
-            label: macOS x86_64 app
-            args: '--target x86_64-apple-darwin --bundles app'
-            rust_targets: x86_64-apple-darwin
-            cache_key: macos-latest-x86_64-apple-darwin-release
           - platform: ubuntu-24.04
             label: Linux AppImage
             args: '--bundles appimage --verbose'
