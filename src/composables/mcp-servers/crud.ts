@@ -9,7 +9,7 @@ import { mcpKnownSecretKeys } from '@/services/mcp/mcp-keychain-keys'
 import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
 import { sessionTrusts } from '@/services/mcp/mcp-trust'
 import { isInternalMcpServer } from '@/types/codegraph/managed-codegraph'
-import { deleteSecret } from '@/services/vixl/vixl-tauri'
+import { deleteSecret, setMcpServerEnabled } from '@/services/vixl/vixl-tauri'
 import type { SettingsTab } from '@/composables/use-vixl-config'
 import { withServerLoading } from './helpers'
 import { saveScopedConfig, refreshStates } from './config'
@@ -202,6 +202,7 @@ export const createSetServerEnabled = (
 
   const nextConfig: McpServerConfig = { ...existing, enabled }
   const nextScoped: McpConfig = {
+    ...scoped,
     servers: {
       ...scoped.servers,
       [serverId]: nextConfig,
@@ -216,7 +217,7 @@ export const createSetServerEnabled = (
 
   await withServerLoading(serverId, async () => {
     try {
-      await saveScopedConfig(tab, nextScoped, rootPath)
+      await setMcpServerEnabled(tab, serverId, enabled, rootPath)
 
       if (enabled) {
         await startServer(serverId, nextConfig, { quiet: true, manageLoading: false })

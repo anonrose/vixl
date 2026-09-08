@@ -34,6 +34,10 @@ export type McpConfig = {
   inputs?: McpInputDefinition[]
 }
 
+export type ParseMcpConfigResult =
+  | { ok: true; config: McpConfig }
+  | { ok: false; error: string }
+
 export type McpServerScope = 'personal' | 'project' | 'overridden'
 
 export type McpServerStatus =

@@ -5,24 +5,16 @@ use tauri::AppHandle;
 
 use super::paths::{resolve_project_vixl_dir, user_vixl_dir};
 
-fn read_json(path: &PathBuf) -> Result<serde_json::Value, String> {
-    if !path.exists() {
-        return Ok(serde_json::json!({}));
-    }
-    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    if content.trim().is_empty() {
-        return Ok(serde_json::json!({}));
-    }
-    serde_json::from_str(&content).map_err(|e| e.to_string())
-}
+mod json_patch;
+mod read_json;
+mod set_mcp_server_enabled;
+mod write_json;
 
-fn write_json(path: &PathBuf, value: serde_json::Value) -> Result<(), String> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    let content = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
-    fs::write(path, content).map_err(|e| e.to_string())
-}
+pub(crate) use read_json::read_json;
+pub use set_mcp_server_enabled::{
+    apply_mcp_server_enabled, set_mcp_server_enabled, set_mcp_server_enabled_at_path,
+};
+pub use write_json::{write_atomic, write_json};
 
 fn path_has_vixl_ancestor(path: &Path) -> bool {
     path.ancestors().any(|ancestor| {
@@ -167,7 +159,11 @@ pub(crate) fn tray_background_enabled(_app: &AppHandle) -> bool {
     true
 }
 
-fn mcp_path(app: &AppHandle, scope: &str, root_path: Option<String>) -> Result<PathBuf, String> {
+pub(crate) fn mcp_path(
+    app: &AppHandle,
+    scope: &str,
+    root_path: Option<String>,
+) -> Result<PathBuf, String> {
     base_path(app, scope, root_path).map(|p| p.join("mcp.json"))
 }
 

@@ -107,6 +107,8 @@ vi.mock('@/services/mcp/mcp-trust', () => ({
   clearSessionTrust: vi.fn<() => void>(),
 }))
 
+import { isMcpTrusted } from '@/services/mcp/mcp-trust'
+
 
 const createAgentShell = vi.fn<
   (args: { chatId: string; projectRoot: string; command: string }) => Promise<{
@@ -185,6 +187,7 @@ describe('build-tools call_mcp_tool args normalization', () => {
       error: null,
     })
     mcpCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] })
+    vi.mocked(isMcpTrusted).mockReturnValue(true)
   })
 
   const ctx = {
@@ -250,6 +253,48 @@ describe('build-tools call_mcp_tool args normalization', () => {
     expect(mcpCallTool).toHaveBeenCalledWith('brave', 'brave_web_search', {
       query: 'Brave Search API',
     })
+  })
+
+  it('returns a missing-config error when the server is absent', async () => {
+    readMcpConfig.mockResolvedValue({ servers: {} })
+    const buildTools = (await import('@/services/harness/build-tools')).default
+    const tools = buildTools(ctx)
+    const result = await runTool(
+      tools.call_mcp_tool.execute,
+      {
+        serverId: 'brave',
+        tool: 'brave_web_search',
+        args: { query: 'search' },
+      },
+      'tc-mcp-missing',
+    )
+
+    expect(result).toEqual({
+      error:
+        'MCP server "brave" was not found in any mcp.json config. It may have been removed, or the config failed to load.',
+    })
+    expect(mcpCallTool).not.toHaveBeenCalled()
+  })
+
+  it('returns the trust error when the server is present but untrusted', async () => {
+    vi.mocked(isMcpTrusted).mockReturnValue(false)
+    const buildTools = (await import('@/services/harness/build-tools')).default
+    const tools = buildTools(ctx)
+    const result = await runTool(
+      tools.call_mcp_tool.execute,
+      {
+        serverId: 'brave',
+        tool: 'brave_web_search',
+        args: { query: 'search' },
+      },
+      'tc-mcp-untrusted',
+    )
+
+    expect(result).toEqual({
+      error:
+        'MCP server "brave" has not been granted trust. Open Settings → MCP and start the server to grant trust before the agent can call its tools.',
+    })
+    expect(mcpCallTool).not.toHaveBeenCalled()
   })
 })
 

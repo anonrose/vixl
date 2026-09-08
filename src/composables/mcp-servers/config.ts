@@ -1,6 +1,6 @@
 import { toast } from 'vue-sonner'
 import type { McpConfig } from '@/types/vixl/mcp-config'
-import { migrateMcpConfig } from '@/schemas/mcp-config'
+import { parseMcpConfig } from '@/schemas/mcp-config'
 import stripCodegraphMcpServer from '@/services/codegraph/strip-codegraph-mcp-server'
 import mcpRuntime from '@/services/mcp/mcp-runtime'
 import { isInternalMcpServer, CODEGRAPH_SERVER_ID } from '@/types/codegraph/managed-codegraph'
@@ -20,27 +20,40 @@ import {
   serverStates,
 } from './state'
 
+const loadScopedConfig = async (
+  scope: 'personal' | 'project',
+  rootPath: string | null,
+): Promise<{ config: McpConfig; hadCodegraph: boolean }> => {
+  const raw = await readMcpConfig(scope, rootPath)
+  const parsed = parseMcpConfig(raw)
+  if (!parsed.ok) {
+    throw new Error(parsed.error)
+  }
+  const hadCodegraph = CODEGRAPH_SERVER_ID in parsed.config.servers
+  return {
+    config: stripCodegraphMcpServer(parsed.config),
+    hadCodegraph,
+  }
+}
+
 export const loadConfigs = async (rootPath: string | null): Promise<void> => {
-  const personalRaw = await readMcpConfig('personal')
-  const personalMigrated = migrateMcpConfig(personalRaw)
-  const personalHadCodegraph = CODEGRAPH_SERVER_ID in personalMigrated.servers
-  const personal = stripCodegraphMcpServer(personalMigrated)
-  personalMcp.value = personal
-  if (personalHadCodegraph) {
-    await writeMcpConfig('personal', personal, null)
+  const personalLoaded = await loadScopedConfig('personal', null)
+
+  let project: McpConfig = { servers: {} }
+  let projectHadCodegraph = false
+  if (rootPath) {
+    const projectLoaded = await loadScopedConfig('project', rootPath)
+    project = projectLoaded.config
+    projectHadCodegraph = projectLoaded.hadCodegraph
   }
 
-  if (rootPath) {
-    const projectRaw = await readMcpConfig('project', rootPath)
-    const projectMigrated = migrateMcpConfig(projectRaw)
-    const projectHadCodegraph = CODEGRAPH_SERVER_ID in projectMigrated.servers
-    const project = stripCodegraphMcpServer(projectMigrated)
-    projectMcp.value = project
-    if (projectHadCodegraph) {
-      await writeMcpConfig('project', project, rootPath)
-    }
-  } else {
-    projectMcp.value = { servers: {} }
+  personalMcp.value = personalLoaded.config
+  projectMcp.value = project
+  if (personalLoaded.hadCodegraph) {
+    await writeMcpConfig('personal', personalLoaded.config, null)
+  }
+  if (rootPath && projectHadCodegraph) {
+    await writeMcpConfig('project', project, rootPath)
   }
 }
 

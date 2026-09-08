@@ -35,6 +35,7 @@ export {
   writeSettings,
   readMcpConfig,
   writeMcpConfig,
+  setMcpServerEnabled,
   readLspConfig,
   writeLspConfig,
   watchVixlPaths,

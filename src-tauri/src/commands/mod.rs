@@ -31,7 +31,7 @@ pub use chat::{
 pub use codegraph::{codegraph_cli, codegraph_store_stat, delete_graph, list_graphs};
 pub use config::{
     config_exists, read_json_file, read_lsp_config, read_mcp_config, read_settings,
-    write_json_file, write_lsp_config, write_mcp_config, write_settings,
+    set_mcp_server_enabled, write_json_file, write_lsp_config, write_mcp_config, write_settings,
 };
 pub use file_checkpoint::{file_checkpoint_capture, file_checkpoint_restore};
 pub use fs::{

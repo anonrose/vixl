@@ -24,12 +24,12 @@ use commands::{
     read_chat_meta, read_chat_usage, read_json_file, read_lsp_config, read_mcp_config,
     read_settings, registry_add_project, registry_list_projects, registry_remove_project,
     registry_set_active_project, registry_update_project_root, resolve_launch_path,
-    reveal_in_folder, set_secret, shell_kill_pty, shell_kill_tracked, shell_resize_pty,
-    shell_spawn_pty, shell_spawn_tracked, shell_write_pty, truncate_chat_log, update_chat_meta,
-    watch_git_head, watch_vixl_paths, web_fetch, workbench_load_session, workbench_replace_session,
-    workspace_glob, workspace_grep, write_chat_usage, write_json_file, write_lsp_config,
-    write_mcp_config, write_settings, write_temp_bytes, write_temp_handoff, write_text_file,
-    GitHeadWatchState, OAuthLoopbackState, WatchState,
+    reveal_in_folder, set_mcp_server_enabled, set_secret, shell_kill_pty, shell_kill_tracked,
+    shell_resize_pty, shell_spawn_pty, shell_spawn_tracked, shell_write_pty, truncate_chat_log,
+    update_chat_meta, watch_git_head, watch_vixl_paths, web_fetch, workbench_load_session,
+    workbench_replace_session, workspace_glob, workspace_grep, write_chat_usage, write_json_file,
+    write_lsp_config, write_mcp_config, write_settings, write_temp_bytes, write_temp_handoff,
+    write_text_file, GitHeadWatchState, OAuthLoopbackState, WatchState,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -111,6 +111,7 @@ pub fn run_with_launch_path(launch_path: Option<String>) {
         write_settings,
         read_mcp_config,
         write_mcp_config,
+        set_mcp_server_enabled,
         read_json_file,
         write_json_file,
         config_exists,

@@ -19,6 +19,10 @@ export function createVixlTauriMock(overrides: Record<string, unknown> = {}) {
     readMcpConfig: vi.fn<() => Promise<{ servers: Record<string, unknown> }>>(async () => ({
       servers: {},
     })),
+    writeMcpConfig: vi.fn<() => Promise<void>>(async () => {}),
+    setMcpServerEnabled: vi.fn<
+      (scope: string, serverId: string, enabled: boolean, rootPath?: string | null) => Promise<boolean>
+    >(async () => true),
     listVixlFiles: vi.fn<() => Promise<unknown[]>>(async () => []),
     getVixlDir: vi.fn<(scope: string) => Promise<string>>(async () => '/tmp/personal-vixl'),
     mcpListStatuses: vi.fn<() => Promise<Record<string, unknown>>>(async () => ({})),

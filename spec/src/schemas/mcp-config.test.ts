@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultMcpConfig, migrateMcpConfig } from '@/schemas/mcp-config'
+import { defaultMcpConfig, migrateMcpConfig, parseMcpConfig } from '@/schemas/mcp-config'
 import { isMcpHttpServer, isMcpStdioServer } from '@/types/vixl/mcp-config'
 
 describe('migrateMcpConfig', () => {
@@ -93,5 +93,28 @@ describe('migrateMcpConfig', () => {
     expect(isMcpHttpServer(migrated.servers.stdio!)).toBe(false)
     expect(isMcpHttpServer(migrated.servers.http!)).toBe(true)
     expect(isMcpStdioServer(migrated.servers.http!)).toBe(false)
+  })
+})
+
+describe('parseMcpConfig', () => {
+  it('treats missing and empty objects as a valid empty config', () => {
+    expect(parseMcpConfig(null)).toEqual({ ok: true, config: defaultMcpConfig() })
+    expect(parseMcpConfig({})).toEqual({ ok: true, config: defaultMcpConfig() })
+    expect(parseMcpConfig({ servers: {} })).toEqual({
+      ok: true,
+      config: { servers: {} },
+    })
+  })
+
+  it('fails when the payload has content but no recoverable servers', () => {
+    expect(parseMcpConfig('nope').ok).toBe(false)
+    expect(parseMcpConfig({ mcpServers: { local: { command: 'npx' } } }).ok).toBe(false)
+    expect(
+      parseMcpConfig({
+        servers: {
+          bad: { command: '' },
+        },
+      }).ok,
+    ).toBe(false)
   })
 })

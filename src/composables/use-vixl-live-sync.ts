@@ -35,6 +35,16 @@ export default () => {
     await watchVixlPaths(config.activeRootPath.value)
   }
 
+  const loadMcpConfigs = async (rootPath: string | null): Promise<void> => {
+    try {
+      await mcp.loadConfigs(rootPath)
+    } catch (error) {
+      toast.error('Failed to load MCP config', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }
+
   const applyChange = async (change: VixlFileChange): Promise<void> => {
     lastVixlFileChange.value = change
     vixlFileChangeToken.value += 1
@@ -64,7 +74,7 @@ export default () => {
     await fleet.refresh()
     await fleet.ensureDefaultProject()
     await config.refreshAll()
-    await mcp.loadConfigs(config.activeRootPath.value)
+    await loadMcpConfigs(config.activeRootPath.value)
     await mcp.refreshStates()
     await syncWatcher()
 
@@ -85,7 +95,7 @@ export default () => {
     () => config.activeRootPath.value,
     async (rootPath) => {
       await config.refreshAll()
-      await mcp.loadConfigs(rootPath)
+      await loadMcpConfigs(rootPath)
       await mcp.refreshStates()
       await syncWatcher()
     },

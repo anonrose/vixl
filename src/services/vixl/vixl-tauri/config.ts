@@ -40,6 +40,19 @@ export const writeMcpConfig = (
 ): Promise<void> =>
   call('write_mcp_config', { scope, config, rootPath: rootPath ?? null })
 
+export const setMcpServerEnabled = (
+  scope: ConfigScope,
+  serverId: string,
+  enabled: boolean,
+  rootPath?: string | null,
+): Promise<boolean> =>
+  call('set_mcp_server_enabled', {
+    scope,
+    serverId,
+    enabled,
+    rootPath: rootPath ?? null,
+  })
+
 export const readLspConfig = async (): Promise<Record<string, unknown> | boolean> => {
   const raw = await call<unknown>('read_lsp_config')
   const parsed = lspConfigSchema.safeParse(raw)

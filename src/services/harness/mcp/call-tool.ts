@@ -32,6 +32,11 @@ const callMcpTool = (ctx: HarnessToolContext) =>
     execute: async ({ serverId, tool: toolName, args }, { toolCallId }) => {
       const trust = await resolveTrustedMcpServer(ctx, serverId)
       if (!trust.trusted) {
+        if (trust.reason === 'missing') {
+          return {
+            error: `MCP server "${serverId}" was not found in any mcp.json config. It may have been removed, or the config failed to load.`,
+          }
+        }
         return {
           error: `MCP server "${serverId}" has not been granted trust. Open Settings → MCP and start the server to grant trust before the agent can call its tools.`,
         }

@@ -120,6 +120,10 @@ name = "commands_mcp"
 path = "../spec/src-tauri/commands/mcp.rs"
 
 [[test]]
+name = "commands_config"
+path = "../spec/src-tauri/commands/config.rs"
+
+[[test]]
 name = "commands_oauth"
 path = "../spec/src-tauri/commands/oauth.rs"
 
