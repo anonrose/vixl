@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
-import type { VixlChatMode, VixlSettings } from '@/types/vixl/vixl-settings'
+import type { VixlSettings } from '@/types/vixl/vixl-settings'
 
 const resolveAgentDefinition = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<null>>(),
@@ -65,14 +65,11 @@ vi.mock('@/utils/link-abort-signal', () => ({
 
 import spawnSubagent from '@/services/harness/subagent/spawn'
 
-const writeError = (mode: VixlChatMode): string =>
-  `Write-capable subagents are not allowed in ${mode} mode. Spawn with capabilities: "read-only" (the default).`
-
-const baseCtx = (mode: VixlChatMode): HarnessToolContext => ({
+const baseCtx = (): HarnessToolContext => ({
   projectRoot: '/tmp/project',
   projectSlug: 'project',
   chatId: 'chat-1',
-  mode,
+  mode: 'agent',
   settings: { version: 1 } as VixlSettings,
   permissionLevel: 'ask',
   sessionAllows: new Set(),
@@ -83,77 +80,65 @@ const baseCtx = (mode: VixlChatMode): HarnessToolContext => ({
   onHarnessEvent: () => {},
 })
 
-const execute = async (
-  mode: VixlChatMode,
-  capabilities?: 'read-only' | 'write',
-): Promise<unknown> => {
-  const built = spawnSubagent(baseCtx(mode))
+const execute = (agentName: string): Promise<unknown> => {
+  const built = spawnSubagent(baseCtx())
   const runner = built.execute as (
     value: Record<string, unknown>,
     options: { toolCallId: string },
   ) => Promise<unknown>
-  const input: Record<string, unknown> = {
-    agentName: 'Reading auth',
-    description: 'Read auth flow',
-    prompt: 'Summarize the auth flow.',
-    mode: 'blocking',
-  }
-  if (capabilities !== undefined) {
-    input.capabilities = capabilities
-  }
-  return runner(input, { toolCallId: 'call-1' })
+  return runner(
+    {
+      agentName,
+      description: 'Scan auth helpers',
+      prompt: 'Find auth helpers.',
+      mode: 'blocking',
+    },
+    { toolCallId: 'call-1' },
+  )
 }
 
-describe('spawn_subagent capability enforcement', () => {
+describe('spawn_subagent agentName validation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resolveAgentDefinition.mockResolvedValue(null)
-    listAgentIndex.mockResolvedValue([])
+    listAgentIndex.mockResolvedValue([{ name: 'explorer' }, { name: 'reviewer' }])
     getPlanExecutionSession.mockReturnValue({ subagentModel: null })
     resolveSpawnModel.mockResolvedValue('anthropic::claude-sonnet-4')
     runSubagentGenerate.mockResolvedValue('ok summary')
   })
 
-  const readOnlyModes: VixlChatMode[] = ['ask', 'plan']
-  const writeAllowedModes: VixlChatMode[] = ['agent', 'orchestrator']
-
-  it('rejects write capabilities in ask and plan', async () => {
-    for (const mode of readOnlyModes) {
-      runSubagentGenerate.mockClear()
-      await expect(execute(mode, 'write')).rejects.toThrow(writeError(mode))
-      expect(runSubagentGenerate).not.toHaveBeenCalled()
-    }
+  it('returns a tool error listing catalog names for unresolved names', async () => {
+    await expect(execute('shell')).rejects.toThrow(
+      /Unknown agentName "shell".*Valid catalog names: explorer, reviewer/,
+    )
+    expect(registerSubagent).not.toHaveBeenCalled()
+    expect(runSubagentGenerate).not.toHaveBeenCalled()
   })
 
-  it('allows read-only capabilities in ask and plan', async () => {
-    for (const mode of readOnlyModes) {
-      runSubagentGenerate.mockClear()
-      await expect(execute(mode, 'read-only')).resolves.toMatchObject({
-        name: 'Reading auth',
-        summary: 'ok summary',
-      })
-      expect(runSubagentGenerate).toHaveBeenCalledTimes(1)
+  it('emits description on subagent-start for a verb phrase helper', async () => {
+    const events: Array<{ type: string; description?: string; name?: string }> = []
+    const ctx = baseCtx()
+    ctx.onHarnessEvent = (event) => {
+      events.push(event as { type: string; description?: string; name?: string })
     }
-  })
-
-  it('allows omitted capabilities in ask and plan', async () => {
-    for (const mode of readOnlyModes) {
-      runSubagentGenerate.mockClear()
-      await expect(execute(mode)).resolves.toMatchObject({
-        summary: 'ok summary',
-      })
-      expect(runSubagentGenerate).toHaveBeenCalledTimes(1)
-    }
-  })
-
-  it('allows write capabilities in agent and orchestrator', async () => {
-    for (const mode of writeAllowedModes) {
-      runSubagentGenerate.mockClear()
-      await expect(execute(mode, 'write')).resolves.toMatchObject({
-        name: 'Reading auth',
-        summary: 'ok summary',
-      })
-      expect(runSubagentGenerate).toHaveBeenCalledTimes(1)
-    }
+    const built = spawnSubagent(ctx)
+    const runner = built.execute as (
+      value: Record<string, unknown>,
+      options: { toolCallId: string },
+    ) => Promise<unknown>
+    await runner(
+      {
+        agentName: 'Reading auth',
+        description: 'Scan auth helpers',
+        prompt: 'Find auth helpers.',
+        mode: 'blocking',
+      },
+      { toolCallId: 'call-1' },
+    )
+    const start = events.find((event) => event.type === 'subagent-start')
+    expect(start).toMatchObject({
+      name: 'Reading auth',
+      description: 'Scan auth helpers',
+    })
   })
 })

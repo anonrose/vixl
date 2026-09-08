@@ -55,6 +55,11 @@ const applyHydrateHarnessEvent = (
         ? harnessEvent.toolCallId
         : undefined
     const name = String(harnessEvent.name ?? 'Sub-agent')
+    const description =
+      typeof harnessEvent.description === 'string' &&
+      harnessEvent.description.trim().length > 0
+        ? harnessEvent.description
+        : undefined
     const blocking = Boolean(harnessEvent.blocking)
     const prompt =
       typeof harnessEvent.prompt === 'string' && harnessEvent.prompt.length > 0
@@ -70,6 +75,7 @@ const applyHydrateHarnessEvent = (
         subagentId,
         toolCallId,
         name,
+        description,
         blocking,
         prompt,
         model,

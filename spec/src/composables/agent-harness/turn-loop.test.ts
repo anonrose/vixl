@@ -9,12 +9,21 @@ const clearPendingBackgroundResume = vi.hoisted(() =>
 const clearTurnResponseMessages = vi.hoisted(() =>
   vi.fn<(chatId: string) => void>(),
 )
+const listDeliverableBackgroundResults = vi.hoisted(() =>
+  vi.fn<() => Array<{ toolCallId: string; result: { subagentId: string; name: string; summary: string } }>>(
+    () => [],
+  ),
+)
+const resumeOrchestrator = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+)
 const shouldFlushBackgroundSubagentResume = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => 'resume' | 'clear' | 'noop'>(),
 )
 const updateChatMeta = vi.hoisted(() =>
   vi.fn<(...args: unknown[]) => Promise<unknown>>().mockResolvedValue(undefined),
 )
+const toastError = vi.hoisted(() => vi.fn<(...args: unknown[]) => void>())
 
 vi.mock('@/services/vixl/vixl-tauri', () =>
   mockVixlTauri({
@@ -29,7 +38,7 @@ vi.mock('@/services/harness/subagent/registry', () => ({
     clearTurnResponseMessages(chatId),
   hasPendingBackgroundResume: () => true,
   hasRunningSubagentsForChat: () => false,
-  listDeliverableBackgroundResults: () => [],
+  listDeliverableBackgroundResults: () => listDeliverableBackgroundResults(),
 }))
 
 vi.mock('@/utils/should-flush-background-subagent-resume', () => ({
@@ -37,12 +46,12 @@ vi.mock('@/utils/should-flush-background-subagent-resume', () => ({
 }))
 
 vi.mock('@/services/harness/orchestrator', () => ({
-  resumeOrchestrator: vi.fn<() => Promise<void>>(),
+  resumeOrchestrator: (...args: unknown[]) => resumeOrchestrator(...args),
 }))
 
 vi.mock('vue-sonner', () => ({
   toast: {
-    error: vi.fn<() => void>(),
+    error: (...args: unknown[]) => toastError(...args),
   },
 }))
 
@@ -59,6 +68,8 @@ const buildState = (): AgentHarnessState =>
     },
     session: {
       patchMeta: vi.fn<(patch: unknown) => void>(),
+      startAgentTurn: vi.fn<(turnId: string) => void>(),
+      finishAgentTurn: vi.fn<() => void>(),
       messages: ref([]),
       timeline: ref([]),
     },
@@ -135,3 +146,50 @@ describe('maybeFlushBackgroundSubagentResume', () => {
     expect(updateChatMeta).not.toHaveBeenCalled()
   })
 })
+
+describe('resumeAfterBackgroundSubagents', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resumeOrchestrator.mockResolvedValue(undefined)
+    listDeliverableBackgroundResults.mockReturnValue([
+      {
+        toolCallId: 'tc-1',
+        result: { subagentId: 'sub-1', name: 'explorer', summary: 'done' },
+      },
+    ])
+  })
+
+  it('clears pending resume state when resume throws', async () => {
+    resumeOrchestrator.mockRejectedValue(
+      new Error('No pending subagent turn to resume'),
+    )
+    const state = buildState()
+    state.lastRunConfig.value = {
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      mentions: [],
+      effectiveSettings: { version: 1 },
+    }
+    const { resumeAfterBackgroundSubagents } = createTurnLoop(
+      state,
+      buildAttention(),
+      {
+        handleEvent: vi.fn<() => void>(),
+        persistPermission: vi
+          .fn<() => Promise<void>>()
+          .mockResolvedValue(undefined),
+      },
+    )
+
+    await resumeAfterBackgroundSubagents()
+
+    expect(clearPendingBackgroundResume).toHaveBeenCalledWith('chat-1')
+    expect(clearTurnResponseMessages).toHaveBeenCalledWith('chat-1')
+    expect(toastError).toHaveBeenCalledWith('Agent resume failed', {
+      description: 'No pending subagent turn to resume',
+    })
+    expect(state.status.value).toBe('error')
+    expect(state.resumingBackgroundBatch.value).toBe(false)
+  })
+})
+

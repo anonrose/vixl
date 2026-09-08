@@ -1,6 +1,5 @@
 import { toast } from 'vue-sonner'
 import type { HarnessEvent } from '@/types/harness/harness-event'
-import type { SubagentEntry } from '@/types/harness/subagent-entry'
 import type { ToolRun } from '@/types/harness/tool-run'
 import type { PendingApprovalView } from '@/services/harness/permission/gate'
 import { mapMetaStatusToChatStatus } from '@/services/harness/orchestrator'
@@ -139,21 +138,22 @@ export default (
       session.appendLocalTodoUpdate(event.todos)
     }
     if (event.type === 'subagent-start') {
-      const entry: SubagentEntry = {
-        subagentId: event.subagentId,
-        name: event.name,
-        blocking: event.blocking,
-        status: 'running',
-        events: [],
-      }
       subagents.value = [
         ...subagents.value.filter((item) => item.subagentId !== event.subagentId),
-        entry,
+        {
+          subagentId: event.subagentId,
+          name: event.name,
+          description: event.description,
+          blocking: event.blocking,
+          status: 'running',
+          events: [],
+        },
       ]
       session.upsertLocalSubagentStart({
         subagentId: event.subagentId,
         toolCallId: event.toolCallId,
         name: event.name,
+        description: event.description,
         blocking: event.blocking,
         prompt: event.prompt,
         model: event.model,

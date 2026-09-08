@@ -9,6 +9,7 @@ const controllers = new Map<string, AbortController>()
 const completionWaiters = new Map<string, CompletionWaiter[]>()
 const turnResponseMessages = new Map<string, ModelMessage[]>()
 const pendingBackgroundResume = new Set<string>()
+const deliveredBackgroundResults = new Map<string, Set<string>>()
 
 const setSubagentStatus = (
   record: SubagentRecord,
@@ -135,16 +136,33 @@ export const clearPendingBackgroundResume = (chatId: string): void => {
 
 export const listDeliverableBackgroundResults = (
   chatId: string,
-): Array<{ toolCallId: string; result: SubagentResult }> =>
-  listSubagentsForChat(chatId).flatMap((record) => {
+): Array<{ toolCallId: string; result: SubagentResult }> => {
+  const delivered = deliveredBackgroundResults.get(chatId)
+  return listSubagentsForChat(chatId).flatMap((record) => {
     if (
       (record.status !== 'completed' && record.status !== 'failed') ||
-      !record.result
+      !record.result ||
+      delivered?.has(record.toolCallId)
     ) {
       return []
     }
     return [{ toolCallId: record.toolCallId, result: record.result }]
   })
+}
+
+export const markBackgroundResultsDelivered = (
+  chatId: string,
+  toolCallIds: string[],
+): void => {
+  if (toolCallIds.length === 0) {
+    return
+  }
+  const existing = deliveredBackgroundResults.get(chatId) ?? new Set<string>()
+  for (const toolCallId of toolCallIds) {
+    existing.add(toolCallId)
+  }
+  deliveredBackgroundResults.set(chatId, existing)
+}
 
 export const setTurnResponseMessages = (chatId: string, messages: ModelMessage[]): void => {
   turnResponseMessages.set(chatId, messages)
@@ -204,6 +222,7 @@ export const abort = (chatId: string): void => {
   chatSubagents.delete(chatId)
   turnResponseMessages.delete(chatId)
   pendingBackgroundResume.delete(chatId)
+  deliveredBackgroundResults.delete(chatId)
 }
 
 export const resetSubagentRegistryForTests = (): void => {
@@ -213,4 +232,5 @@ export const resetSubagentRegistryForTests = (): void => {
   completionWaiters.clear()
   turnResponseMessages.clear()
   pendingBackgroundResume.clear()
+  deliveredBackgroundResults.clear()
 }

@@ -22,6 +22,7 @@ import { HOME_CHAT_SLUG, isHomeChatSlug } from '@/constants/home-chat'
 import chatRouteFor from '@/utils/chat-route-for'
 import deriveSubagentActivity from '@/utils/derive-subagent-activity'
 import formatModelLabelFromRef from '@/utils/format-model-label-from-ref'
+import formatSubagentDisplayTitle from '@/utils/format-subagent-display-title'
 
 const props = defineProps<{
   subagent: SubagentTimelineItem
@@ -36,7 +37,15 @@ const router = useRouter()
 
 const isRunning = computed(() => props.subagent.status === 'running')
 const modelLabel = computed(() => formatModelLabelFromRef(props.subagent.model))
-const displayName = computed(() => props.subagent.name.trim() || 'Sub-agent')
+const displayName = computed(() => formatSubagentDisplayTitle(props.subagent))
+const agentNameLabel = computed(() => {
+  const description = props.subagent.description?.trim() ?? ''
+  const name = props.subagent.name.trim()
+  if (!description || !name || description === name) {
+    return ''
+  }
+  return name
+})
 const activityLabel = computed(() => deriveSubagentActivity(props.subagent))
 
 const statusIcon = computed(() => {
@@ -110,6 +119,10 @@ const handleStop = (): void => {
             class="block truncate text-[10px] leading-tight text-muted-foreground/80"
           >{{ modelLabel }}</span>
           <span class="block truncate text-foreground/90">{{ displayName }}</span>
+          <span
+            v-if="agentNameLabel"
+            class="block truncate text-[10px] leading-tight text-muted-foreground/80"
+          >{{ agentNameLabel }}</span>
           <AiElementsShimmerShimmer
             v-if="activityLabel"
             :duration="1"

@@ -225,6 +225,7 @@ declare module 'vue' {
     LspServersSection: typeof import('./components/settings/sections/LspServersSection.vue')['default']
     ManageMcpServerDialog: typeof import('./components/settings/mcp/ManageMcpServerDialog.vue')['default']
     ManageProviderDialog: typeof import('./components/settings/providers/ManageProviderDialog.vue')['default']
+    MarkdownWithMermaid: typeof import('./components/workbench/plans/MarkdownWithMermaid.vue')['default']
     McpServersSection: typeof import('./components/settings/sections/McpServersSection.vue')['default']
     Message: typeof import('./components/ai-elements/message/Message.vue')['default']
     MessageAction: typeof import('./components/ai-elements/message/MessageAction.vue')['default']

@@ -3,8 +3,6 @@ import type { HTMLAttributes } from 'vue'
 import { CollapsibleContent } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
 import { computed } from 'vue'
-import { Markdown } from 'vue-stream-markdown'
-import 'vue-stream-markdown/index.css'
 
 interface Props {
   class?: HTMLAttributes['class']
@@ -26,10 +24,9 @@ const md = computed(() => props.content)
       props.class,
     )"
   >
-    <Markdown
+    <MarkdownWithMermaid
       v-if="md"
       :content="md"
-      :enable-animate="false"
       class="min-w-0 max-w-full overflow-hidden text-muted-foreground **:text-muted-foreground [&_p]:my-1.5 [&_p]:leading-relaxed [&_strong]:font-medium [&_strong]:text-muted-foreground"
     />
     <slot />

@@ -1,5 +1,6 @@
 import { convertToModelMessages, type ModelMessage } from 'ai'
 import type { ResumeOrchestratorInput } from '@/types/harness/orchestrator-input'
+import type { SubagentResult } from '@/types/harness/subagent-record'
 import createModel from '@/services/providers/create-model'
 import { readChatMeta } from '@/services/vixl/vixl-tauri'
 import filterMessagesForActiveContext from '@/services/context/filter-messages-for-active-context'
@@ -7,6 +8,7 @@ import {
   clearPendingBackgroundResume,
   clearTurnResponseMessages,
   getTurnResponseMessages,
+  markBackgroundResultsDelivered,
 } from '@/services/harness/subagent/registry'
 import resolveModelVision from '@/services/harness/resolve-model-vision'
 import dropTrailingAssistantMessages from '@/utils/drop-trailing-assistant-messages'
@@ -15,6 +17,21 @@ import { patchSubagentToolResults } from './helpers'
 import { persistToolRun } from './persistence'
 import resolveLiveWorkspace from './resolve-workspace'
 import runHarnessStream from './stream'
+
+const buildWakeNudgeContent = (
+  completedResults: Array<{ toolCallId: string; result: SubagentResult }>,
+): string => {
+  const lines = completedResults.map((item) => {
+    const name = item.result.name.trim() || item.result.subagentId
+    return `- ${name}: ${item.result.summary.trim()}`
+  })
+  return [
+    'All background subagents finished. Their completed summaries are in the spawn_subagent tool results above. Answer the user now using those results. Do not say the subagents are still running.',
+    '',
+    'Completed:',
+    ...lines,
+  ].join('\n')
+}
 
 export default async (input: ResumeOrchestratorInput): Promise<void> => {
   const workspace = resolveLiveWorkspace(input)
@@ -59,6 +76,10 @@ export default async (input: ResumeOrchestratorInput): Promise<void> => {
     turnMessages,
     completedResults,
   )
+  markBackgroundResultsDelivered(
+    chatId,
+    completedResults.map((item) => item.toolCallId),
+  )
   const activeContextMeta = await readChatMeta(workspace.projectSlug, chatId).catch(() => null)
   const activeContext = activeContextMeta?.activeContext
   const { messages: contextMessages, checkpointText } = filterMessagesForActiveContext(
@@ -85,8 +106,7 @@ export default async (input: ResumeOrchestratorInput): Promise<void> => {
     : recentModelMessages
   const wakeNudge: ModelMessage = {
     role: 'user',
-    content:
-      'All background subagents finished. Their completed summaries are in the spawn_subagent tool results above. Answer the user now using those results. Do not say the subagents are still running.',
+    content: buildWakeNudgeContent(completedResults),
   }
   const modelMessages = [...baseMessages, ...patchedTurnMessages, wakeNudge]
 
@@ -110,7 +130,7 @@ export default async (input: ResumeOrchestratorInput): Promise<void> => {
     userMessageId,
     onEvent,
     assistantId: inputAssistantId ?? crypto.randomUUID(),
-    captureTurnMessages: false,
+    captureTurnMessages: true,
     permissionLevel: input.permissionLevel,
     persistPermission: input.persistPermission,
     activeContext,

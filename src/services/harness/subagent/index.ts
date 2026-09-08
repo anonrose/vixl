@@ -1,4 +1,5 @@
 export { default as spawnSubagent } from './spawn'
+export { default as validateSpawnAgentName } from './validate-spawn-agent-name'
 export { default as resolveSpawnModel } from './resolve-spawn-model'
 export { default as capToolOutput } from './cap-tool-output'
 export { default as wrapNestedTools } from './wrap-nested-tools'

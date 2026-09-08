@@ -50,6 +50,7 @@ export type SessionMutations = {
     subagentId: string
     toolCallId?: string
     name: string
+    description?: string
     blocking: boolean
     prompt?: string
     model?: string

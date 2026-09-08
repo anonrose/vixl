@@ -183,4 +183,45 @@ describe('subagent-registry', () => {
     expect(hasRunningSubagentsForChat('chat-1')).toBe(false)
     expect(listDeliverableBackgroundResults('chat-1')).toHaveLength(3)
   })
+
+  it('omits delivered results while keeping running subagents', async () => {
+    const {
+      register,
+      resolve,
+      listDeliverableBackgroundResults,
+      markBackgroundResultsDelivered,
+      hasRunningSubagentsForChat,
+    } = await import('@/services/harness/subagent/registry')
+
+    register('chat-1', 'sub-1', new AbortController(), {
+      toolCallId: 'tc-1',
+      agentName: 'one',
+    })
+    register('chat-1', 'sub-2', new AbortController(), {
+      toolCallId: 'tc-2',
+      agentName: 'two',
+    })
+    resolve('sub-1', {
+      subagentId: 'sub-1',
+      name: 'one',
+      summary: 'ok',
+    })
+
+    markBackgroundResultsDelivered('chat-1', ['tc-1'])
+
+    expect(hasRunningSubagentsForChat('chat-1')).toBe(true)
+    expect(listDeliverableBackgroundResults('chat-1')).toEqual([])
+
+    resolve('sub-2', {
+      subagentId: 'sub-2',
+      name: 'two',
+      summary: 'later',
+    })
+    expect(listDeliverableBackgroundResults('chat-1')).toEqual([
+      {
+        toolCallId: 'tc-2',
+        result: { subagentId: 'sub-2', name: 'two', summary: 'later' },
+      },
+    ])
+  })
 })

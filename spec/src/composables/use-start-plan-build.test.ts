@@ -57,6 +57,12 @@ const setActiveProject = vi.hoisted(
 const getUserHomeDir = vi.hoisted(
   () => vi.fn<() => Promise<string>>(async () => '/Users/test-home'),
 )
+const loadPromptMock = vi.hoisted(
+  () =>
+    vi.fn<(path: string, variables?: Record<string, string>) => string>(
+      () => 'build this plan',
+    ),
+)
 
 const sessionStatus = ref<ChatStatus | null>('idle')
 
@@ -115,7 +121,8 @@ vi.mock('@/services/models/resolve-reasoning-for-call', () => ({
 }))
 
 vi.mock('@/services/prompts/load-prompt', () => ({
-  default: () => 'build this plan',
+  default: (path: string, variables?: Record<string, string>) =>
+    loadPromptMock(path, variables),
 }))
 
 vi.mock('@/services/chat/pending-message', () => ({
@@ -173,6 +180,8 @@ describe('use-start-plan-build', () => {
     setActiveProject.mockClear()
     getUserHomeDir.mockClear()
     getUserHomeDir.mockResolvedValue('/Users/test-home')
+    loadPromptMock.mockClear()
+    loadPromptMock.mockReturnValue('build this plan')
     vi.mocked(toast.error).mockClear()
     sessionStatus.value = 'idle'
     createNewChat.mockResolvedValue({ id: 'fresh-chat' })
@@ -278,5 +287,23 @@ describe('use-start-plan-build', () => {
         patch: expect.objectContaining({ lastBuildChatId: 'last-build' }),
       }),
     )
+  })
+
+  it('passes the locked subagent model into the orchestrate handoff', async () => {
+    const { startPlanBuild } = useStartPlanBuild()
+
+    const result = await startPlanBuild({
+      ...baseInput,
+      executionMode: 'orchestrator',
+      subagentModel: 'anthropic::claude-sonnet-4',
+      freshChat: true,
+    })
+
+    expect(result).toBe(true)
+    expect(loadPromptMock).toHaveBeenCalledWith('handoffs/plan-orchestrate.md', {
+      planPath: 'plans/example.md',
+      planTitle: 'Example plan',
+      subagentModel: 'anthropic::claude-sonnet-4',
+    })
   })
 })

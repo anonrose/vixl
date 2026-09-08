@@ -32,6 +32,10 @@ export default (
     (typeof result?.name === 'string' && result.name) ||
     (typeof args?.agentName === 'string' && args.agentName) ||
     'Sub-agent'
+  const description =
+    (typeof result?.description === 'string' && result.description) ||
+    (typeof args?.description === 'string' && args.description) ||
+    undefined
   const summary = typeof result?.summary === 'string' ? result.summary : undefined
   const blocking = typeof args?.blocking === 'boolean' ? args.blocking : true
   const status: SubagentTimelineItem['status'] =
@@ -46,6 +50,7 @@ export default (
     subagentId: subagentId || run.toolCallId,
     toolCallId: run.toolCallId,
     name,
+    description,
     blocking,
     status,
     summary,

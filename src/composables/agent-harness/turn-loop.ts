@@ -145,6 +145,8 @@ export default (
         await fleetSidebar.refreshSlug(options.projectSlug)
         return
       }
+      clearPendingBackgroundResume(options.chatId)
+      clearTurnResponseMessages(options.chatId)
       error.value = err instanceof Error ? err.message : 'Unknown error'
       status.value = 'error'
       session.finishAgentTurn()

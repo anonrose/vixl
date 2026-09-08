@@ -142,6 +142,26 @@ describe('formatToolRunLabel call_mcp_tool', () => {
     ).toBe('Listed MCP tools')
   })
 
+  it('prefers spawn_subagent description over agentName', () => {
+    expect(
+      formatToolRunLabel(
+        toolRun({
+          name: 'spawn_subagent',
+          status: 'running',
+          args: { agentName: 'generalPurpose', description: 'Scan auth helpers' },
+        }),
+      ),
+    ).toBe('Starting Scan auth helpers…')
+    expect(
+      formatToolRunLabel(
+        toolRun({
+          name: 'spawn_subagent',
+          args: { agentName: 'generalPurpose' },
+        }),
+      ),
+    ).toBe('generalPurpose')
+  })
+
   it('title-cases unmapped tool names in the fallback', () => {
     expect(
       formatToolRunLabel(

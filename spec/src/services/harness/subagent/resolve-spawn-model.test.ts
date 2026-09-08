@@ -46,11 +46,21 @@ describe('resolveSpawnModel', () => {
     listConfiguredProviders.mockReturnValue(['anthropic', 'openai'])
   })
 
-  it('lets per-call ref win over lock', async () => {
+  it('ignores per-call ref when a lock is set', async () => {
     await expect(
       resolveSpawnModel({
         callModel: 'openai::gpt-4o',
         lockedModel: 'anthropic::claude-sonnet-4',
+        frontmatterModel: 'anthropic::claude-opus-4',
+        settings,
+      }),
+    ).resolves.toBe('anthropic::claude-sonnet-4')
+  })
+
+  it('lets per-call ref win when unlocked', async () => {
+    await expect(
+      resolveSpawnModel({
+        callModel: 'openai::gpt-4o',
         frontmatterModel: 'anthropic::claude-opus-4',
         settings,
       }),
@@ -61,13 +71,22 @@ describe('resolveSpawnModel', () => {
     await expect(
       resolveSpawnModel({
         callModel: 'sonnet',
-        lockedModel: 'anthropic::claude-sonnet-4',
         settings,
       }),
     ).rejects.toThrow(/resolve_models/)
   })
 
-  it('throws when the exact per-call ref is allowed:false and does not fall back to lock', async () => {
+  it('uses the lock when the per-call ref is fuzzy', async () => {
+    await expect(
+      resolveSpawnModel({
+        callModel: 'sonnet',
+        lockedModel: 'anthropic::claude-sonnet-4',
+        settings,
+      }),
+    ).resolves.toBe('anthropic::claude-sonnet-4')
+  })
+
+  it('throws when the unlocked per-call ref is allowed:false', async () => {
     const disabled = {
       ...settings,
       'models.catalogOptions': {
@@ -78,7 +97,23 @@ describe('resolveSpawnModel', () => {
     await expect(
       resolveSpawnModel({
         callModel: 'anthropic::claude-sonnet-4',
-        lockedModel: 'openai::gpt-4o',
+        settings: disabled,
+      }),
+    ).rejects.toThrow(/not allowed/)
+  })
+
+  it('throws when the lock is allowed:false and does not fall back to call model', async () => {
+    const disabled = {
+      ...settings,
+      'models.catalogOptions': {
+        'anthropic::claude-sonnet-4': { allowed: false },
+      },
+    } as VixlSettings
+
+    await expect(
+      resolveSpawnModel({
+        callModel: 'openai::gpt-4o',
+        lockedModel: 'anthropic::claude-sonnet-4',
         settings: disabled,
       }),
     ).rejects.toThrow(/not allowed/)

@@ -2,8 +2,6 @@
 import type { HTMLAttributes } from 'vue'
 import { cn } from '@/lib/utils'
 import { Comment, computed, useSlots } from 'vue'
-import { Markdown } from 'vue-stream-markdown'
-import 'vue-stream-markdown/index.css'
 
 interface Props {
   content?: string
@@ -35,22 +33,19 @@ const slotContent = computed<string | undefined>(() => {
 })
 
 const md = computed(() => (props.content ?? slotContent.value ?? '') as string)
-
-const markdownMode = computed(() => (props.streaming ? 'streaming' : 'static'))
 </script>
 
 <template>
-    <Markdown
-      :content="md"
-      :mode="markdownMode"
-      :enable-animate="streaming"
-      :class="
-        cn(
-          'w-full min-w-0 max-w-full overflow-hidden break-words [&_code]:break-words [&_p]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:w-full [&_table]:table-fixed',
-          '[&>*:first-child]:mt-0! [&>*:last-child]:mb-0!',
-          props.class,
-        )
-      "
-      v-bind="$attrs"
-    />
+  <MarkdownWithMermaid
+    :content="md"
+    :streaming="streaming"
+    :class="
+      cn(
+        'w-full min-w-0 max-w-full overflow-hidden break-words [&_code]:break-words [&_p]:break-words [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:w-full [&_table]:table-fixed',
+        '[&>*:first-child]:mt-0! [&>*:last-child]:mb-0!',
+        props.class,
+      )
+    "
+    v-bind="$attrs"
+  />
 </template>

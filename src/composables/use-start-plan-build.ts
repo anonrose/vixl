@@ -129,6 +129,7 @@ export default () => {
     const prompt = loadPrompt(promptPath, {
       planPath: input.planPath,
       planTitle: input.planTitle,
+      ...(subagentModel ? { subagentModel } : {}),
     })
 
     building.value = true

@@ -3,7 +3,19 @@ import { mockVixlTauri } from '../../../test-utils/mocks/vixl-tauri'
 
 vi.mock('@/services/vixl/vixl-tauri', () => mockVixlTauri())
 
+vi.mock('@/services/skills/discover-internal-skills', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/services/skills/discover-internal-skills')>()
+  return {
+    ...actual,
+    loadInternalSkill: vi.fn<typeof actual.loadInternalSkill>((name) =>
+      actual.loadInternalSkill(name),
+    ),
+  }
+})
+
 import assembleSystemPromptParts from '@/services/context/system-prompt-parts/assemble'
+import { loadInternalSkill } from '@/services/skills/discover-internal-skills'
 import {
   fsReadFile,
   getVixlDir,
@@ -33,6 +45,35 @@ description: ${JSON.stringify(description)}
 
 ${body}
 `
+
+const stubSkillDisks = (options: {
+  personal?: ProjectFileEntry[]
+  project?: ProjectFileEntry[]
+}): void => {
+  vi.mocked(listVixlFiles).mockImplementation(async (scope, kind, rootPath) => {
+    if (kind !== 'skills') {
+      return []
+    }
+    if (scope === 'personal') {
+      return options.personal ?? []
+    }
+    if (scope === 'project' && rootPath === projectRoot) {
+      return options.project ?? []
+    }
+    return []
+  })
+}
+
+const otherSkills = {
+  personal: [{ name: 'notes', path: 'skills/notes', description: 'User notes' }],
+  project: [
+    {
+      name: 'deploy',
+      path: `${projectRoot}/.vixl/skills/deploy`,
+      description: 'Project deploy',
+    },
+  ],
+}
 
 const stubAgentDisks = (options: {
   personal?: ProjectFileEntry[]
@@ -361,5 +402,48 @@ describe('assemble system prompt parts', () => {
     expect(joined).not.toContain('explicitly invoked')
     expect(parts.mentions).not.toContain('reviewer')
     expect(parts.skills).not.toContain('Skill reviewer')
+  })
+
+  it('omits the inlined orchestrator skill from standalone Available skills', async () => {
+    const parts = await assembleSystemPromptParts(input('orchestrator'))
+
+    expect(parts.base).toContain('Orchestrator mode')
+    expect(parts.skills).not.toContain('- orchestrator:')
+  })
+
+  it('omits the inlined orchestrator skill from Available skills but lists others', async () => {
+    stubSkillDisks(otherSkills)
+
+    const parts = await assembleSystemPromptParts(
+      input('orchestrator', { standalone: false }),
+    )
+
+    expect(parts.base).toContain('Orchestrator mode')
+    expect(parts.skills).toContain('Available skills:')
+    expect(parts.skills).toContain('- notes: User notes')
+    expect(parts.skills).toContain('- deploy: Project deploy')
+    expect(parts.skills).not.toContain('- orchestrator:')
+  })
+
+  it.each(['ask', 'plan', 'agent'] as const)(
+    'omits the inlined %s skill from Available skills but lists others',
+    async (mode) => {
+      stubSkillDisks(otherSkills)
+
+      const parts = await assembleSystemPromptParts(input(mode, { standalone: false }))
+
+      expect(parts.skills).toContain('- notes: User notes')
+      expect(parts.skills).toContain('- deploy: Project deploy')
+      expect(parts.skills).not.toContain(`- ${mode}:`)
+    },
+  )
+
+  it('lists the mode skill when it is not inlined', async () => {
+    vi.mocked(loadInternalSkill).mockReturnValueOnce(null)
+
+    const parts = await assembleSystemPromptParts(input('orchestrator'))
+
+    expect(parts.base).not.toContain('Orchestrator mode')
+    expect(parts.skills).toContain('- orchestrator:')
   })
 })

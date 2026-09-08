@@ -1,4 +1,5 @@
 import { listVixlFiles } from '@/services/vixl/vixl-tauri'
+import type { SkillIndexEntry } from '@/types/skills/skill'
 import type { VixlChatMode } from '@/types/vixl/vixl-settings'
 import { MODE_TOOL_ALLOWLIST } from '@/services/harness/mode-allowlists'
 import loadPrompt from '@/services/prompts/load-prompt'
@@ -21,6 +22,19 @@ const TOOLS_HINT =
 const resolveModeSkillBlock = (mode: VixlChatMode): string => {
   const loaded = loadInternalSkill(mode)
   return loaded?.content ?? ''
+}
+
+const omitInlinedModeSkill = (
+  skills: SkillIndexEntry[],
+  mode: VixlChatMode,
+  inlined: boolean,
+): SkillIndexEntry[] => {
+  if (!inlined) {
+    return skills
+  }
+  return skills.filter(
+    (skill) => !(skill.scope === 'internal' && skill.name.toLowerCase() === mode),
+  )
 }
 
 export default async (input: SystemPromptInput): Promise<SystemPromptParts> => {
@@ -61,9 +75,15 @@ export default async (input: SystemPromptInput): Promise<SystemPromptParts> => {
 
   const { mentions, skills: mentionSkills } = formatMentionBlocks(input.mentions)
 
-  const skillIndex = input.standalone
+  const modeSkillBlock = resolveModeSkillBlock(input.mode)
+  const rawSkillIndex = input.standalone
     ? listInternalSkillIndex(input.mode)
     : await listSkillIndex(input.mode, input.projectRoot).catch(() => [])
+  const skillIndex = omitInlinedModeSkill(
+    rawSkillIndex,
+    input.mode,
+    Boolean(modeSkillBlock),
+  )
   const skillIndexBlock =
     skillIndex.length > 0
       ? skillIndex.map((skill) => `- ${skill.name}: ${skill.description}`).join('\n')
@@ -90,8 +110,6 @@ export default async (input: SystemPromptInput): Promise<SystemPromptParts> => {
   const mcpCatalog = allowMcp
     ? await formatMcpCatalog(input.projectRoot, input.standalone).catch(() => '')
     : ''
-
-  const modeSkillBlock = resolveModeSkillBlock(input.mode)
 
   const base = [
     loadPrompt('system/base.md', {

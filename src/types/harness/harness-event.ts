@@ -51,6 +51,7 @@ export type HarnessEvent =
       subagentId: string
       toolCallId: string
       name: string
+      description?: string
       blocking: boolean
       prompt?: string
       model?: string
@@ -74,6 +75,7 @@ export type HarnessEvent =
       toolCallId: string
       subagentId: string
       agentName: string
+      description?: string
       prompt: string
     }
   | { type: 'side-task-start'; taskId: string; kind: SideTaskKind }

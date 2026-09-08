@@ -4,6 +4,7 @@ export type SubagentResult = {
   subagentId: string
   name: string
   summary: string
+  description?: string
 }
 
 export type SubagentRecord = {

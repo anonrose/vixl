@@ -15,13 +15,13 @@ type ResolveSpawnModelArgs = {
 }
 
 const pickChosenModel = (args: ResolveSpawnModelArgs): string | undefined => {
-  const callModel = args.callModel?.trim()
-  if (callModel) {
-    return callModel
-  }
   const lockedModel = args.lockedModel?.trim()
   if (lockedModel) {
     return lockedModel
+  }
+  const callModel = args.callModel?.trim()
+  if (callModel) {
+    return callModel
   }
   const frontmatterModel = args.frontmatterModel?.trim()
   if (frontmatterModel) {

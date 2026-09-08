@@ -130,8 +130,17 @@ const asRecord = (value: unknown): Record<string, unknown> | null => {
 }
 
 const formatSpawnSubagentLabel = (run: ToolRun): string => {
-  const hint = formatArgsHint(run.args, run.name)
-  const name = hint?.trim() || 'Sub-agent'
+  const args = asRecord(run.args)
+  const result = asRecord(run.result)
+  const description = clipTerminalLabel(
+    (typeof result?.description === 'string' ? result.description : '') ||
+      (typeof args?.description === 'string' ? args.description : ''),
+  )
+  const agentName =
+    (typeof result?.name === 'string' && result.name) ||
+    (typeof args?.agentName === 'string' && args.agentName) ||
+    ''
+  const name = description || agentName.trim() || 'Sub-agent'
   if (run.status === 'running') {
     return `Starting ${name}…`
   }
