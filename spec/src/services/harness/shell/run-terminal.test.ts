@@ -220,6 +220,11 @@ describe('build-tools run_terminal', () => {
     const tools = buildTools(ctx)
     const result = await runTool(tools.run_terminal.execute, { command: 'echo hello' })
 
+    expect(gateToolPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: 'echo hello',
+      }),
+    )
     expect(createAgentShell).toHaveBeenCalledWith({
       chatId: 'chat-1',
       projectRoot: '/project',

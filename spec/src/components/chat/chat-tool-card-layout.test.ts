@@ -131,6 +131,23 @@ describe('ChatToolCard layout', () => {
     expect(diffs[0]?.props('showPath')).toBe(false)
   })
 
+  it('renders a shell-kind approval detail as a $ command line', () => {
+    const wrapper = shallowMount(ChatToolCard, {
+      props: {
+        approval: {
+          ...networkApproval,
+          detail: 'curl https://example.com',
+        },
+      },
+      global: {
+        renderStubDefaultSlot: true,
+      },
+    })
+    const text = wrapper.text()
+    expect(text).toContain('$ curl https://example.com')
+    expect(wrapper.html()).toContain('font-mono')
+  })
+
   it('shows a path line on each diff for multi-file fs approval', () => {
     const wrapper = shallowMount(ChatToolCard, {
       props: {

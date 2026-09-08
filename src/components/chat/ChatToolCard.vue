@@ -81,7 +81,13 @@ const open = ref(false)
     </div>
     <CollapsibleContent class="space-y-2 px-2 py-2">
       <p
-        v-if="approval.detail"
+        v-if="approval.kind === 'shell' && approval.detail"
+        class="font-mono text-sm text-muted-foreground"
+      >
+        $ {{ approval.detail }}
+      </p>
+      <p
+        v-else-if="approval.detail"
         class="text-sm text-muted-foreground"
       >
         {{ approval.detail }}

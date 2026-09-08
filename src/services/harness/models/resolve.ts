@@ -8,23 +8,13 @@ import type { ResolveCatalogMatchesResult } from '@/types/models/resolve-catalog
 const resolveModels = (ctx: HarnessToolContext) =>
   tool({
     description:
-      'Look up allowed model refs by query and provider. Pass an exact ref to spawn_subagent.',
+      'Look up allowed model refs by query. Results are exact provider::modelId refs for spawn_subagent. If the same model appears from multiple providers, ask the user which to use.',
     inputSchema: z.object({
-      query: z
-        .string()
-        .optional()
-        .describe('Model id or name fragment to search'),
-      provider: z
-        .string()
-        .optional()
-        .describe('Provider id or name to scope the search'),
+      query: z.string().describe('Model id or name fragment to search'),
     }),
-    execute: async ({
-      query,
-      provider,
-    }): Promise<ResolveCatalogMatchesResult> => {
+    execute: async ({ query }): Promise<ResolveCatalogMatchesResult> => {
       const groups = await loadProviderModelsCatalog(ctx.settings)
-      return resolveCatalogMatches(groups, ctx.settings, { query, provider })
+      return resolveCatalogMatches(groups, ctx.settings, { query })
     },
   })
 

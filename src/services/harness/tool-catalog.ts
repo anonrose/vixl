@@ -38,7 +38,7 @@ export const TOOL_DESCRIPTIONS: Record<string, string> = {
   update_todos: 'Create, update, complete, cancel, or remove in-chat todos (full list)',
   spawn_subagent: 'Spawn sub-agent (background: end turn, harness resumes)',
   resolve_models:
-    'Look up allowed model refs by query and optional provider (capped)',
+    'Look up allowed model refs by query (capped)',
   web_fetch:
     'Fetch an http(s) URL as markdown, text, or html (plain HTTP GET, no JavaScript)',
 }

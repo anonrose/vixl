@@ -55,6 +55,7 @@ const runTerminal = (ctx: HarnessToolContext) =>
         action: firstCapability,
         capability: firstCapability,
         title: uiTitle,
+        detail: command,
         unsandboxed: !sandboxEnabled,
       })
       if (!allowed) {

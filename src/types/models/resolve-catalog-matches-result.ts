@@ -1,20 +1,13 @@
 import type { CatalogMatch } from '@/types/models/catalog-match'
 
 export type ResolveCatalogMatchesOptions = {
-  query?: string
-  provider?: string
+  query: string
 }
 
 export type ResolveCatalogMatchesOk = {
   matches: CatalogMatch[]
   best?: string
-}
-
-export type ResolveCatalogMatchesNeedsQuery = {
-  status: 'needs_query'
-  providerId: string
-  count: number
-  suggested?: string
+  note?: string
 }
 
 export type ResolveCatalogMatchesError = {
@@ -24,5 +17,4 @@ export type ResolveCatalogMatchesError = {
 
 export type ResolveCatalogMatchesResult =
   | ResolveCatalogMatchesOk
-  | ResolveCatalogMatchesNeedsQuery
   | ResolveCatalogMatchesError

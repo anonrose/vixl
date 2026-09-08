@@ -7,17 +7,17 @@ import type {
 } from '@/types/models/resolve-catalog-matches-result'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import { isModelAllowed } from '@/services/models/model-catalog-options'
-import { resolveModelForRole } from '@/services/models/resolve-model-for-role'
 import humanizeModelId from '@/utils/humanize-model-id'
 import { modelShortId } from '@/utils/model-vendor'
 import parseModelRef from '@/utils/parse-model-ref'
 import serializeModelRef from '@/utils/serialize-model-ref'
-import filterByProvider from './filter-by-provider'
 import filterScoredProviderModels from './filter-scored-provider-models'
 
 /** Matches SCORE_EXACT in score-model-match.ts (exact id/name). */
 const SCORE_EXACT = 100
 const MATCH_CAP = 8
+const MULTI_PROVIDER_NOTE =
+  'Same model from multiple providers; ask the user which to use'
 
 const modelDisplayName = (model: ModelRef): string => {
   const named = model.name?.trim()
@@ -45,9 +45,6 @@ const filterAllowedGroups = (
   }
   return next
 }
-
-const countModels = (groups: ProviderModelGroup[]): number =>
-  groups.reduce((total, group) => total + group.models.length, 0)
 
 const toCatalogMatch = (
   group: ProviderModelGroup,
@@ -85,22 +82,26 @@ const pickBest = (matches: CatalogMatch[]): string | undefined => {
   return undefined
 }
 
-const resolveSuggestedForProvider = (
-  settings: VixlSettings,
-  providerId: string,
-): string | undefined => {
-  const serialized = resolveModelForRole('subagent', settings)
-  if (!serialized) {
-    return undefined
+const hasSameModelFromMultipleProviders = (matches: CatalogMatch[]): boolean => {
+  const providersByModelId = new Map<string, Set<string>>()
+  for (const match of matches) {
+    const parsed = parseModelRef(match.ref)
+    if (!parsed) {
+      continue
+    }
+    const providers = providersByModelId.get(parsed.modelId)
+    if (providers) {
+      providers.add(match.providerId)
+      continue
+    }
+    providersByModelId.set(parsed.modelId, new Set([match.providerId]))
   }
-  const parsed = parseModelRef(serialized)
-  if (!parsed || parsed.providerId !== providerId) {
-    return undefined
+  for (const providers of providersByModelId.values()) {
+    if (providers.size > 1) {
+      return true
+    }
   }
-  if (!isModelAllowed(settings, parsed)) {
-    return undefined
-  }
-  return serializeModelRef(parsed)
+  return false
 }
 
 const resolveCatalogMatches = (
@@ -108,77 +109,37 @@ const resolveCatalogMatches = (
   settings: VixlSettings,
   options: ResolveCatalogMatchesOptions,
 ): ResolveCatalogMatchesResult => {
-  const query = options.query?.trim() ?? ''
-  const provider = options.provider?.trim() ?? ''
+  const query = options.query.trim()
 
-  if (!query && !provider) {
+  if (!query) {
     return {
       matches: [],
-      error: 'Provide a query or provider',
+      error: 'Provide a query',
     }
   }
 
-  let scoped = groups
-  if (provider) {
-    scoped = filterByProvider(groups, provider)
-    if (scoped.length === 0) {
-      return {
-        matches: [],
-        error: 'No models found for that provider',
-      }
-    }
-  }
-
-  const allowed = filterAllowedGroups(scoped, settings)
+  const allowed = filterAllowedGroups(groups, settings)
   if (allowed.length === 0) {
-    if (provider && !query) {
-      return {
-        matches: [],
-        error: 'No models found for that provider',
-      }
-    }
     return { matches: [] }
-  }
-
-  if (provider && !query) {
-    const count = countModels(allowed)
-    const firstGroup = allowed[0]
-    if (!firstGroup) {
-      return { matches: [] }
-    }
-    const providerId = firstGroup.providerId
-    if (count > MATCH_CAP) {
-      const suggested = resolveSuggestedForProvider(settings, providerId)
-      return {
-        status: 'needs_query',
-        providerId,
-        count,
-        ...(suggested ? { suggested } : {}),
-      }
-    }
-    const matches = allowed.flatMap((group) =>
-      group.models.map((model) => toCatalogMatch(group, model, 0)),
-    )
-    const best = pickBest(matches)
-    return best ? { matches, best } : { matches }
   }
 
   const scored = filterScoredProviderModels(allowed, query)
   if (scored.length === 0) {
-    if (provider) {
-      return {
-        matches: [],
-        error: 'No models found for that provider',
-      }
-    }
     return { matches: [] }
   }
 
   const matches = scored
     .slice(0, MATCH_CAP)
     .map((entry) => toCatalogMatch(entry.group, entry.model, entry.score))
-  const best = pickBest(matches)
-  return best ? { matches, best } : { matches }
+  const note = hasSameModelFromMultipleProviders(matches)
+    ? MULTI_PROVIDER_NOTE
+    : undefined
+  const best = note ? undefined : pickBest(matches)
+  return {
+    matches,
+    ...(best ? { best } : {}),
+    ...(note ? { note } : {}),
+  }
 }
 
 export default resolveCatalogMatches
