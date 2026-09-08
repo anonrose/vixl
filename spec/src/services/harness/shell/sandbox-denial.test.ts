@@ -149,6 +149,46 @@ ${FSTAB_ONLY}`
     ).toBe('network')
   })
 
+  it('classifies Go DNS and getaddrinfo failures as network when sandboxed', () => {
+    expect(
+      detectSandboxRuntimeDenial(
+        'Error: Get "https://api.digitalocean.com/v2/account": dial tcp: lookup api.digitalocean.com: no such host',
+        { command: 'doctl account get', sandboxed: true },
+      ),
+    ).toBe('network')
+    expect(
+      detectSandboxRuntimeDenial(
+        'dial tcp 1.2.3.4:443: connect: operation not permitted',
+        { command: 'doctl account get', sandboxed: true },
+      ),
+    ).toBe('network')
+    expect(
+      detectSandboxRuntimeDenial('Temporary failure in name resolution', {
+        sandboxed: true,
+      }),
+    ).toBe('network')
+    expect(
+      detectSandboxRuntimeDenial('curl: (6) Could not resolve host: x: Name or service not known', {
+        sandboxed: true,
+      }),
+    ).toBe('network')
+    expect(
+      detectSandboxRuntimeDenial(
+        'getaddrinfo: nodename nor servname provided, or not known',
+        { sandboxed: true },
+      ),
+    ).toBe('network')
+  })
+
+  it('does not treat unsandboxed Go DNS as a sandbox jail', () => {
+    expect(
+      detectSandboxRuntimeDenial(
+        'Error: Get "https://api.digitalocean.com/v2/account": dial tcp: lookup api.digitalocean.com: no such host',
+        { command: 'doctl account get', sandboxed: false },
+      ),
+    ).toBeNull()
+  })
+
   it('does not fire on a plain successful git status', () => {
     expect(detectSandboxRuntimeDenial(GIT_STATUS)).toBeNull()
     expect(

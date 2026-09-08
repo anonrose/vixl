@@ -601,6 +601,100 @@ describe('build-tools run_terminal', () => {
     })
   })
 
+  it('retries unsandboxed after a sandboxed Go DNS failure', async () => {
+    const goDns =
+      'Error: Get "https://api.digitalocean.com/v2/account": dial tcp: lookup api.digitalocean.com: no such host'
+
+    createAgentShell
+      .mockResolvedValueOnce({
+        shellId: 'shell-1',
+        status: 'running',
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        chatId: 'chat-1',
+        projectRoot: '/project',
+        command: 'doctl account get',
+        startedAt: new Date().toISOString(),
+      })
+      .mockResolvedValueOnce({
+        shellId: 'shell-2',
+        status: 'running',
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        chatId: 'chat-1',
+        projectRoot: '/project',
+        command: 'doctl account get',
+        startedAt: new Date().toISOString(),
+      })
+    waitForShellExit
+      .mockResolvedValueOnce({ exitCode: 1, timedOut: false })
+      .mockResolvedValueOnce({ exitCode: 0, timedOut: false })
+    getAgentShell
+      .mockReturnValueOnce({
+        shellId: 'shell-1',
+        status: 'failed',
+        stdout: '',
+        stderr: goDns,
+        exitCode: 1,
+      })
+      .mockReturnValueOnce({
+        shellId: 'shell-2',
+        status: 'completed',
+        stdout: 'ok\n',
+        stderr: '',
+        exitCode: 0,
+      })
+
+    const denyNetworkCtx = {
+      ...ctx,
+      settings: { version: 1, 'agent.sandbox.network': 'deny' } as VixlSettings,
+    }
+    const buildTools = (await import('@/services/harness/build-tools')).default
+    const tools = buildTools(denyNetworkCtx)
+    const result = await runTool(tools.run_terminal.execute, {
+      command: 'doctl account get',
+    })
+
+    expect(gateToolPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'shell.network',
+        capability: 'shell.network',
+      }),
+    )
+    expect(createAgentShell).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        command: 'doctl account get',
+        sandboxed: true,
+        allowNetwork: true,
+      }),
+    )
+    expect(createAgentShell).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        command: 'doctl account get',
+        sandboxed: false,
+        allowNetwork: true,
+      }),
+    )
+    expect(result).toMatchObject({
+      sandboxed: false,
+      network: 'allow',
+      priorPhase: {
+        sandboxed: true,
+        network: 'allow',
+      },
+    })
+    expect(
+      String((result as { priorPhase: { error: string } }).priorPhase.error),
+    ).toContain('SANDBOX_RUNTIME_BLOCKED:')
+    expect(
+      String((result as { priorPhase: { error: string } }).priorPhase.error),
+    ).toContain('network denied')
+  })
+
   it('retries unsandboxed after Node EPERM stat on a temp dir', async () => {
     const eperm =
       "Error: EPERM: operation not permitted, stat '/var/folders/zz/npm-XXXX/T'"

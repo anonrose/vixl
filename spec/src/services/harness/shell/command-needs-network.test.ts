@@ -25,6 +25,17 @@ describe('commandNeedsSandboxNetwork', () => {
     expect(commandNeedsSandboxNetwork('gh pr list')).toBe(true)
   })
 
+  it('detects cloud CLIs and remote ops as network', () => {
+    expect(commandNeedsSandboxNetwork('doctl account get')).toBe(true)
+    expect(commandNeedsSandboxNetwork('aws sts get-caller-identity')).toBe(true)
+    expect(commandNeedsSandboxNetwork('kubectl get pods')).toBe(true)
+    expect(commandNeedsSandboxNetwork('/usr/local/bin/terraform plan')).toBe(
+      true,
+    )
+    expect(commandNeedsSandboxNetwork('docker ps')).toBe(true)
+    expect(commandNeedsSandboxNetwork('ssh user@host')).toBe(true)
+  })
+
   it('detects git network subcommands', () => {
     expect(commandNeedsSandboxNetwork('git push')).toBe(true)
     expect(commandNeedsSandboxNetwork('git fetch')).toBe(true)

@@ -147,6 +147,13 @@ const hasNpmRegistryNetworkFailure = (text: string): boolean =>
   /audit request to https:\/\//i.test(text) ||
   /npm error network/i.test(text)
 
+const hasGoOrGetaddrinfoNetworkFailure = (text: string): boolean =>
+  /dial tcp: lookup \S+: no such host/i.test(text) ||
+  /dial tcp[^\n]*connect: operation not permitted/i.test(text) ||
+  /Temporary failure in name resolution/i.test(text) ||
+  /Name or service not known/i.test(text) ||
+  /nodename nor servname provided/i.test(text)
+
 const detectEmptySs = (text: string, command: string | undefined): boolean => {
   if (isSsHeaderOnly(text)) {
     return true
@@ -257,6 +264,10 @@ const detectSandboxRuntimeDenial = (
   options?: DetectSandboxRuntimeDenialOptions,
 ): SandboxRuntimeDenialKind | null => {
   const text = combinedOutput
+
+  if (isSandboxedContext(options) && hasGoOrGetaddrinfoNetworkFailure(text)) {
+    return 'network'
+  }
 
   // Covers Node `EPERM: operation not permitted, <syscall>` on all platforms, plus generic denials.
   if (/operation not permitted/i.test(text)) {
