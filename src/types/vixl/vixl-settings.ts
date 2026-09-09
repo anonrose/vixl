@@ -6,6 +6,7 @@ import type {
 import type { ModelCatalogMetaMap } from '@/types/models/model-catalog-meta'
 import type { ModelCatalogOptionsMap } from '@/types/models/model-catalog-option'
 import type { ModelPricingRates } from '@/types/billing/model-pricing-rates'
+import type { VixlThemeDefinition } from '@/types/appearance/theme'
 
 export type VixlTheme = 'light' | 'dark' | 'system'
 
@@ -51,6 +52,10 @@ export type VixlCustomProvider = {
 export type VixlSettings = {
   version: 1
   'appearance.theme'?: VixlTheme
+  // Personal-only: active custom theme id (built-in fallback when missing)
+  // and the saved/imported theme library. Stripped from project overrides.
+  'appearance.activeThemeId'?: string
+  'appearance.themeLibrary'?: VixlThemeDefinition[]
   'agent.autoApproveGlobs'?: string[]
   'agent.permissionLevel'?: PermissionLevel
   'agent.permissions'?: PermissionRecord[]

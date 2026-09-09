@@ -45,8 +45,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --animate-sidebar-collapsible-down: sidebar-collapsible-down 150ms ease-out;
   --animate-sidebar-collapsible-up: sidebar-collapsible-up 150ms ease-out;
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: var(--vixl-font-ui, 'Inter Variable', ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--vixl-font-mono, 'JetBrains Mono', ui-monospace, monospace);
 }
 
 @keyframes sidebar-collapsible-down {
@@ -78,6 +78,26 @@
   /* Width of the title bar control clusters; keeps title content clear of them */
   --titlebar-safe-left: 8.75rem;
   --titlebar-safe-right: 6rem;
+  /*
+   * Appearance runtime variables. Defaults match the shipped built-in theme
+   * exactly; the theme runtime overrides them on documentElement only while a
+   * custom theme (or live preview) is active.
+   */
+  --vixl-font-ui: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --vixl-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --vixl-font-size-ui: 13px;
+  --vixl-canvas-background: var(--background);
+  --vixl-canvas-image: none;
+  /* Decorative accent accents (mentions, skills, aurora ring); theme-able */
+  --vixl-accent-mention: #c4b5fd;
+  --vixl-accent-mention-strong: #b89ad4;
+  --vixl-accent-skill: #86efac;
+  --vixl-accent-skill-strong: #7ec9a0;
+  --vixl-accent-aurora-1: #b89ad4;
+  --vixl-accent-aurora-2: #7eb6d9;
+  --vixl-accent-aurora-3: #c4b5fd;
+  --vixl-accent-aurora-4: #7ec9a0;
+  --vixl-accent-aurora-5: #a894d4;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -155,6 +175,10 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans text-[13px] antialiased tracking-[0.01em];
+    @apply text-foreground font-sans antialiased tracking-[0.01em];
+    /* App canvas: solid color plus optional structured gradient image */
+    background-color: var(--vixl-canvas-background);
+    background-image: var(--vixl-canvas-image);
+    font-size: var(--vixl-font-size-ui, 13px);
   }
 }

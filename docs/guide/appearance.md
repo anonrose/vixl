@@ -22,58 +22,59 @@ Color mode and themes are independent: switching Light/Dark/System changes which
 
 ## The `.vixl-theme.json` format
 
-Themes are shared as a single self-contained JSON file with the `.vixl-theme.json` extension. The file is a versioned `vixl-theme` payload describing exactly one theme. Files are strictly validated on import: unknown fields, malformed values, and unsafe content are rejected rather than partially applied.
-
-A theme carries:
+Themes are shared as a single self-contained JSON file with the `.vixl-theme.json` extension. A theme file is a flat, versioned `vixl-theme` payload describing exactly one theme. Files are strictly validated on import: unknown fields, malformed values, and unsafe content are rejected rather than partially applied. The top-level keys are `format` (always `"vixl-theme"`), `version`, `id`, `name`, `typography`, and `variants`.
 
 - `id` — a stable, lowercase slug identifier. The built-in id `vixl-default` is reserved and can never be imported or stored.
 - `name` — a user-facing display name (length-limited, no control characters or angle brackets).
-- `version` — the theme format version the file was written for. Files with unsupported versions are rejected.
+- `version` — the theme format version the file was written for (currently `1`). Files with unsupported versions are rejected.
+- `typography` — one shared typography block (primary UI and monospace font family names plus bounded UI and editor font sizes).
 - `variants` — required `light` and `dark` variants, so System mode stays meaningful.
 
 ### Variants
 
 Each variant carries:
 
-- **Semantic UI colors** — a complete token map corresponding to the shadcn/Tailwind semantic variables used by the app: core tokens (background/foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring), the sidebar group (`sidebar`, `sidebar-foreground`, `sidebar-primary`, `sidebar-primary-foreground`, `sidebar-accent`, `sidebar-accent-foreground`, `sidebar-border`, `sidebar-ring`), and the chart palette (`chart1` … `chart5`). Incomplete token maps are rejected.
-- **Canvas background** — either `solid` (a single color) or a structured gradient: an angle in degrees (0–360) plus 2–5 color stops with positions in 0–100, sorted by ascending position. Gradients also carry a solid fallback color so the canvas degrades safely.
-- **Typography** — primary UI and monospace font family names with explicit fallback stacks (bounded count), plus bounded UI and editor font sizes. Font families are treated as data, not CSS: quotes, braces, semicolons, `url(`, `var(`, and similar escape hatches are rejected, and font sources are never fetched.
-- **Editor palette** — the code colors consumed by Monaco and Shiki (background, foreground, comments, keywords, strings, numbers, and so on) including readable hover/suggest widget foreground/background/border values.
+- `tokens` — **semantic UI colors**, a complete token map corresponding to the shadcn/Tailwind semantic variables used by the app: core tokens (background/foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring), the sidebar group (`sidebar`, `sidebarForeground`, `sidebarPrimary`, `sidebarPrimaryForeground`, `sidebarAccent`, `sidebarAccentForeground`, `sidebarBorder`, `sidebarRing`), and the chart palette (`chart1` … `chart5`). Incomplete token maps are rejected.
+- `background` — the canvas: either `solid` (a single color) or a structured gradient (`kind: "gradient"`) with an angle in degrees (0–360) plus 2–5 color stops with positions in 0–100, sorted by ascending position. Gradients may carry a solid `fallback` color used when gradients cannot be rendered; the runtime always degrades safely even without one.
+- `editor` — the code colors consumed by Monaco and Shiki (background, foreground, comments, keywords, strings, numbers, and so on). Hover/suggest widget colors are runtime-only: they are not part of the file and are filled from the built-in theme on import.
 
 ### Value rules
 
-- **Colors** are hex only — CSS color functions, named colors, and URLs are rejected.
-- **Font sizes** are bounded numeric values (half-point granularity for UI text; integer bounds for editor text).
-- **Names and identifiers** are length-limited; font family strings are limited to letters, digits, spaces, and a small punctuation set.
-- **Files** are size-capped (rejected before parsing if oversized), and the saved theme library is count-capped.
+- **Colors** are hex only (`#RGB`, `#RGBA`, `#RRGGBB`, or `#RRGGBBAA`) — CSS color functions, named colors, and URLs are rejected. These are the same forms the Appearance editor accepts, so any editor-created theme exports unchanged.
+- **Font sizes** are bounded numeric values between 8 and 32 in half-point steps, shared by the editor and the file format.
+- **Names and identifiers** are length-limited (64 characters); font family strings are limited to 200 characters of letters, digits, spaces, and a small punctuation set, treated as data, not CSS.
+- **Files** are size-capped at 1 MiB (rejected before parsing if oversized), and the saved theme library is capped at 50 themes.
 
-Imports never accept raw CSS, URLs, HTML, scripts, image data, or remote font sources. Imported values are data-only.
+Imports never accept raw CSS, URLs, HTML, scripts, image data, or remote font sources. Imported values are data-only. Font fallback stacks are also runtime-only and filled from the built-in theme on import.
 
 ### Canonical exports
 
-Exports are serialized in a stable, canonical shape: schema-versioned envelope, fixed key order, no runtime-only preview state, stable pretty printing with a trailing newline. Export → import round trips produce byte-identical files. Colors are normalized to a canonical casing so equivalent inputs serialize identically.
+Exports are serialized in a stable, canonical shape: schema-versioned payload with fixed key order, no runtime-only preview state, stable pretty printing with a trailing newline. Export → import round trips produce byte-identical files.
 
 A structurally abbreviated example (the authoritative key layout is whatever the app's exporter produces — start from an exported theme when hand-editing):
 
 ```json
 {
-  "kind": "vixl-theme",
+  "format": "vixl-theme",
   "version": 1,
-  "theme": {
-    "id": "sunset",
-    "name": "Sunset",
-    "version": 1,
-    "variants": {
-      "light": {
-        "colors": { "background": "#ffffff", "foreground": "#18181b", "...": "complete token map" },
-        "background": { "kind": "gradient", "fallback": "#ffffff", "angle": 180, "stops": [ { "color": "#fafafa", "position": 0 }, { "color": "#e4e4e7", "position": 100 } ] },
-        "editor": { "...": "Monaco/Shiki palette incl. hover/suggest widget colors" }
-      },
-      "dark": {
-        "colors": { "background": "#18181b", "foreground": "#fafafa", "...": "complete token map" },
-        "background": { "kind": "solid", "color": "#18181b" },
-        "editor": { "...": "Monaco/Shiki palette incl. hover/suggest widget colors" }
-      }
+  "id": "sunset",
+  "name": "Sunset",
+  "typography": {
+    "uiFontFamily": "Inter Variable",
+    "monoFontFamily": "JetBrains Mono",
+    "uiFontSize": 13,
+    "editorFontSize": 13
+  },
+  "variants": {
+    "light": {
+      "tokens": { "background": "#ffffff", "foreground": "#18181b", "...": "complete token map" },
+      "background": { "kind": "gradient", "angle": 180, "fallback": "#ffffff", "stops": [ { "color": "#fafafa", "position": 0 }, { "color": "#e4e4e7", "position": 100 } ] },
+      "editor": { "...": "Monaco/Shiki palette" }
+    },
+    "dark": {
+      "tokens": { "background": "#18181b", "foreground": "#fafafa", "...": "complete token map" },
+      "background": { "kind": "solid", "color": "#18181b" },
+      "editor": { "...": "Monaco/Shiki palette" }
     }
   }
 }
