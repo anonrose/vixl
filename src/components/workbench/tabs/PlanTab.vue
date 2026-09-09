@@ -18,6 +18,7 @@ import useStartPlanBuild from '@/composables/use-start-plan-build'
 import useWorkbenchStore from '@/composables/use-workbench-store'
 import usePlanBuildStatus from '@/composables/use-plan-build-status'
 import parsePlan from '@/services/plans/parse-plan'
+import clearStaleChatRefs from '@/services/plans/clear-stale-chat-refs'
 import { planTodoStatusIcon, splitPlanBodySegments } from '@/utils/plans'
 import listConfiguredProviders from '@/services/providers/list-configured-providers'
 import { fsReadFile } from '@/services/vixl/vixl-tauri'
@@ -50,7 +51,7 @@ const parseError = ref<string | null>(null)
 const orchestrateOpen = ref(false)
 const buildNowOpen = ref(false)
 
-const { buildChatId, buildChatStatus } = usePlanBuildStatus({
+const { buildChatId, buildChatStatus, buildChatMissing, missingChatIds } = usePlanBuildStatus({
   projectId: () => props.tab.projectId,
   lastBuildChatId,
   sourceChatId,
@@ -151,7 +152,10 @@ const { handleBuildNowConfirm, handleOrchestrateConfirm } = usePlanBuildActions(
 const handleOpenBuildChat = async (): Promise<void> => {
   const slug = workbench.getProject(props.tab.projectId)?.slug
   const chatId = buildChatId.value
-  if (!slug || !chatId) {
+  if (!chatId || buildChatMissing.value) {
+    return
+  }
+  if (!slug) {
     toast.error('Could not open build chat')
     return
   }
@@ -213,6 +217,36 @@ watch([planPayload, projectRoot, refreshToken], () => {
     })
   })
 })
+
+watch(
+  [missingChatIds, projectRoot, planPayload],
+  async () => {
+    const root = projectRoot.value
+    const stale = missingChatIds.value.filter(
+      (id) => id === sourceChatId.value || id === lastBuildChatId.value,
+    )
+    if (!root || stale.length === 0) {
+      return
+    }
+    try {
+      await clearStaleChatRefs({
+        projectRoot: root,
+        path: planPayload.value.path,
+        staleChatIds: stale,
+      })
+      if (sourceChatId.value && stale.includes(sourceChatId.value)) {
+        sourceChatId.value = null
+      }
+      if (lastBuildChatId.value && stale.includes(lastBuildChatId.value)) {
+        lastBuildChatId.value = null
+      }
+    } catch (error) {
+      toast.error('Failed to clear stale chat references', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  },
+)
 </script>
 
 <template>

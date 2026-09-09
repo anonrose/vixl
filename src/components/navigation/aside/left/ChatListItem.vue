@@ -36,6 +36,7 @@ import { SidebarMenuSubButton } from '@/components/shadcn/ui/sidebar'
 import { dropAgentHarness } from '@/composables/use-agent-harness'
 import useChatStore from '@/composables/use-chat-store'
 import useFleetSidebar, { refreshFleetSidebar } from '@/composables/use-fleet-sidebar'
+import { dropPlanExecutionSession } from '@/services/harness/plan-execution-session'
 import { killShellsForChat } from '@/services/harness/shell/registry'
 import {
   deleteChat,
@@ -195,6 +196,7 @@ const handleDelete = async (): Promise<void> => {
   deleting.value = true
   try {
     dropAgentHarness(props.projectSlug, props.chat.id)
+    dropPlanExecutionSession(props.projectSlug, props.chat.id)
     chatStore.dropSession(props.projectSlug, props.chat.id)
     await killShellsForChat(props.chat.id)
     await deleteChat(props.projectSlug, props.chat.id)

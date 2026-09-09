@@ -65,6 +65,13 @@ export default (
   } = state
 
   const send = async (args: SendArgs): Promise<void> => {
+    const pending = session.pendingQuestion.value
+    if (!args.internal && pending && args.text.trim().length > 0) {
+      session.submitAnswer(pending.toolCallId, args.text)
+      attention.maybeClearAttentionWhenGatesEmpty()
+      return
+    }
+
     if (!args.internal && (attention.isParentBusy() || attention.isWaitingOnBackground())) {
       try {
         messageQueue.enqueue({

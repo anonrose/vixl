@@ -49,6 +49,7 @@ import NavigationAsideLeftChatRunningDots from '@/components/navigation/aside/le
 import { dropAgentHarness } from '@/composables/use-agent-harness'
 import useChatStore from '@/composables/use-chat-store'
 import useFleetSidebar, { refreshFleetSidebar } from '@/composables/use-fleet-sidebar'
+import { dropPlanExecutionSession } from '@/services/harness/plan-execution-session'
 import { killShellsForChat } from '@/services/harness/shell/registry'
 import { deleteChat, updateChatMeta } from '@/services/vixl/vixl-tauri'
 import chatRouteFor from '@/utils/chat-route-for'
@@ -180,6 +181,7 @@ const handleDelete = async (): Promise<void> => {
   deleting.value = true
   try {
     dropAgentHarness(props.projectSlug, chat.id)
+    dropPlanExecutionSession(props.projectSlug, chat.id)
     chatStore.dropSession(props.projectSlug, chat.id)
     await killShellsForChat(chat.id)
     await deleteChat(props.projectSlug, chat.id)
