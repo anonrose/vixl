@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertCircleIcon,
@@ -28,13 +27,16 @@ import {
 } from '@/components/shadcn/ui/tooltip'
 import { toast } from 'vue-sonner'
 import McpServerIcon from '@/components/mcp/ServerIcon.vue'
-import useMcpServers from '@/composables/use-mcp-servers'
-import useVixlConfig from '@/composables/use-vixl-config'
+import useProjectMcpConfig from '@/composables/mcp-servers/use-project-mcp-config'
 import { isMcpServerEnabled } from '@/schemas/mcp-config'
 import type { EffectiveMcpServer } from '@/services/mcp/merge-mcp-config'
 import { isMcpTrusted, sessionTrusts } from '@/services/mcp/mcp-trust'
 import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
 import type { SettingsTab } from '@/composables/use-vixl-config'
+
+const props = defineProps<{
+  projectRoot: string | null
+}>()
 
 const {
   personalMcp,
@@ -49,12 +51,15 @@ const {
 } = useMcpServers()
 const config = useVixlConfig()
 const router = useRouter()
+const { localProjectConfig, reloadProjectConfig } = useProjectMcpConfig(
+  () => props.projectRoot,
+)
 
 const menuOpen = ref(false)
 const searchQuery = ref('')
 
 const effectiveServers = computed(() =>
-  listUserMcpServers(personalMcp.value, projectMcp.value),
+  listUserMcpServers(personalMcp.value, localProjectConfig.value),
 )
 
 const filteredServers = computed(() => {
@@ -151,6 +156,7 @@ const refreshOnOpen = async (open: boolean): Promise<void> => {
   }
   searchQuery.value = ''
   try {
+    await reloadProjectConfig()
     await refreshStates()
   } catch (error) {
     toast.error('Failed to refresh MCP server status', {
@@ -213,8 +219,23 @@ const handleToggleChange = async (
     return
   }
 
+  const fleetRoot = config.activeRootPath.value
+  const overrideConfig = localProjectConfig.value
+  const useOverride =
+    props.projectRoot !== fleetRoot && overrideConfig !== null
+
   try {
-    await setServerEnabled(server.id, checked, config.activeRootPath.value)
+    const updated = await setServerEnabled(
+      server.id,
+      checked,
+      props.projectRoot,
+      useOverride ? overrideConfig : undefined,
+    )
+    if (updated) {
+      localProjectConfig.value = updated
+    } else if (props.projectRoot === fleetRoot) {
+      localProjectConfig.value = projectMcp.value
+    }
   } catch (error) {
     toast.error('Failed to update MCP server', {
       description: error instanceof Error ? error.message : 'Unknown error',

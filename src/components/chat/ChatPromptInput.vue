@@ -586,7 +586,7 @@ watch(
         <ChatGitBranchSelect v-if="showGitBranch" />
       </div>
       <div class="flex min-w-0 items-center gap-1">
-        <ChatMcpServerPicker />
+        <ChatMcpServerPicker :project-root="promptWorkspaceRoot" />
         <ChatSkillsPicker :mode="session.selectedMode" />
       </div>
     </div>

@@ -170,8 +170,10 @@ export const createSetServerEnabled = (
   serverId: string,
   enabled: boolean,
   rootPath: string | null,
-): Promise<void> => {
-  const effective = listEffectiveMcpServers(personalMcp.value, projectMcp.value)
+  projectConfigOverride?: McpConfig,
+): Promise<McpConfig | undefined> => {
+  const projectConfig = projectConfigOverride ?? projectMcp.value
+  const effective = listEffectiveMcpServers(personalMcp.value, projectConfig)
   const server = effective.find((item) => item.id === serverId)
   if (!server) {
     toast.error('MCP server not found', {
@@ -186,7 +188,7 @@ export const createSetServerEnabled = (
 
   const tab: SettingsTab =
     server.scope === 'personal' ? 'personal' : 'project'
-  const scoped = tab === 'personal' ? personalMcp.value : projectMcp.value
+  const scoped = tab === 'personal' ? personalMcp.value : projectConfig
   const existing = scoped.servers[serverId]
   if (!existing) {
     toast.error('MCP server config missing', {
@@ -209,9 +211,11 @@ export const createSetServerEnabled = (
     },
   }
 
+  const useProjectOverride = tab === 'project' && projectConfigOverride !== undefined
+
   if (tab === 'personal') {
     personalMcp.value = nextScoped
-  } else {
+  } else if (!useProjectOverride) {
     projectMcp.value = nextScoped
   }
 
@@ -228,10 +232,14 @@ export const createSetServerEnabled = (
     } catch (error) {
       if (tab === 'personal') {
         personalMcp.value = scoped
-      } else {
+      } else if (!useProjectOverride) {
         projectMcp.value = scoped
       }
       throw error
     }
   })
+
+  if (useProjectOverride) {
+    return nextScoped
+  }
 }
