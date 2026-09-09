@@ -11,6 +11,11 @@ import {
 } from '@/services/mcp/mcp-trust'
 import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
 import { clearMcpToolBaseline } from '@/services/mcp/mcp-tool-baseline'
+import {
+  loadEffectiveSettings,
+  loadProjectSettings,
+  saveSettings,
+} from '@/services/config/vixl-config'
 
 type TrustPending = {
   serverId: string
@@ -20,10 +25,35 @@ type TrustPending = {
 
 type TrustConfig = ReturnType<typeof useVixlConfig>
 
+const persistPersonalAlways = async (
+  config: TrustConfig,
+  pending: TrustPending,
+): Promise<void> => {
+  const existing = config.personalSettings.value['agent.mcp.trust'] ?? []
+  await config.updateSetting(
+    'personal',
+    'agent.mcp.trust',
+    upsertMcpTrustRecord(existing, pending.serverId, 'always', pending.fingerprint),
+  )
+}
+
+const persistActiveProjectWorkspace = async (
+  config: TrustConfig,
+  pending: TrustPending,
+): Promise<void> => {
+  const existing = config.projectSettings.value['agent.mcp.trust'] ?? []
+  await config.updateSetting(
+    'project',
+    'agent.mcp.trust',
+    upsertMcpTrustRecord(existing, pending.serverId, 'workspace', pending.fingerprint),
+  )
+}
+
 const persistTrustRecord = async (
   config: TrustConfig,
   pending: TrustPending,
   scope: McpTrustScope,
+  root?: () => string | null,
 ): Promise<void> => {
   if (scope === 'never') {
     clearSessionTrust(pending.serverId)
@@ -42,36 +72,37 @@ const persistTrustRecord = async (
   }
 
   if (scope === 'workspace') {
-    const rootPath = config.activeRootPath.value
-    if (rootPath) {
-      const existing = config.projectSettings.value['agent.mcp.trust'] ?? []
-      await config.updateSetting(
+    const requestedRoot = root ? (root() ?? null) : config.activeRootPath.value
+    if (root && requestedRoot && requestedRoot !== config.activeRootPath.value) {
+      const project = await loadProjectSettings(requestedRoot)
+      const existing = project['agent.mcp.trust'] ?? []
+      await saveSettings(
         'project',
-        'agent.mcp.trust',
-        upsertMcpTrustRecord(existing, pending.serverId, 'workspace', pending.fingerprint),
+        {
+          ...project,
+          'agent.mcp.trust': upsertMcpTrustRecord(
+            existing,
+            pending.serverId,
+            'workspace',
+            pending.fingerprint,
+          ),
+        },
+        requestedRoot,
       )
+    } else if (requestedRoot) {
+      await persistActiveProjectWorkspace(config, pending)
     } else {
-      const existing = config.personalSettings.value['agent.mcp.trust'] ?? []
-      await config.updateSetting(
-        'personal',
-        'agent.mcp.trust',
-        upsertMcpTrustRecord(existing, pending.serverId, 'always', pending.fingerprint),
-      )
+      await persistPersonalAlways(config, pending)
     }
     sessionTrusts.set(pending.serverId, pending.fingerprint)
     return
   }
 
-  const existing = config.personalSettings.value['agent.mcp.trust'] ?? []
-  await config.updateSetting(
-    'personal',
-    'agent.mcp.trust',
-    upsertMcpTrustRecord(existing, pending.serverId, 'always', pending.fingerprint),
-  )
+  await persistPersonalAlways(config, pending)
   sessionTrusts.set(pending.serverId, pending.fingerprint)
 }
 
-export default () => {
+export default (root?: () => string | null) => {
   const config = useVixlConfig()
   const trustPending = ref<TrustPending | null>(null)
   const trustSaving = ref(false)
@@ -82,7 +113,10 @@ export default () => {
     action: () => Promise<void>,
   ): Promise<void> => {
     const fingerprint = mcpServerFingerprint(serverConfig)
-    if (isMcpTrusted(config.effectiveSettings.value, id, fingerprint, sessionTrusts)) {
+    const settings = root
+      ? await loadEffectiveSettings(root() ?? null)
+      : config.effectiveSettings.value
+    if (isMcpTrusted(settings, id, fingerprint, sessionTrusts)) {
       await action()
       return
     }
@@ -99,7 +133,7 @@ export default () => {
 
     try {
       await clearMcpToolBaseline(pending.serverId)
-      await persistTrustRecord(config, pending, scope)
+      await persistTrustRecord(config, pending, scope, root)
     } catch (error) {
       toast.error('Failed to trust server', {
         description: error instanceof Error ? error.message : 'Unknown error',

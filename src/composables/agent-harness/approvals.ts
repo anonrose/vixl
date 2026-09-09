@@ -1,5 +1,6 @@
 import { toast } from 'vue-sonner'
 import type { PermissionCapabilityKey, PermissionRecord } from '@/types/harness/permission'
+import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import {
   listPendingApprovalsForChat,
   resolveApproval,
@@ -14,6 +15,16 @@ import {
 import { requestQuestion } from '@/services/harness/permission/question-gate'
 import { listEffectiveMcpServers } from '@/services/mcp/merge-mcp-config'
 import { parsePermissionRecords } from '@/services/harness/permission/policy'
+import {
+  loadPersonalMcpConfig,
+  loadProjectConfigForRoot,
+} from '@/composables/mcp-servers/config'
+import {
+  loadEffectiveSettings,
+  loadProjectSettings,
+  saveSettings,
+} from '@/services/config/vixl-config'
+import type { McpConfig } from '@/types/vixl/mcp-config'
 import type { AgentHarnessState, AttentionHelpers } from './types'
 
 export default (state: AgentHarnessState, attention: AttentionHelpers) => {
@@ -79,20 +90,48 @@ export default (state: AgentHarnessState, attention: AttentionHelpers) => {
     verdict: 'allow' | 'deny',
     scope: 'workspace' | 'always',
   ): Promise<void> => {
-    const tab = scope === 'workspace' ? 'project' : 'personal'
-    if (tab === 'project' && !config.activeRootPath.value) {
-      toast.error('Cannot save workspace permission', {
-        description: 'No active project is open.',
-      })
-      return
+    const upsertRecords = (settings: VixlSettings): PermissionRecord[] => {
+      const existing = parsePermissionRecords(settings['agent.permissions'])
+      const idx = existing.findIndex((r) => r.capability === capability)
+      const record: PermissionRecord = { capability, verdict, scope }
+      return idx >= 0
+        ? existing.map((r, i) => (i === idx ? record : r))
+        : [...existing, record]
     }
-    const settings = config.getScopeSettings(tab)
-    const existing = parsePermissionRecords(settings['agent.permissions'])
-    const idx = existing.findIndex((r) => r.capability === capability)
-    const record: PermissionRecord = { capability, verdict, scope }
-    const updated: PermissionRecord[] =
-      idx >= 0 ? existing.map((r, i) => (i === idx ? record : r)) : [...existing, record]
-    await config.updateSetting(tab, 'agent.permissions', updated)
+
+    try {
+      if (scope === 'always') {
+        const settings = config.getScopeSettings('personal')
+        await config.updateSetting('personal', 'agent.permissions', upsertRecords(settings))
+        return
+      }
+
+      const chatRoot = options.standalone ? null : options.projectRoot
+      if (chatRoot === null) {
+        toast.error('Cannot save workspace permission', {
+          description: 'No active project is open.',
+        })
+        return
+      }
+
+      if (chatRoot === config.activeRootPath.value) {
+        const settings = config.getScopeSettings('project')
+        await config.updateSetting('project', 'agent.permissions', upsertRecords(settings))
+        return
+      }
+
+      const projectSettings = await loadProjectSettings(chatRoot)
+      const next: VixlSettings = {
+        ...projectSettings,
+        'agent.permissions': upsertRecords(projectSettings),
+        version: 1,
+      }
+      await saveSettings('project', next, chatRoot)
+    } catch (error) {
+      toast.error('Failed to save permission', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
   }
 
   const resolveApprovalDecision = (toolCallId: string, resolution: ApprovalResolution): void => {
@@ -132,24 +171,21 @@ export default (state: AgentHarnessState, attention: AttentionHelpers) => {
     }
 
     const rootPath = options.standalone ? null : options.projectRoot
-    if (
-      Object.keys(mcpServers.personalMcp.value.servers).length === 0 &&
-      Object.keys(mcpServers.projectMcp.value.servers).length === 0
-    ) {
-      try {
-        await mcpServers.loadConfigs(rootPath)
-      } catch (error) {
-        toast.error('Failed to load MCP config', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-        return
+    let personal: McpConfig
+    let projectMcp: McpConfig = { servers: {} }
+    try {
+      personal = await loadPersonalMcpConfig()
+      if (rootPath) {
+        projectMcp = await loadProjectConfigForRoot(rootPath)
       }
+    } catch (error) {
+      toast.error('Failed to load MCP config', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+      return
     }
 
-    const effective = listEffectiveMcpServers(
-      mcpServers.personalMcp.value,
-      mcpServers.projectMcp.value,
-    )
+    const effective = listEffectiveMcpServers(personal, projectMcp)
     const server = effective.find((item) => item.id === entry.serverId)
     if (!server) {
       toast.error('MCP server not found', {
@@ -158,9 +194,20 @@ export default (state: AgentHarnessState, attention: AttentionHelpers) => {
       return
     }
 
+    let settings: VixlSettings
+    try {
+      settings = await loadEffectiveSettings(rootPath)
+    } catch (error) {
+      toast.error('Failed to load project settings', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+      return
+    }
+
     try {
       await mcpServers.authenticateServer(entry.serverId, server.config, {
         confirmAuthorizationServerOrigin: confirmAsOriginForChat,
+        settings,
       })
       resolveMcpAuthForServer(entry.serverId, { action: 'authenticated' })
       syncPendingMcpAuth()

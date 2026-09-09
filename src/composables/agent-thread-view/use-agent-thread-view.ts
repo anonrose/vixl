@@ -42,16 +42,6 @@ export default () => {
   const loadGeneration = ref(0)
   const homeRoot = ref<string | null>(null)
   const paintedSession = shallowRef<ReturnType<typeof chatStore.forChat> | null>(null)
-  const sessionPermissionLevel = ref<PermissionLevel>(
-    config.effectiveSettings.value['agent.permissionLevel'] ?? 'allowlist',
-  )
-  const permissionLevelTouched = ref(false)
-
-  const filePolicyOpen = ref(false)
-  const filePolicyChanges = ref<AgentThreadViewState['filePolicyChanges']['value']>([])
-  const filePolicyTitle = ref('Submit edited message?')
-  const filePolicyEmphasizeRevert = ref(false)
-  const pendingFilePolicyAction = ref<PendingFilePolicyAction | null>(null)
 
   const isStandalone = computed(
     () =>
@@ -71,6 +61,30 @@ export default () => {
   const project = computed(
     () => fleet.projects.value.find((item) => item.slug === projectSlug.value) ?? null,
   )
+  const chatSettingsRoot = computed((): string | null => {
+    if (isStandalone.value) {
+      return null
+    }
+    const fromMeta = chatStore.meta.value?.projectRoot?.trim()
+    if (fromMeta) {
+      return fromMeta
+    }
+    return project.value?.rootPath ?? null
+  })
+  const { settings: chatEffectiveSettings } = useRootEffectiveSettings(
+    () => chatSettingsRoot.value,
+  )
+  const sessionPermissionLevel = ref<PermissionLevel>(
+    chatEffectiveSettings.value['agent.permissionLevel'] ?? 'allowlist',
+  )
+  const permissionLevelTouched = ref(false)
+
+  const filePolicyOpen = ref(false)
+  const filePolicyChanges = ref<AgentThreadViewState['filePolicyChanges']['value']>([])
+  const filePolicyTitle = ref('Submit edited message?')
+  const filePolicyEmphasizeRevert = ref(false)
+  const pendingFilePolicyAction = ref<PendingFilePolicyAction | null>(null)
+
   const harnessStatus = computed((): ChatStatus => {
     if (isSubagentView.value) {
       const subagent = paintedSession.value?.getSubagent(subagentId.value) ?? null

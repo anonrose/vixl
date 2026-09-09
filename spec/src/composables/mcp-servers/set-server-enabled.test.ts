@@ -199,4 +199,23 @@ describe('createSetServerEnabled', () => {
     expect(projectMcp.value.servers.slack).toEqual(globalExisting)
     expect(projectMcp.value.servers.github).toBeUndefined()
   })
+
+  it('passes a settings override through to startServer', async () => {
+    const existing = stdioServer(false)
+    projectMcp.value = { servers: { github: existing } }
+    const startServer = vi.fn<(...args: unknown[]) => Promise<void>>(async () => {})
+    const setServerEnabled = createSetServerEnabled(
+      vi.fn<(serverId: string, serverConfig: McpServerConfig) => void>(),
+      startServer,
+    )
+    const settings = { version: 1 as const, 'agent.mcp.trust': [] }
+
+    await setServerEnabled('github', true, '/tmp/project', undefined, settings)
+
+    expect(startServer).toHaveBeenCalledWith(
+      'github',
+      { ...existing, enabled: true },
+      { quiet: true, manageLoading: false, settings },
+    )
+  })
 })

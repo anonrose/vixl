@@ -50,6 +50,14 @@ vi.mock('@/services/harness/subagent/registry', () => ({
   hasRunningSubagentsForChat: () => false,
 }))
 
+const loadEffectiveSettings = vi.hoisted(() =>
+  vi.fn<(rootPath: string | null) => Promise<VixlSettings>>(),
+)
+
+vi.mock('@/services/config/vixl-config', () => ({
+  loadEffectiveSettings,
+}))
+
 vi.mock('vue-sonner', () => ({
   toast: {
     error: (...args: unknown[]) => toastError(...args),
@@ -134,6 +142,7 @@ describe('agent-harness send persist model/mode', () => {
     listConfiguredProviders.mockReturnValue(['openai'])
     listAgentIndex.mockResolvedValue([])
     resolveAgentDefinition.mockResolvedValue(null)
+    loadEffectiveSettings.mockResolvedValue({ version: 1 })
   })
 
   it('persists model and mode via updateChatMeta before the turn', async () => {
@@ -253,6 +262,59 @@ describe('agent-harness send persist model/mode', () => {
     expect(second.sessionAllows).toBe(state.sessionAllows)
     expect(second.sessionDenies).toBe(state.sessionDenies)
     expect(second.sessionAllows.has('fs.write')).toBe(true)
+  })
+
+  it('loads effective settings for the chat project root', async () => {
+    const chatSettings: VixlSettings = {
+      version: 1,
+      'agent.permissionLevel': 'allowlist',
+    }
+    loadEffectiveSettings.mockResolvedValue(chatSettings)
+    const state = buildState()
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'hello',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(loadEffectiveSettings).toHaveBeenCalledWith('/tmp/proj')
+    expect(state.lastRunConfig.value?.effectiveSettings).toEqual(chatSettings)
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: chatSettings }),
+    )
+  })
+
+  it('loads personal settings when the chat is standalone', async () => {
+    const personalSettings: VixlSettings = { version: 1 }
+    loadEffectiveSettings.mockResolvedValue(personalSettings)
+    const state = buildState()
+    state.options.standalone = true
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'hello',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(loadEffectiveSettings).toHaveBeenCalledWith(null)
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: personalSettings }),
+    )
   })
 
   it('turns raw /reviewer text into an agent mention on send', async () => {

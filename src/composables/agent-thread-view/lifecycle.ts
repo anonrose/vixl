@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { PENDING_CHAT_MESSAGE_EVENT } from '@/services/chat/pending-message'
+import { loadEffectiveSettings } from '@/services/config/vixl-config'
 import type { AgentThreadHandlers } from './handlers'
 import type { AgentThreadSessionOps } from './session'
 import type { AgentThreadViewState } from './types'
@@ -25,14 +26,34 @@ export const bindAgentThreadLifecycle = (
   )
 
   watch(
-    () => state.config.hydrated.value,
-    (hydrated) => {
+    [
+      () => state.config.hydrated.value,
+      state.isStandalone,
+      () => state.chatStore.meta.value?.projectRoot ?? null,
+      () => state.project.value?.rootPath ?? null,
+    ],
+    async ([hydrated]) => {
       if (!hydrated || state.permissionLevelTouched.value) {
         return
       }
-      state.sessionPermissionLevel.value =
-        state.config.effectiveSettings.value['agent.permissionLevel'] ?? 'allowlist'
-      state.harness.value?.setPermissionLevel(state.sessionPermissionLevel.value)
+      const root = state.isStandalone.value
+        ? null
+        : (state.chatStore.meta.value?.projectRoot?.trim()
+          || state.project.value?.rootPath
+          || null)
+      try {
+        const settings = await loadEffectiveSettings(root)
+        if (state.permissionLevelTouched.value) {
+          return
+        }
+        state.sessionPermissionLevel.value =
+          settings['agent.permissionLevel'] ?? 'allowlist'
+        state.harness.value?.setPermissionLevel(state.sessionPermissionLevel.value)
+      } catch (error) {
+        toast.error('Failed to load project settings', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
     },
     { immediate: true },
   )

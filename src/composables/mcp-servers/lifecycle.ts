@@ -32,6 +32,7 @@ export const createRuntimeOptions = (
     | 'skipTrustCheck'
     | 'scope'
     | 'resourceMetadataUrl'
+    | 'settings'
   >,
 ): McpRuntimeOptions => ({
   settings: config.effectiveSettings.value as VixlSettings,
@@ -40,14 +41,18 @@ export const createRuntimeOptions = (
 
 export const createAssertTrustedOrThrow = (
   config: ReturnType<typeof useVixlConfig>,
-) => (serverId: string, serverConfig: McpServerConfig): void => {
+) => (
+  serverId: string,
+  serverConfig: McpServerConfig,
+  settings?: VixlSettings,
+): void => {
   if (isInternalMcpServer(serverId)) {
     return
   }
   const fingerprint = mcpServerFingerprint(serverConfig)
   if (
     !isMcpTrusted(
-      config.effectiveSettings.value,
+      settings ?? config.effectiveSettings.value,
       serverId,
       fingerprint,
       sessionTrusts,
@@ -68,7 +73,7 @@ export const createStartServer = (
 ) => async (
   serverId: string,
   serverConfig: McpServerConfig,
-  options?: { quiet?: boolean; manageLoading?: boolean },
+  options?: { quiet?: boolean; manageLoading?: boolean; settings?: VixlSettings },
 ): Promise<void> => {
   const existing = startInFlight.get(serverId)
   if (existing) {
@@ -78,11 +83,15 @@ export const createStartServer = (
 
   const run = async (): Promise<void> => {
     try {
-      assertTrustedOrThrow(serverId, serverConfig)
+      assertTrustedOrThrow(serverId, serverConfig, options?.settings)
       const state = await mcpRuntime.start(
         serverId,
         serverConfig,
-        runtimeOptions(),
+        runtimeOptions(
+          options?.settings !== undefined
+            ? { settings: options.settings }
+            : undefined,
+        ),
       )
       patchServerState(serverId, state)
       if (!options?.quiet && !isInternalMcpServer(serverId)) {
@@ -178,7 +187,7 @@ export const createAuthenticateServer = (
 ) => async (
   serverId: string,
   serverConfig: McpServerConfig,
-  extras?: Pick<McpRuntimeOptions, 'confirmAuthorizationServerOrigin'>,
+  extras?: Pick<McpRuntimeOptions, 'confirmAuthorizationServerOrigin' | 'settings'>,
 ): Promise<void> => {
   authenticatingServers.value = {
     ...authenticatingServers.value,
@@ -186,7 +195,7 @@ export const createAuthenticateServer = (
   }
   await withServerLoading(serverId, async () => {
     try {
-      assertTrustedOrThrow(serverId, serverConfig)
+      assertTrustedOrThrow(serverId, serverConfig, extras?.settings)
       const stored = getHttpOauthChallenge(serverId)
       const fromUrl =
         isMcpHttpServer(serverConfig)

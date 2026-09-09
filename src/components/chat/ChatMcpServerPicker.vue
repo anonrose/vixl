@@ -1,17 +1,8 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import {
-  AlertCircleIcon,
-  CheckCircle2Icon,
   ChevronDownIcon,
-  CircleIcon,
-  Loader2Icon,
-  LogInIcon,
-  PlayIcon,
   ServerIcon,
-  SettingsIcon,
-  ShieldAlertIcon,
-  SquareIcon,
 } from '@lucide/vue'
 import { Button } from '@/components/shadcn/ui/button'
 import { Input } from '@/components/shadcn/ui/input'
@@ -20,18 +11,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/shadcn/ui/popover'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/shadcn/ui/tooltip'
 import { toast } from 'vue-sonner'
-import McpServerIcon from '@/components/mcp/ServerIcon.vue'
 import useProjectMcpConfig from '@/composables/mcp-servers/use-project-mcp-config'
+import useMcpTrustChoice from '@/composables/mcp-servers/use-mcp-trust-choice'
 import { isMcpServerEnabled } from '@/schemas/mcp-config'
 import type { EffectiveMcpServer } from '@/services/mcp/merge-mcp-config'
-import { isMcpTrusted, sessionTrusts } from '@/services/mcp/mcp-trust'
-import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
 import type { SettingsTab } from '@/composables/use-vixl-config'
 
 const props = defineProps<{
@@ -42,8 +26,6 @@ const {
   personalMcp,
   projectMcp,
   serverStates,
-  loadingServers,
-  authenticatingServers,
   setServerEnabled,
   authenticateServer,
   refreshStates,
@@ -52,6 +34,10 @@ const {
 const config = useVixlConfig()
 const router = useRouter()
 const { localProjectConfig, reloadProjectConfig } = useProjectMcpConfig(
+  () => props.projectRoot,
+)
+const { settings: trustSettings } = useRootEffectiveSettings(() => props.projectRoot)
+const { trustPending, trustSaving, requireTrust, handleTrustChoice } = useMcpTrustChoice(
   () => props.projectRoot,
 )
 
@@ -87,65 +73,6 @@ const hasAuthRequired = computed(() =>
   ),
 )
 
-const serverStatus = (serverId: string): string =>
-  serverStates.value[serverId]?.status ?? 'stopped'
-
-const isServerLoading = (serverId: string): boolean =>
-  loadingServers.value[serverId] === true ||
-  authenticatingServers.value[serverId] === true
-
-const isServerEnabled = (server: EffectiveMcpServer): boolean =>
-  isMcpServerEnabled(server.config)
-
-const isServerRunning = (server: EffectiveMcpServer): boolean =>
-  isServerEnabled(server) && serverStatus(server.id) !== 'stopped'
-
-const statusLabel = (server: EffectiveMcpServer): string => {
-  if (isServerLoading(server.id)) {
-    return 'Loading'
-  }
-  if (!isServerEnabled(server)) {
-    return 'Disabled'
-  }
-  const status = serverStatus(server.id)
-  if (status === 'connected') {
-    return 'Connected'
-  }
-  if (status === 'error') {
-    return 'Error'
-  }
-  if (status === 'starting' || status === 'refreshing') {
-    return 'Starting'
-  }
-  if (status === 'auth_required') {
-    return 'Auth required'
-  }
-  return 'Stopped'
-}
-
-const statusIconClass = (server: EffectiveMcpServer): string => {
-  if (isServerLoading(server.id)) {
-    return 'text-muted-foreground'
-  }
-  if (!isServerEnabled(server)) {
-    return 'text-muted-foreground/50'
-  }
-  const status = serverStatus(server.id)
-  if (status === 'connected') {
-    return 'text-emerald-600 dark:text-emerald-400'
-  }
-  if (status === 'error') {
-    return 'text-destructive'
-  }
-  if (status === 'starting' || status === 'refreshing') {
-    return 'text-muted-foreground'
-  }
-  if (status === 'auth_required') {
-    return 'text-amber-600 dark:text-amber-400'
-  }
-  return 'text-muted-foreground'
-}
-
 const settingsTabForServer = (server: EffectiveMcpServer): SettingsTab =>
   server.scope === 'personal' ? 'personal' : 'project'
 
@@ -165,16 +92,6 @@ const refreshOnOpen = async (open: boolean): Promise<void> => {
   }
 }
 
-onMounted(async () => {
-  try {
-    await refreshStates()
-  } catch (error) {
-    toast.error('Failed to refresh MCP server status', {
-      description: error instanceof Error ? error.message : 'Unknown error',
-    })
-  }
-})
-
 const handleOpenInSettings = async (server: EffectiveMcpServer): Promise<void> => {
   menuOpen.value = false
   try {
@@ -192,33 +109,10 @@ const handleOpenInSettings = async (server: EffectiveMcpServer): Promise<void> =
   }
 }
 
-const handleToggleChange = async (
+const applyEnabledChange = async (
   server: EffectiveMcpServer,
   checked: boolean,
 ): Promise<void> => {
-  if (isServerLoading(server.id)) {
-    return
-  }
-  if (checked === isServerRunning(server)) {
-    return
-  }
-
-  if (
-    checked &&
-    !isMcpTrusted(
-      config.effectiveSettings.value,
-      server.id,
-      mcpServerFingerprint(server.config),
-      sessionTrusts,
-    )
-  ) {
-    toast.error('Trust this server in Settings first', {
-      description: `${server.id} must be trusted before it can be enabled.`,
-    })
-    await handleOpenInSettings(server)
-    return
-  }
-
   const fleetRoot = config.activeRootPath.value
   const overrideConfig = localProjectConfig.value
   const useOverride =
@@ -230,6 +124,7 @@ const handleToggleChange = async (
       checked,
       props.projectRoot,
       useOverride ? overrideConfig : undefined,
+      trustSettings.value,
     )
     if (updated) {
       localProjectConfig.value = updated
@@ -243,30 +138,46 @@ const handleToggleChange = async (
   }
 }
 
-const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
-  if (isServerLoading(server.id)) {
-    return
-  }
-  if (
-    !isMcpTrusted(
-      config.effectiveSettings.value,
-      server.id,
-      mcpServerFingerprint(server.config),
-      sessionTrusts,
+const handleToggleChange = async (
+  server: EffectiveMcpServer,
+  checked: boolean,
+): Promise<void> => {
+  if (checked) {
+    await requireTrust(server.id, server.config, () =>
+      applyEnabledChange(server, true),
     )
-  ) {
-    toast.error('Trust this server in Settings first', {
-      description: `${server.id} must be trusted before authentication.`,
-    })
-    await handleOpenInSettings(server)
     return
   }
-  try {
-    await authenticateServer(server.id, server.config)
-  } catch {
-    return
+  await applyEnabledChange(server, false)
+}
+
+const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
+  await requireTrust(server.id, server.config, async () => {
+    try {
+      await authenticateServer(server.id, server.config, {
+        settings: trustSettings.value,
+      })
+    } catch {
+      return
+    }
+  })
+}
+
+const handleTrustDialogOpen = (open: boolean): void => {
+  if (!open) {
+    trustPending.value = null
   }
 }
+
+onMounted(async () => {
+  try {
+    await refreshStates()
+  } catch (error) {
+    toast.error('Failed to refresh MCP server status', {
+      description: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+})
 </script>
 
 <template>
@@ -313,109 +224,23 @@ const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
               : 'No MCP servers configured.'
           }}
         </p>
-        <div
+        <ChatMcpServerPickerItem
           v-for="server in filteredServers"
           :key="server.id"
-          class="flex items-center gap-1 rounded-md px-1.5 py-1.5"
-        >
-          <McpServerIcon
-            :server-id="server.id"
-            class="ml-1"
-          />
-          <span class="min-w-0 flex-1 truncate px-1 text-sm font-medium">
-            {{ server.id }}
-          </span>
-
-          <Tooltip v-if="isServerEnabled(server) && serverStatus(server.id) === 'auth_required'">
-            <TooltipTrigger as-child>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="size-7 shrink-0 text-amber-600 dark:text-amber-400"
-                :disabled="isServerLoading(server.id)"
-                :aria-label="`Log in to ${server.id}`"
-                @click="handleLogin(server)"
-              >
-                <LogInIcon class="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Log in</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="size-7 shrink-0 text-muted-foreground"
-                :aria-label="`Show ${server.id} in settings`"
-                @click="handleOpenInSettings(server)"
-              >
-                <SettingsIcon class="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Show in settings</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <span
-                class="inline-flex size-7 shrink-0 items-center justify-center"
-                :class="statusIconClass(server)"
-              >
-                <Loader2Icon
-                  v-if="isServerLoading(server.id) || serverStatus(server.id) === 'starting' || serverStatus(server.id) === 'refreshing'"
-                  class="size-3.5 animate-spin"
-                />
-                <CheckCircle2Icon
-                  v-else-if="isServerEnabled(server) && serverStatus(server.id) === 'connected'"
-                  class="size-3.5"
-                />
-                <AlertCircleIcon
-                  v-else-if="isServerEnabled(server) && serverStatus(server.id) === 'error'"
-                  class="size-3.5"
-                />
-                <ShieldAlertIcon
-                  v-else-if="isServerEnabled(server) && serverStatus(server.id) === 'auth_required'"
-                  class="size-3.5"
-                />
-                <CircleIcon
-                  v-else
-                  class="size-3.5"
-                />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {{ statusLabel(server) }}
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="size-7 shrink-0"
-                :class="isServerRunning(server)
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-green-600 dark:text-green-400'"
-                :disabled="isServerLoading(server.id)"
-                :aria-label="`${isServerRunning(server) ? 'Stop' : 'Start'} ${server.id}`"
-                @click="handleToggleChange(server, !isServerRunning(server))"
-              >
-                <SquareIcon v-if="isServerRunning(server)" class="size-3.5" />
-                <PlayIcon v-else class="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {{ isServerRunning(server) ? `Stop ${server.id}` : `Start ${server.id}` }}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+          :server="server"
+          @login="handleLogin(server)"
+          @settings="handleOpenInSettings(server)"
+          @toggle="(checked) => handleToggleChange(server, checked)"
+        />
       </div>
     </PopoverContent>
   </Popover>
+  <TrustServerDialog
+    :open="trustPending !== null"
+    :server-id="trustPending?.serverId ?? null"
+    :saving="trustSaving"
+    :show-workspace="props.projectRoot !== null"
+    @update:open="handleTrustDialogOpen"
+    @choice="handleTrustChoice"
+  />
 </template>

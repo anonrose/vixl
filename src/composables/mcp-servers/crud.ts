@@ -2,6 +2,7 @@ import { toast } from 'vue-sonner'
 import formatUnknownError from '@/utils/format-unknown-error'
 import type { McpConfig, McpServerConfig } from '@/types/vixl/mcp-config'
 import type { McpInputDefinition } from '@/types/vixl/mcp-config'
+import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import { listEffectiveMcpServers } from '@/services/mcp/merge-mcp-config'
 import mcpRuntime from '@/services/mcp/mcp-runtime'
 import { listRequiredInputIdsForServer } from '@/services/mcp/resolve-mcp-inputs'
@@ -19,6 +20,7 @@ import { createStartServer, stopServer } from './lifecycle'
 type AssertTrustedFn = (
   serverId: string,
   serverConfig: McpServerConfig,
+  settings?: VixlSettings,
 ) => void
 
 type StartServerFn = ReturnType<typeof createStartServer>
@@ -171,6 +173,7 @@ export const createSetServerEnabled = (
   enabled: boolean,
   rootPath: string | null,
   projectConfigOverride?: McpConfig,
+  settings?: VixlSettings,
 ): Promise<McpConfig | undefined> => {
   const projectConfig = projectConfigOverride ?? projectMcp.value
   const effective = listEffectiveMcpServers(personalMcp.value, projectConfig)
@@ -183,7 +186,7 @@ export const createSetServerEnabled = (
   }
 
   if (enabled) {
-    assertTrustedOrThrow(serverId, server.config)
+    assertTrustedOrThrow(serverId, server.config, settings)
   }
 
   const tab: SettingsTab =
@@ -224,7 +227,11 @@ export const createSetServerEnabled = (
       await setMcpServerEnabled(tab, serverId, enabled, rootPath)
 
       if (enabled) {
-        await startServer(serverId, nextConfig, { quiet: true, manageLoading: false })
+        await startServer(serverId, nextConfig, {
+          quiet: true,
+          manageLoading: false,
+          ...(settings !== undefined ? { settings } : {}),
+        })
       } else {
         await stopServer(serverId, { quiet: true, manageLoading: false })
       }
