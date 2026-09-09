@@ -13,7 +13,8 @@ import type {
   ThemeTokenMap,
 } from '@/schemas/appearance/theme-file'
 import type {
-  VixlThemeCanvasBackground,
+  VixlThemeCanvas,
+  VixlThemeCanvasLayer,
   VixlThemeDefinition,
   VixlThemeVariant,
 } from '@/types/appearance/theme'
@@ -23,6 +24,8 @@ import type {
  * error/result types, canonical serialization, runtime-state stripping,
  * user-facing summaries, collision-safe ids, and sanitized export filenames.
  * No I/O — the flows live in `theme-sharing`.
+ *
+ * The canonical file format is version 2 (layered canvas, glass, icons).
  */
 
 export class ThemeFileError extends Error {
@@ -60,22 +63,29 @@ export const serializeThemeFile = (theme: ThemeFilePayload): string => {
   const canonicalEditorPalette = (editor: ThemeEditorPalette): Record<string, string> =>
     Object.fromEntries(THEME_EDITOR_PALETTE_KEYS.map((key) => [key, editor[key]]))
 
-  const canonicalBackground = (variant: ThemeFilePayload['variants'][ThemeFileVariantKey]) => {
-    const background = variant.background
-    if (background.kind === 'solid') {
-      return { kind: 'solid', color: background.color }
+  const canonicalLayer = (layer: VixlThemeCanvasLayer): Record<string, unknown> => {
+    const stops = layer.stops.map((stop) => ({ color: stop.color, position: stop.position }))
+    if (layer.kind === 'linear') {
+      return { kind: 'linear', angle: layer.angle, stops }
     }
-    return {
-      kind: 'gradient',
-      ...(background.fallback !== undefined ? { fallback: background.fallback } : {}),
-      angle: background.angle,
-      stops: background.stops.map((stop) => ({ color: stop.color, position: stop.position })),
+    if (layer.kind === 'radial') {
+      return { kind: 'radial', x: layer.x, y: layer.y, size: layer.size, stops }
     }
+    return { kind: 'conic', angle: layer.angle, x: layer.x, y: layer.y, stops }
   }
+
+  const canonicalBackground = (
+    variant: ThemeFilePayload['variants'][ThemeFileVariantKey],
+  ): Record<string, unknown> => ({
+    fallback: variant.background.fallback,
+    layers: variant.background.layers.map(canonicalLayer),
+  })
 
   const canonicalVariant = (variant: ThemeFilePayload['variants'][ThemeFileVariantKey]) => ({
     tokens: canonicalTokenMap(variant.tokens),
     background: canonicalBackground(variant),
+    glass: { ...variant.glass },
+    icons: { ...variant.icons },
     editor: canonicalEditorPalette(variant.editor),
   })
 
@@ -121,24 +131,19 @@ export const toShareableThemeFile = (theme: ThemeFilePayload): ThemeFilePayload 
 }
 
 const fileBackgroundFromCanvas = (
-  canvas: VixlThemeCanvasBackground,
-): ThemeFilePayload['variants']['light']['background'] => {
-  if (canvas.type === 'solid') {
-    return { kind: 'solid', color: canvas.color }
-  }
-  return {
-    kind: 'gradient',
-    angle: canvas.angle,
-    stops: canvas.stops.map((stop) => ({ color: stop.color, position: stop.position })),
-    ...(canvas.fallback !== undefined ? { fallback: canvas.fallback } : {}),
-  }
-}
+  canvas: VixlThemeCanvas,
+): ThemeFilePayload['variants']['light']['background'] => ({
+  fallback: canvas.fallback,
+  layers: canvas.layers.map((layer) => structuredClone(layer)),
+})
 
 const fileVariantFromDomain = (
   variant: VixlThemeVariant,
 ): ThemeFilePayload['variants']['light'] => ({
   tokens: { ...variant.colors },
   background: fileBackgroundFromCanvas(variant.canvas),
+  glass: { ...variant.glass },
+  icons: { ...variant.icons },
   // Widget colors are runtime-only and restored from the built-in theme on import.
   editor: Object.fromEntries(
     THEME_EDITOR_PALETTE_KEYS.map((key) => [key, variant.editor[key]]),
@@ -154,9 +159,7 @@ const fileVariantFromDomain = (
  * The file format carries one shared typography block, so the light variant's
  * stack is authoritative.
  */
-export const themeDefinitionToThemeFilePayload = (
-  theme: VixlThemeDefinition,
-): ThemeFilePayload => {
+export const themeDefinitionToThemeFilePayload = (theme: VixlThemeDefinition): ThemeFilePayload => {
   const { uiFontFamily, monoFontFamily, uiFontSize, editorFontSize } =
     theme.variants.light.typography
 
@@ -173,13 +176,27 @@ export const themeDefinitionToThemeFilePayload = (
   }
 }
 
+/** Canvas summary for one variant of an imported theme. */
+export type ThemeCanvasSummary = {
+  /** Explicit solid fallback color. */
+  fallback: string
+  /** Number of ordered gradient layers (0 = solid canvas). */
+  layerCount: number
+  /** Layer kinds in paint order (first paints on top). */
+  layerKinds: VixlThemeCanvasLayer['kind'][]
+}
+
 /** User-facing import/export summary used by the confirmation UI. */
 export type ThemeFileSummary = {
   id: string
   name: string
   version: number
   variants: ThemeFileVariantKey[]
-  backgrounds: Record<ThemeFileVariantKey, 'solid' | 'gradient'>
+  canvases: Record<ThemeFileVariantKey, ThemeCanvasSummary>
+  /** Enabled glass scopes per variant; empty when glass is off. */
+  glassScopes: Record<ThemeFileVariantKey, readonly string[]>
+  /** Selected icon pack per variant (`lucide | tabler | phosphor`). */
+  iconPacks: Record<ThemeFileVariantKey, string>
   uiFontFamily: string
   monoFontFamily: string
   uiFontSize: number
@@ -188,17 +205,30 @@ export type ThemeFileSummary = {
 }
 
 export const describeThemeFile = (theme: ThemeFilePayload): ThemeFileSummary => {
-  const backgroundKind = (variant: ThemeFilePayload['variants'][ThemeFileVariantKey]) =>
-    variant.background.kind
+  const canvasSummary = (
+    variant: ThemeFilePayload['variants'][ThemeFileVariantKey],
+  ): ThemeCanvasSummary => ({
+    fallback: variant.background.fallback,
+    layerCount: variant.background.layers.length,
+    layerKinds: variant.background.layers.map((layer) => layer.kind),
+  })
 
   return {
     id: theme.id,
     name: theme.name,
     version: theme.version,
     variants: Object.keys(theme.variants) as ThemeFileVariantKey[],
-    backgrounds: {
-      light: backgroundKind(theme.variants.light),
-      dark: backgroundKind(theme.variants.dark),
+    canvases: {
+      light: canvasSummary(theme.variants.light),
+      dark: canvasSummary(theme.variants.dark),
+    },
+    glassScopes: {
+      light: theme.variants.light.glass.enabled ? [...theme.variants.light.glass.scopes] : [],
+      dark: theme.variants.dark.glass.enabled ? [...theme.variants.dark.glass.scopes] : [],
+    },
+    iconPacks: {
+      light: theme.variants.light.icons.pack,
+      dark: theme.variants.dark.icons.pack,
     },
     uiFontFamily: theme.typography.uiFontFamily,
     monoFontFamily: theme.typography.monoFontFamily,
@@ -210,7 +240,7 @@ export const describeThemeFile = (theme: ThemeFilePayload): ThemeFileSummary => 
 
 /**
  * Normalize an imported id on collision while preserving the display name:
- * `sunset` -> `sunset-2`, `sunset-3`, ... (never the reserved built-in id).
+ * `sunset` -> `sunset-2`, `sunset-3`, ... (never a reserved built-in id).
  */
 export const resolveThemeIdCollision = (
   requestedId: string,

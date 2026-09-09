@@ -1,31 +1,11 @@
 <script setup lang="ts">
+import { AppIcon } from '@/icons'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  AlertCircleIcon,
-  CheckCircle2Icon,
-  ChevronDownIcon,
-  CircleIcon,
-  Loader2Icon,
-  LogInIcon,
-  PlayIcon,
-  ServerIcon,
-  SettingsIcon,
-  ShieldAlertIcon,
-  SquareIcon,
-} from '@lucide/vue'
 import { Button } from '@/components/shadcn/ui/button'
 import { Input } from '@/components/shadcn/ui/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/shadcn/ui/popover'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/shadcn/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/shadcn/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/shadcn/ui/tooltip'
 import { toast } from 'vue-sonner'
 import McpServerIcon from '@/components/mcp/ServerIcon.vue'
 import useMcpServers from '@/composables/use-mcp-servers'
@@ -53,25 +33,20 @@ const router = useRouter()
 const menuOpen = ref(false)
 const searchQuery = ref('')
 
-const effectiveServers = computed(() =>
-  listUserMcpServers(personalMcp.value, projectMcp.value),
-)
+const effectiveServers = computed(() => listUserMcpServers(personalMcp.value, projectMcp.value))
 
 const filteredServers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) {
     return effectiveServers.value
   }
-  return effectiveServers.value.filter((server) =>
-    server.id.toLowerCase().includes(query),
-  )
+  return effectiveServers.value.filter((server) => server.id.toLowerCase().includes(query))
 })
 
 const connectedCount = computed(
   () =>
-    effectiveServers.value.filter(
-      (server) => serverStates.value[server.id]?.status === 'connected',
-    ).length,
+    effectiveServers.value.filter((server) => serverStates.value[server.id]?.status === 'connected')
+      .length,
 )
 
 const hasAuthRequired = computed(() =>
@@ -82,15 +57,12 @@ const hasAuthRequired = computed(() =>
   ),
 )
 
-const serverStatus = (serverId: string): string =>
-  serverStates.value[serverId]?.status ?? 'stopped'
+const serverStatus = (serverId: string): string => serverStates.value[serverId]?.status ?? 'stopped'
 
 const isServerLoading = (serverId: string): boolean =>
-  loadingServers.value[serverId] === true ||
-  authenticatingServers.value[serverId] === true
+  loadingServers.value[serverId] === true || authenticatingServers.value[serverId] === true
 
-const isServerEnabled = (server: EffectiveMcpServer): boolean =>
-  isMcpServerEnabled(server.config)
+const isServerEnabled = (server: EffectiveMcpServer): boolean => isMcpServerEnabled(server.config)
 
 const isServerRunning = (server: EffectiveMcpServer): boolean =>
   isServerEnabled(server) && serverStatus(server.id) !== 'stopped'
@@ -186,10 +158,7 @@ const handleOpenInSettings = async (server: EffectiveMcpServer): Promise<void> =
   }
 }
 
-const handleToggleChange = async (
-  server: EffectiveMcpServer,
-  checked: boolean,
-): Promise<void> => {
+const handleToggleChange = async (server: EffectiveMcpServer, checked: boolean): Promise<void> => {
   if (isServerLoading(server.id)) {
     return
   }
@@ -255,52 +224,37 @@ const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
         variant="ghost"
         size="sm"
         class="h-7 min-w-0 gap-1.5 px-2 text-xs"
-        :class="
-          hasAuthRequired
-            ? 'text-amber-600 dark:text-amber-400'
-            : 'text-muted-foreground'
-        "
+        :class="hasAuthRequired ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'"
         :title="`${connectedCount} of ${effectiveServers.length} MCP servers connected`"
         aria-label="MCP servers"
       >
-        <ServerIcon class="size-3.5 shrink-0" />
+        <AppIcon name="server" class="size-3.5 shrink-0" />
         <span class="max-w-32 min-w-0 truncate @max-[22rem]/composer:hidden">
           MCP
           <template v-if="effectiveServers.length > 0">
             ({{ connectedCount }}/{{ effectiveServers.length }})
           </template>
         </span>
-        <ChevronDownIcon class="size-3 shrink-0 opacity-60" />
+        <AppIcon name="chevron-down" class="size-3 shrink-0 opacity-60" />
       </Button>
     </PopoverTrigger>
     <PopoverContent align="end" class="w-80 p-0">
       <div class="border-b border-border/50 p-2">
-        <Input
-          v-model="searchQuery"
-          placeholder="Search MCP servers…"
-          class="h-8"
-        />
+        <Input v-model="searchQuery" placeholder="Search MCP servers…" class="h-8" />
       </div>
       <div class="max-h-60 overflow-y-auto p-1">
         <p
           v-if="filteredServers.length === 0"
           class="px-2 py-4 text-center text-sm text-muted-foreground"
         >
-          {{
-            searchQuery.trim()
-              ? 'No servers match your search.'
-              : 'No MCP servers configured.'
-          }}
+          {{ searchQuery.trim() ? 'No servers match your search.' : 'No MCP servers configured.' }}
         </p>
         <div
           v-for="server in filteredServers"
           :key="server.id"
           class="flex items-center gap-1 rounded-md px-1.5 py-1.5"
         >
-          <McpServerIcon
-            :server-id="server.id"
-            class="ml-1"
-          />
+          <McpServerIcon :server-id="server.id" class="ml-1" />
           <span class="min-w-0 flex-1 truncate px-1 text-sm font-medium">
             {{ server.id }}
           </span>
@@ -316,7 +270,7 @@ const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
                 :aria-label="`Log in to ${server.id}`"
                 @click="handleLogin(server)"
               >
-                <LogInIcon class="size-3.5" />
+                <AppIcon name="log-in" class="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Log in</TooltipContent>
@@ -332,7 +286,7 @@ const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
                 :aria-label="`Show ${server.id} in settings`"
                 @click="handleOpenInSettings(server)"
               >
-                <SettingsIcon class="size-3.5" />
+                <AppIcon name="settings" class="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Show in settings</TooltipContent>
@@ -344,26 +298,31 @@ const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
                 class="inline-flex size-7 shrink-0 items-center justify-center"
                 :class="statusIconClass(server)"
               >
-                <Loader2Icon
-                  v-if="isServerLoading(server.id) || serverStatus(server.id) === 'starting' || serverStatus(server.id) === 'refreshing'"
+                <AppIcon
+                  name="loader"
+                  v-if="
+                    isServerLoading(server.id) ||
+                    serverStatus(server.id) === 'starting' ||
+                    serverStatus(server.id) === 'refreshing'
+                  "
                   class="size-3.5 animate-spin"
                 />
-                <CheckCircle2Icon
+                <AppIcon
+                  name="circle-check-big"
                   v-else-if="isServerEnabled(server) && serverStatus(server.id) === 'connected'"
                   class="size-3.5"
                 />
-                <AlertCircleIcon
+                <AppIcon
+                  name="circle-alert"
                   v-else-if="isServerEnabled(server) && serverStatus(server.id) === 'error'"
                   class="size-3.5"
                 />
-                <ShieldAlertIcon
+                <AppIcon
+                  name="shield-alert"
                   v-else-if="isServerEnabled(server) && serverStatus(server.id) === 'auth_required'"
                   class="size-3.5"
                 />
-                <CircleIcon
-                  v-else
-                  class="size-3.5"
-                />
+                <AppIcon name="circle" v-else class="size-3.5" />
               </span>
             </TooltipTrigger>
             <TooltipContent>
@@ -378,15 +337,17 @@ const handleLogin = async (server: EffectiveMcpServer): Promise<void> => {
                 variant="ghost"
                 size="icon"
                 class="size-7 shrink-0"
-                :class="isServerRunning(server)
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-green-600 dark:text-green-400'"
+                :class="
+                  isServerRunning(server)
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-green-600 dark:text-green-400'
+                "
                 :disabled="isServerLoading(server.id)"
                 :aria-label="`${isServerRunning(server) ? 'Stop' : 'Start'} ${server.id}`"
                 @click="handleToggleChange(server, !isServerRunning(server))"
               >
-                <SquareIcon v-if="isServerRunning(server)" class="size-3.5" />
-                <PlayIcon v-else class="size-3.5" />
+                <AppIcon name="square" v-if="isServerRunning(server)" class="size-3.5" />
+                <AppIcon name="play" v-else class="size-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

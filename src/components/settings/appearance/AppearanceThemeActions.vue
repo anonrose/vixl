@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Copy, Download, Pencil, Plus, SquarePen, Trash2, Upload } from '@lucide/vue'
+import { AppIcon } from '@/icons'
 import { Button } from '@/components/shadcn/ui/button'
 
 defineProps<{
@@ -27,16 +27,17 @@ const emit = defineEmits<{
     title="Create theme from current"
     @click="emit('create')"
   >
-    <Plus class="h-4 w-4" />
+    <AppIcon name="plus" class="h-4 w-4" />
   </Button>
   <Button
     variant="ghost"
     size="icon-sm"
+    :disabled="selectedIsBuiltIn"
     aria-label="Edit selected theme"
     title="Edit selected theme"
     @click="emit('edit')"
   >
-    <Pencil class="h-4 w-4" />
+    <AppIcon name="pencil" class="h-4 w-4" />
   </Button>
   <Button
     variant="ghost"
@@ -45,7 +46,7 @@ const emit = defineEmits<{
     title="Duplicate selected theme"
     @click="emit('duplicate')"
   >
-    <Copy class="h-4 w-4" />
+    <AppIcon name="copy" class="h-4 w-4" />
   </Button>
   <Button
     variant="ghost"
@@ -55,7 +56,7 @@ const emit = defineEmits<{
     title="Rename selected theme"
     @click="emit('rename')"
   >
-    <SquarePen class="h-4 w-4" />
+    <AppIcon name="square-pen" class="h-4 w-4" />
   </Button>
   <Button
     variant="ghost"
@@ -65,17 +66,17 @@ const emit = defineEmits<{
     title="Delete selected theme"
     @click="emit('delete')"
   >
-    <Trash2 class="h-4 w-4" />
+    <AppIcon name="trash" class="h-4 w-4" />
   </Button>
   <Button
     variant="ghost"
     size="icon-sm"
-    :disabled="selectedIsBuiltIn || exporting"
+    :disabled="exporting"
     aria-label="Export selected theme"
     title="Export selected theme"
     @click="emit('export')"
   >
-    <Download class="h-4 w-4" />
+    <AppIcon name="download" class="h-4 w-4" />
   </Button>
   <Button
     variant="ghost"
@@ -85,6 +86,6 @@ const emit = defineEmits<{
     title="Import a theme file"
     @click="emit('import')"
   >
-    <Upload class="h-4 w-4" />
+    <AppIcon name="upload" class="h-4 w-4" />
   </Button>
 </template>

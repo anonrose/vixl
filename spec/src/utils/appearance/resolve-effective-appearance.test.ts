@@ -12,7 +12,7 @@ import type { VixlThemeDefinition } from '@/types/appearance/theme'
 const customTheme: VixlThemeDefinition = {
   id: 'midnight-run',
   name: 'Midnight Run',
-  version: 1,
+  version: 2,
   variants: {
     light: {
       colors: {
@@ -21,13 +21,20 @@ const customTheme: VixlThemeDefinition = {
         primary: '#2244aa',
       },
       canvas: {
-        type: 'gradient',
-        angle: 135,
-        stops: [
-          { color: '#101018', position: 0 },
-          { color: '#1c1c2a', position: 100 },
+        fallback: '#101018',
+        layers: [
+          {
+            kind: 'linear',
+            angle: 135,
+            stops: [
+              { color: '#101018', position: 0 },
+              { color: '#1c1c2a', position: 100 },
+            ],
+          },
         ],
       },
+      glass: { ...builtInVixlTheme.variants.light.glass },
+      icons: { ...builtInVixlTheme.variants.light.icons },
       typography: {
         ...builtInVixlTheme.variants.light.typography,
         uiFontSize: 14,
@@ -40,7 +47,9 @@ const customTheme: VixlThemeDefinition = {
         background: '#050508',
         primary: '#88aaff',
       },
-      canvas: { type: 'solid', color: '#050508' },
+      canvas: { fallback: '#050508', layers: [] },
+      glass: { ...builtInVixlTheme.variants.dark.glass },
+      icons: { ...builtInVixlTheme.variants.dark.icons },
       typography: builtInVixlTheme.variants.dark.typography,
       editor: builtInVixlTheme.variants.dark.editor,
     },
@@ -67,9 +76,13 @@ describe('resolveEffectiveAppearance', () => {
   it('resolves the built-in theme for light and dark modes', () => {
     const light = resolveEffectiveAppearance({ colorMode: 'light' })
     expect(light.themeId).toBe(BUILTIN_VIXL_THEME_ID)
-    expect(light.builtIn).toBe(true)
+    expect(light.readOnlyBuiltIn).toBe(true)
+    // Only the Vixl Default theme uses the CSS cascade defaults.
+    expect(light.usesCssDefaults).toBe(true)
     expect(light.variant).toBe('light')
     expect(light.colors).toEqual(builtInVixlTheme.variants.light.colors)
+    expect(light.glass).toEqual(builtInVixlTheme.variants.light.glass)
+    expect(light.icons).toEqual(builtInVixlTheme.variants.light.icons)
     expect(light.editor).toEqual(builtInVixlTheme.variants.light.editor)
 
     const dark = resolveEffectiveAppearance({ colorMode: 'dark' })
@@ -91,11 +104,12 @@ describe('resolveEffectiveAppearance', () => {
       colorMode: 'dark',
       theme: customTheme,
     })
-    expect(dark.builtIn).toBe(false)
+    expect(dark.readOnlyBuiltIn).toBe(false)
+    expect(dark.usesCssDefaults).toBe(false)
     expect(dark.themeId).toBe('midnight-run')
     expect(dark.themeName).toBe('Midnight Run')
     expect(dark.colors.background).toBe('#050508')
-    expect(dark.canvas).toEqual({ type: 'solid', color: '#050508' })
+    expect(dark.canvas).toEqual({ fallback: '#050508', layers: [] })
 
     const light = resolveEffectiveAppearance({ colorMode: 'light', theme: customTheme })
     expect(light.colors.background).toBe('#f7f7f2')
@@ -104,13 +118,27 @@ describe('resolveEffectiveAppearance', () => {
 
   it('falls back to the built-in theme when the selection is missing or malformed', () => {
     const fallback = resolveEffectiveAppearance({ colorMode: 'dark', theme: null })
-    expect(fallback.builtIn).toBe(true)
+    expect(fallback.readOnlyBuiltIn).toBe(true)
+    expect(fallback.usesCssDefaults).toBe(true)
     expect(fallback.themeId).toBe(BUILTIN_VIXL_THEME_ID)
 
     const malformed = { id: 'broken' } as unknown as VixlThemeDefinition
-    expect(
-      resolveEffectiveAppearance({ colorMode: 'dark', theme: malformed }).themeId,
-    ).toBe(BUILTIN_VIXL_THEME_ID)
+    expect(resolveEffectiveAppearance({ colorMode: 'dark', theme: malformed }).themeId).toBe(
+      BUILTIN_VIXL_THEME_ID,
+    )
+  })
+
+  it('classifies reserved built-in ids as read-only but not CSS-default', () => {
+    // A curated built-in id (definition ships with the bundled-theme registry
+    // work) is read-only but must still receive runtime variables.
+    const curated = {
+      ...structuredClone(builtInVixlTheme),
+      id: 'midnight-aurora',
+      name: 'Midnight Aurora',
+    } as VixlThemeDefinition
+    const effective = resolveEffectiveAppearance({ colorMode: 'light', theme: curated })
+    expect(effective.readOnlyBuiltIn).toBe(true)
+    expect(effective.usesCssDefaults).toBe(false)
   })
 
   it('preview drafts win over the selection and the resolved mode', () => {
@@ -124,7 +152,8 @@ describe('resolveEffectiveAppearance', () => {
       preview,
     })
     expect(effective.themeId).toBe('midnight-run')
-    expect(effective.builtIn).toBe(false)
+    expect(effective.readOnlyBuiltIn).toBe(false)
+    expect(effective.usesCssDefaults).toBe(false)
     expect(effective.variant).toBe('light')
     expect(effective.colors.background).toBe('#f7f7f2')
   })
@@ -145,8 +174,27 @@ describe('resolveEffectiveAppearance', () => {
     const a = getEffectiveAppearanceSignature(appearance, { previewing: false })
     const b = getEffectiveAppearanceSignature(appearance, { previewing: false })
     expect(a).toBe(b)
-    expect(
-      getEffectiveAppearanceSignature(appearance, { previewing: true }),
-    ).not.toBe(a)
+    expect(getEffectiveAppearanceSignature(appearance, { previewing: true })).not.toBe(a)
+  })
+
+  it('changes the signature when glass or icons change', () => {
+    const base = resolveEffectiveAppearance({ colorMode: 'dark', theme: customTheme })
+    const glassEdit = structuredClone(customTheme)
+    glassEdit.variants.dark.glass = {
+      ...glassEdit.variants.dark.glass,
+      enabled: true,
+      blur: 8,
+    }
+    const withGlass = resolveEffectiveAppearance({ colorMode: 'dark', theme: glassEdit })
+    expect(getEffectiveAppearanceSignature(withGlass, { previewing: false })).not.toBe(
+      getEffectiveAppearanceSignature(base, { previewing: false }),
+    )
+
+    const iconEdit = structuredClone(customTheme)
+    iconEdit.variants.dark.icons = { ...iconEdit.variants.dark.icons, pack: 'tabler' }
+    const withIcons = resolveEffectiveAppearance({ colorMode: 'dark', theme: iconEdit })
+    expect(getEffectiveAppearanceSignature(withIcons, { previewing: false })).not.toBe(
+      getEffectiveAppearanceSignature(base, { previewing: false }),
+    )
   })
 })

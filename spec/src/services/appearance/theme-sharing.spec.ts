@@ -113,14 +113,34 @@ const validTheme = (): ThemeFilePayload => {
       tokenKeys.map((key, i) => [key, color(offset + i)]),
     ) as ThemeFilePayload['variants']['light']['tokens'],
     background: {
-      kind: 'gradient' as const,
       fallback: color(offset + 40),
-      angle: 135,
-      stops: [
-        { color: color(offset + 41), position: 0 },
-        { color: color(offset + 42), position: 50 },
-        { color: color(offset + 43), position: 100 },
+      layers: [
+        {
+          kind: 'linear' as const,
+          angle: 135,
+          stops: [
+            { color: color(offset + 41), position: 0 },
+            { color: color(offset + 42), position: 50 },
+            { color: color(offset + 43), position: 100 },
+          ],
+        },
       ],
+    },
+    glass: {
+      enabled: false,
+      scopes: [],
+      surfaceOpacity: 100,
+      blur: 0,
+      saturation: 100,
+      borderOpacity: 0,
+      shadow: 'none' as const,
+      radius: 'none' as const,
+    },
+    icons: {
+      pack: 'lucide' as const,
+      weight: 2,
+      sizeScale: 1,
+      tint: 'inherit' as const,
     },
     editor: Object.fromEntries(
       editorKeys.map((key, i) => [key, color(offset + 100 + i)]),
@@ -129,12 +149,12 @@ const validTheme = (): ThemeFilePayload => {
 
   return {
     format: 'vixl-theme',
-    version: 1,
+    version: 2,
     id: 'sunset',
     name: 'Sunset',
     typography: {
-      uiFontFamily: 'Inter Variable, system-ui',
-      monoFontFamily: 'JetBrains Mono, monospace',
+      uiFontFamily: 'Inter Variable',
+      monoFontFamily: 'JetBrains Mono',
       uiFontSize: 13,
       editorFontSize: 13,
     },
@@ -160,17 +180,12 @@ const serializeForTest = (theme: ThemeFilePayload): string =>
     2,
   )
 
-type GradientBackground = Extract<
-  ThemeFilePayload['variants']['light']['background'],
-  { kind: 'gradient' }
->
+type CanvasBackground = ThemeFilePayload['variants']['light']['background']
 
-const withMutatedGradient = (
-  mutate: (gradient: GradientBackground) => void,
-): ThemeFilePayload => {
+const withMutatedCanvas = (mutate: (canvas: CanvasBackground) => void): ThemeFilePayload => {
   const theme = validTheme()
-  const gradient = theme.variants.light.background as GradientBackground
-  mutate(gradient)
+  const canvas = theme.variants.light.background
+  mutate(canvas)
   return theme
 }
 
@@ -223,9 +238,10 @@ describe('theme id collision handling', () => {
 })
 
 describe('strict theme file validation', () => {
-  it('accepts a complete valid two-variant theme', () => {
+  it('accepts a complete valid two-variant v2 theme', () => {
     const parsed = parseThemeFileText(JSON.stringify(validTheme()))
     expect(parsed.id).toBe('sunset')
+    expect(parsed.version).toBe(2)
     expect(parsed.variants.light.tokens.ring).toBeDefined()
   })
 
@@ -241,15 +257,18 @@ describe('strict theme file validation', () => {
     expect(() => parseThemeFileText(JSON.stringify(missingToken))).toThrow(/ring/)
   })
 
-  it('rejects wrong format, unsupported versions, and the reserved built-in id', () => {
+  it('rejects wrong format, future versions, and reserved built-in ids', () => {
     const wrongFormat = { ...validTheme(), format: 'theme' }
     expect(() => parseThemeFileText(JSON.stringify(wrongFormat))).toThrow(/Theme file is invalid/)
 
-    const wrongVersion = { ...validTheme(), version: 2 }
-    expect(() => parseThemeFileText(JSON.stringify(wrongVersion))).toThrow(/Theme file is invalid/)
+    const futureVersion = { ...validTheme(), version: 3 }
+    expect(() => parseThemeFileText(JSON.stringify(futureVersion))).toThrow(/not supported/)
 
-    const builtIn = { ...validTheme(), id: 'vixl-default' }
-    expect(() => parseThemeFileText(JSON.stringify(builtIn))).toThrow(/reserved/)
+    const defaultBuiltIn = { ...validTheme(), id: 'vixl-default' }
+    expect(() => parseThemeFileText(JSON.stringify(defaultBuiltIn))).toThrow(/reserved/)
+
+    const curatedBuiltIn = { ...validTheme(), id: 'midnight-aurora' }
+    expect(() => parseThemeFileText(JSON.stringify(curatedBuiltIn))).toThrow(/reserved/)
   })
 
   it('rejects malformed colors, unsafe font values, and out-of-range sizes', () => {
@@ -266,36 +285,118 @@ describe('strict theme file validation', () => {
     expect(() => parseThemeFileText(JSON.stringify(hugeFont))).toThrow(/Theme file is invalid/)
   })
 
-  it('rejects invalid gradients: too few/many stops, unsorted positions, bad angle', () => {
-    const fewStops = withMutatedGradient((gradient) => {
-      gradient.stops = [{ color: '#111111', position: 0 }]
+  it('rejects invalid canvas layers: too few/many stops, unsorted positions, bad geometry', () => {
+    const fewStops = withMutatedCanvas((canvas) => {
+      canvas.layers[0] = {
+        kind: 'linear',
+        angle: 0,
+        stops: [{ color: '#111111', position: 0 }],
+      }
     })
-    expect(() => parseThemeFileText(JSON.stringify(fewStops))).toThrow(/at least 2 stops/)
+    expect(() => parseThemeFileText(JSON.stringify(fewStops))).toThrow(/at least 2/)
 
-    const manyStops = withMutatedGradient((gradient) => {
-      gradient.stops = [
-        { color: '#111111', position: 0 },
-        { color: '#222222', position: 20 },
-        { color: '#333333', position: 40 },
-        { color: '#444444', position: 60 },
-        { color: '#555555', position: 80 },
-        { color: '#666666', position: 100 },
-      ]
+    const manyStops = withMutatedCanvas((canvas) => {
+      canvas.layers[0] = {
+        kind: 'linear',
+        angle: 0,
+        stops: Array.from({ length: 7 }, (_, index) => ({
+          color: '#111111',
+          position: (index * 100) / 6,
+        })),
+      }
     })
-    expect(() => parseThemeFileText(JSON.stringify(manyStops))).toThrow(/at most 5 stops/)
+    expect(() => parseThemeFileText(JSON.stringify(manyStops))).toThrow(/at most 6/)
 
-    const unsorted = withMutatedGradient((gradient) => {
-      gradient.stops = [
-        { color: '#111111', position: 50 },
-        { color: '#222222', position: 20 },
-      ]
+    const unsorted = withMutatedCanvas((canvas) => {
+      canvas.layers[0] = {
+        kind: 'linear',
+        angle: 0,
+        stops: [
+          { color: '#111111', position: 50 },
+          { color: '#222222', position: 20 },
+        ],
+      }
     })
     expect(() => parseThemeFileText(JSON.stringify(unsorted))).toThrow(/sorted/)
 
-    const badAngle = withMutatedGradient((gradient) => {
-      gradient.angle = 400
+    const badAngle = withMutatedCanvas((canvas) => {
+      const layer = canvas.layers[0]
+      if (layer.kind === 'linear') {
+        layer.angle = 400
+      }
     })
     expect(() => parseThemeFileText(JSON.stringify(badAngle))).toThrow(/Theme file is invalid/)
+
+    const tooManyLayers = withMutatedCanvas((canvas) => {
+      canvas.layers = Array.from({ length: 5 }, () => ({
+        kind: 'linear' as const,
+        angle: 0,
+        stops: [
+          { color: '#111111', position: 0 },
+          { color: '#222222', position: 100 },
+        ],
+      }))
+    })
+    expect(() => parseThemeFileText(JSON.stringify(tooManyLayers))).toThrow(/at most 4/)
+  })
+
+  it('migrates legacy v1 files into v2 payloads', () => {
+    const v1File = {
+      format: 'vixl-theme',
+      version: 1,
+      id: 'legacy-sunset',
+      name: 'Legacy Sunset',
+      typography: {
+        uiFontFamily: 'Inter Variable',
+        monoFontFamily: 'JetBrains Mono',
+        uiFontSize: 13,
+        editorFontSize: 13,
+      },
+      variants: {
+        light: {
+          tokens: validTheme().variants.light.tokens,
+          background: {
+            kind: 'gradient',
+            angle: 135,
+            stops: [
+              { color: '#101018', position: 0 },
+              { color: '#1c1c2a', position: 100 },
+            ],
+          },
+          editor: validTheme().variants.light.editor,
+        },
+        dark: {
+          tokens: validTheme().variants.dark.tokens,
+          background: { kind: 'solid', color: '#050508' },
+          editor: validTheme().variants.dark.editor,
+        },
+      },
+    }
+
+    const parsed = parseThemeFileText(JSON.stringify(v1File))
+    expect(parsed.version).toBe(2)
+    expect(parsed.variants.light.background).toEqual({
+      fallback: '#101018',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 135,
+          stops: [
+            { color: '#101018', position: 0 },
+            { color: '#1c1c2a', position: 100 },
+          ],
+        },
+      ],
+    })
+    expect(parsed.variants.dark.background).toEqual({ fallback: '#050508', layers: [] })
+    // Glass defaults to off; icons default to Lucide/inherit.
+    expect(parsed.variants.light.glass.enabled).toBe(false)
+    expect(parsed.variants.light.icons).toEqual({
+      pack: 'lucide',
+      weight: 2,
+      sizeScale: 1,
+      tint: 'inherit',
+    })
   })
 
   it('rejects oversized files before parsing', () => {
@@ -316,9 +417,7 @@ describe('canonical serialization', () => {
   it('emits a stable canonical key order regardless of input order', () => {
     const theme = validTheme() as Record<string, unknown>
     const reordered = Object.fromEntries(Object.entries(theme).reverse())
-    expect(serializeThemeFile(reordered as ThemeFilePayload)).toBe(
-      serializeThemeFile(validTheme()),
-    )
+    expect(serializeThemeFile(reordered as ThemeFilePayload)).toBe(serializeThemeFile(validTheme()))
   })
 
   it('strips runtime-only state through the shareable projection', () => {
@@ -338,13 +437,42 @@ describe('theme summary', () => {
     expect(summary).toMatchObject({
       id: 'sunset',
       name: 'Sunset',
-      version: 1,
+      version: 2,
       variants: ['light', 'dark'],
-      backgrounds: { light: 'gradient', dark: 'gradient' },
-      uiFontSize: 13,
-      editorFontSize: 13,
       tokenCount: THEME_VARIANT_TOKEN_KEYS.length * 2,
+      iconPacks: { light: 'lucide', dark: 'lucide' },
     })
+    expect(summary.canvases.light).toEqual({
+      fallback: validTheme().variants.light.background.fallback,
+      layerCount: 1,
+      layerKinds: ['linear'],
+    })
+    // Glass is disabled, so no scopes are reported.
+    expect(summary.glassScopes).toEqual({ light: [], dark: [] })
+  })
+
+  it('reports enabled glass scopes and layer kinds', () => {
+    const theme = validTheme()
+    theme.variants.light.glass = {
+      ...theme.variants.light.glass,
+      enabled: true,
+      scopes: ['sidebar', 'overlays'],
+    }
+    theme.variants.light.background.layers.push({
+      kind: 'radial',
+      x: 30,
+      y: 40,
+      size: 'farthest-corner',
+      stops: [
+        { color: '#ffffff', position: 0 },
+        { color: '#000000', position: 100 },
+      ],
+    })
+    const summary = describeThemeFile(theme)
+    expect(summary.glassScopes.light).toEqual(['sidebar', 'overlays'])
+    expect(summary.canvases.light.layerCount).toBe(2)
+    expect(summary.canvases.light.layerKinds).toEqual(['linear', 'radial'])
+    expect(summary.glassScopes.dark).toEqual([])
   })
 })
 
@@ -354,15 +482,20 @@ describe('domain → file export adapter', () => {
     theme.id = 'my-export'
     theme.name = 'My Export'
     // Values the Appearance editor produces: half-step sizes, short hex,
-    // gradient without an explicit fallback.
+    // a single linear layer with an explicit fallback.
     theme.variants.light.typography.uiFontSize = 12.5
     theme.variants.light.colors.border = '#abc'
     theme.variants.light.canvas = {
-      type: 'gradient',
-      angle: 180,
-      stops: [
-        { color: '#fafafa', position: 0 },
-        { color: '#e4e4e7', position: 100 },
+      fallback: '#fafafa',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 180,
+          stops: [
+            { color: '#fafafa', position: 0 },
+            { color: '#e4e4e7', position: 100 },
+          ],
+        },
       ],
     }
     return theme
@@ -379,19 +512,49 @@ describe('domain → file export adapter', () => {
     expect('hoverWidgetBackground' in parsed.variants.light.editor).toBe(false)
   })
 
-  it('round trips an editor-created gradient without a fallback', () => {
+  it('carries glass and icon appearance into the shareable payload', () => {
+    const theme = domainTheme()
+    theme.variants.light.glass = {
+      enabled: true,
+      scopes: ['sidebar', 'panels'],
+      surfaceOpacity: 60,
+      blur: 12,
+      saturation: 130,
+      borderOpacity: 25,
+      shadow: 'subtle',
+      radius: 'sm',
+    }
+    theme.variants.dark.icons = {
+      pack: 'phosphor',
+      weight: 1.5,
+      sizeScale: 1.1,
+      tint: '#88aaff',
+    }
+    const payload = themeDefinitionToThemeFilePayload(theme)
+    const parsed = parseThemeFileText(JSON.stringify(payload))
+    expect(parsed.variants.light.glass).toEqual(theme.variants.light.glass)
+    expect(parsed.variants.light.glass.scopes).toEqual(['sidebar', 'panels'])
+    expect(parsed.variants.dark.icons).toEqual(theme.variants.dark.icons)
+    // Dark glass stays at the built-in defaults (off).
+    expect(parsed.variants.dark.glass.enabled).toBe(false)
+  })
+
+  it('round trips an editor-created layered canvas', () => {
     const payload = themeDefinitionToThemeFilePayload(domainTheme())
     const exported = serializeThemeFile(toShareableThemeFile(payload))
     const reparsed = parseThemeFileText(exported)
     expect(serializeThemeFile(reparsed)).toBe(exported)
-    // Absence (not just undefined) proves the adapter injected no fallback.
-    expect('fallback' in reparsed.variants.light.background).toBe(false)
-    expect(reparsed.variants.light.background).toMatchObject({
-      kind: 'gradient',
-      angle: 180,
-      stops: [
-        { color: '#fafafa', position: 0 },
-        { color: '#e4e4e7', position: 100 },
+    expect(reparsed.variants.light.background).toEqual({
+      fallback: '#fafafa',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 180,
+          stops: [
+            { color: '#fafafa', position: 0 },
+            { color: '#e4e4e7', position: 100 },
+          ],
+        },
       ],
     })
   })
@@ -499,21 +662,22 @@ describe('theme library persistence', () => {
       id: 'editor-theme',
       name: 'Editor Theme',
     }
-    const fileEntry = validTheme()
     const patch = buildThemeImportSettingsPatch({
       importedTheme: validTheme(),
-      currentLibrary: [domainEntry, fileEntry, { nope: true }, 'junk'],
+      currentLibrary: [domainEntry, { nope: true }, 'junk'],
     })
 
     const library = patch[THEME_LIBRARY_SETTINGS_KEY] ?? []
-    expect(library).toHaveLength(3)
-    // Existing domain entries survive untouched; file-shape entries are converted.
+    expect(library).toHaveLength(2)
+    // Existing domain entries survive untouched.
     expect(library[0]).toMatchObject({ id: 'editor-theme' })
     expect(library[0].variants.light.colors).toBeDefined()
+    // The imported theme lands in the runtime domain shape.
     expect(library[1].id).toBe('sunset')
     expect(library[1].variants.light.colors).toBeDefined()
-    // The imported theme lands in the runtime domain shape.
-    expect(library[2].variants.light.colors).toBeDefined()
+    expect(library[1].variants.light.canvas.fallback).toBe(
+      validTheme().variants.light.background.fallback,
+    )
   })
 
   it('drops built-in entries and rejects a non-array library', () => {
@@ -582,9 +746,9 @@ describe('theme library persistence', () => {
       },
     }
 
-    await expect(
-      persistThemeImport({ importedTheme: validTheme(), adapter }),
-    ).rejects.toThrow('Disk full')
+    await expect(persistThemeImport({ importedTheme: validTheme(), adapter })).rejects.toThrow(
+      'Disk full',
+    )
   })
 
   it('rejects imports when the library is full', () => {

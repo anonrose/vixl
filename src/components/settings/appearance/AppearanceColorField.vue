@@ -1,13 +1,9 @@
 <script setup lang="ts">
+import { AppIcon } from '@/icons'
 import { computed } from 'vue'
-import { AlertTriangle } from '@lucide/vue'
 import { Input } from '@/components/shadcn/ui/input'
 import { Label } from '@/components/shadcn/ui/label'
-import {
-  contrastRatio,
-  hasInsufficientContrast,
-  isValidHexColor,
-} from './appearance-ui'
+import { contrastRatio, hasInsufficientContrast, isValidHexColor } from './appearance-ui'
 
 const props = defineProps<{
   label: string
@@ -55,10 +51,7 @@ const handleTextInput = (value: string | number): void => {
 <template>
   <div class="space-y-1">
     <div class="flex items-center gap-2">
-      <Label
-        :for="fieldId"
-        class="min-w-40 text-sm"
-      >
+      <Label :for="fieldId" class="min-w-40 text-sm">
         {{ label }}
       </Label>
       <input
@@ -69,7 +62,7 @@ const handleTextInput = (value: string | number): void => {
         :disabled="disabled"
         :aria-label="`${label} color picker`"
         @input="handleColorInput"
-      >
+      />
       <Input
         class="h-7 w-28 font-mono text-xs"
         :model-value="modelValue"
@@ -85,7 +78,7 @@ const handleTextInput = (value: string | number): void => {
         role="note"
         :aria-label="`Low contrast: ${contrastRatioValue.toFixed(1)} to 1`"
       >
-        <AlertTriangle class="h-3 w-3" />
+        <AppIcon name="triangle-alert" class="h-3 w-3" />
         Low contrast ({{ contrastRatioValue.toFixed(1) }}:1)
       </span>
       <span
@@ -95,11 +88,7 @@ const handleTextInput = (value: string | number): void => {
         {{ contrastRatioValue.toFixed(1) }}:1
       </span>
     </div>
-    <p
-      v-if="!isValid"
-      class="text-xs text-destructive"
-      role="alert"
-    >
+    <p v-if="!isValid" class="text-xs text-destructive" role="alert">
       Enter a hex color like #1a1a1a.
     </p>
   </div>

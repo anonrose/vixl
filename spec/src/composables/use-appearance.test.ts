@@ -19,7 +19,7 @@ vi.mock('@/composables/use-vixl-config', () => ({
 const sampleCustomTheme = (): VixlThemeDefinition => ({
   id: 'midnight-run',
   name: 'Midnight Run',
-  version: 1,
+  version: 2,
   variants: {
     light: {
       ...builtInVixlTheme.variants.light,
@@ -28,11 +28,16 @@ const sampleCustomTheme = (): VixlThemeDefinition => ({
         background: '#f7f7f2',
       },
       canvas: {
-        type: 'gradient',
-        angle: 135,
-        stops: [
-          { color: '#101018', position: 0 },
-          { color: '#1c1c2a', position: 100 },
+        fallback: '#101018',
+        layers: [
+          {
+            kind: 'linear',
+            angle: 135,
+            stops: [
+              { color: '#101018', position: 0 },
+              { color: '#1c1c2a', position: 100 },
+            ],
+          },
         ],
       },
       typography: builtInVixlTheme.variants.light.typography,
@@ -44,7 +49,7 @@ const sampleCustomTheme = (): VixlThemeDefinition => ({
         ...builtInVixlTheme.variants.dark.colors,
         background: '#050508',
       },
-      canvas: { type: 'solid', color: '#050508' },
+      canvas: { fallback: '#050508', layers: [] },
     },
   },
 })
@@ -83,10 +88,15 @@ describe('use-appearance runtime', () => {
       'data-vixl-appearance-mode',
       'data-vixl-appearance-revision',
       'data-vixl-appearance-preview',
+      'data-vixl-appearance-glass',
     ]) {
       document.documentElement.removeAttribute(attribute)
     }
-    localStorage.clear()
+    // Node's experimental `localStorage` global (>= v23) can shadow jsdom's
+    // storage in vitest and may be non-functional, so clear defensively.
+    if (typeof window.localStorage?.clear === 'function') {
+      window.localStorage.clear()
+    }
   })
 
   it('applies color-mode authority and built-in state after hydration', async () => {
@@ -114,7 +124,8 @@ describe('use-appearance runtime', () => {
       expect(events).toHaveLength(1)
       expect(events[0]).toMatchObject({
         themeId: 'vixl-default',
-        builtIn: true,
+        readOnlyBuiltIn: true,
+        usesCssDefaults: true,
         variant: 'dark',
         colorMode: 'dark',
         revision: 1,
@@ -147,9 +158,7 @@ describe('use-appearance runtime', () => {
     expect(style.getPropertyValue('--background')).toBe('#050508')
     expect(style.getPropertyValue('--vixl-canvas-background')).toBe('#050508')
     expect(style.getPropertyValue('--vixl-canvas-image')).toBe('none')
-    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe(
-      'midnight-run',
-    )
+    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe('midnight-run')
   })
 
   it('falls back to the built-in theme when the active id is dangling or malformed', async () => {
@@ -164,9 +173,7 @@ describe('use-appearance runtime', () => {
     await mountAppearance()
     await flushAppearance()
 
-    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe(
-      'vixl-default',
-    )
+    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe('vixl-default')
     expect(document.documentElement.style.getPropertyValue('--background')).toBe('')
   })
 
@@ -227,9 +234,7 @@ describe('use-appearance runtime', () => {
     }
     await flushAppearance()
 
-    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe(
-      'vixl-default',
-    )
+    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe('vixl-default')
     expect(document.documentElement.style.getPropertyValue('--background')).toBe('')
     expect(document.documentElement.style.getPropertyValue('--vixl-canvas-image')).toBe('')
     wrapper.unmount()
@@ -248,9 +253,35 @@ describe('use-appearance runtime', () => {
     hydrated.value = true
     await flushAppearance()
     expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe('vixl-default')
+    wrapper.unmount()
+  })
+
+  it('applies variables for an active curated built-in theme despite being read-only', async () => {
+    effectiveSettings.value = {
+      ...defaultVixlSettings(),
+      'appearance.theme': 'dark',
+      'appearance.activeThemeId': 'midnight-aurora',
+    }
+    hydrated.value = true
+
+    const { api, wrapper } = await mountAppearance()
+    await flushAppearance()
+
+    const appearance = api.effectiveAppearance.value
+    expect(appearance.themeId).toBe('midnight-aurora')
+    expect(appearance.readOnlyBuiltIn).toBe(true)
+    // Curated built-ins are read-only but still receive runtime variables.
+    expect(appearance.usesCssDefaults).toBe(false)
+    const style = document.documentElement.style
+    expect(style.getPropertyValue('--background')).toBe('#0b0f1e')
+    expect(style.getPropertyValue('--vixl-canvas-background')).toBe('#0b0f1e')
     expect(document.documentElement.getAttribute('data-vixl-appearance-theme')).toBe(
-      'vixl-default',
+      'midnight-aurora',
     )
+    // The theme's icon appearance is published to the shared icon runtime.
+    const { useIconAppearance } = await import('@/icons')
+    expect(useIconAppearance().value).toMatchObject({ pack: 'lucide', weight: 1.5 })
     wrapper.unmount()
   })
 })

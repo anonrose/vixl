@@ -1,10 +1,8 @@
 import { useColorMode } from '@vueuse/core'
 import { computed, getCurrentScope, onMounted, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import useVixlConfig from '@/composables/use-vixl-config'
-import {
-  resolveActiveCustomTheme,
-  sanitizeThemeLibrary,
-} from '@/services/appearance/theme-library'
+import { setSharedIconAppearance } from '@/icons/icon-appearance'
+import { sanitizeThemeLibrary, resolveActiveTheme } from '@/services/appearance/theme-library'
 import {
   applyEffectiveAppearance,
   clearAppearanceAttributes,
@@ -69,7 +67,8 @@ const emitAppearanceChange = (
   const detail: AppearanceChangeEventDetail = {
     themeId: appearance.themeId,
     themeName: appearance.themeName,
-    builtIn: appearance.builtIn,
+    readOnlyBuiltIn: appearance.readOnlyBuiltIn,
+    usesCssDefaults: appearance.usesCssDefaults,
     colorMode: appearance.colorMode,
     variant: appearance.variant,
     revision: nextRevision,
@@ -98,8 +97,10 @@ export default () => {
     sanitizeThemeLibrary(config.effectiveSettings.value['appearance.themeLibrary']),
   )
 
-  const activeCustomTheme = computed(() =>
-    resolveActiveCustomTheme(
+  // Active theme: personal library entry first, then a curated bundled
+  // theme; null resolves to the built-in default.
+  const activeTheme = computed(() =>
+    resolveActiveTheme(
       themeLibrary.value,
       config.effectiveSettings.value['appearance.activeThemeId'],
     ),
@@ -109,7 +110,7 @@ export default () => {
     resolveEffectiveAppearance({
       colorMode: colorMode.value,
       systemDark: mode.system.value === 'dark',
-      theme: activeCustomTheme.value,
+      theme: activeTheme.value,
       preview: previewDraft.value,
     }),
   )
@@ -205,6 +206,16 @@ export default () => {
       }
     },
     { deep: true },
+  )
+
+  // Publish the effective icon appearance (pack, weight, size scale, tint) to
+  // the shared icon runtime consumed by AppIcon across the app.
+  watch(
+    () => effectiveAppearance.value.icons,
+    (icons) => {
+      setSharedIconAppearance(icons)
+    },
+    { immediate: true, deep: true },
   )
 
   onMounted(() => {

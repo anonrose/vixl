@@ -8,10 +8,7 @@ import {
   register as registerSubagent,
   resolve as resolveSubagent,
 } from '@/services/harness/subagent/registry'
-import {
-  emitSubagentResult,
-  finishSubagentWithError,
-} from '@/services/harness/subagent/helpers'
+import { emitSubagentResult, finishSubagentWithError } from '@/services/harness/subagent/helpers'
 import resolveSpawnModel from '@/services/harness/subagent/resolve-spawn-model'
 import runSubagentGenerate from '@/services/harness/subagent/run-generate'
 import validateSpawnAgentName from '@/services/harness/subagent/validate-spawn-agent-name'
@@ -30,11 +27,7 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
         .describe(
           'Catalog name (frontmatter name, filename stem, or slug). Verb phrases only for generic helpers not in the catalog.',
         ),
-      description: z
-        .string()
-        .min(1)
-        .max(48)
-        .describe('2-6 word UI title'),
+      description: z.string().min(1).max(48).describe('2-6 word UI title'),
       prompt: z.string().describe('Task instructions for the subagent'),
       mode: z
         .enum(['blocking', 'background'])
@@ -48,7 +41,7 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
         .enum(['read-only', 'write'])
         .default('read-only')
         .describe(
-          "write required for edit/write/delete/move or shell/git mutations; read-only (default) can only report",
+          'write required for edit/write/delete/move or shell/git mutations; read-only (default) can only report',
         ),
     }),
     execute: async (
@@ -69,24 +62,15 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
       }
 
       const resolvedCapabilities = capabilities ?? 'read-only'
-      if (
-        READ_ONLY_SPAWN_MODES.has(ctx.mode) &&
-        resolvedCapabilities === 'write'
-      ) {
+      if (READ_ONLY_SPAWN_MODES.has(ctx.mode) && resolvedCapabilities === 'write') {
         throw new Error(
           `Write-capable subagents are not allowed in ${ctx.mode} mode. Spawn with capabilities: "read-only" (the default).`,
         )
       }
 
       const subagentId = crypto.randomUUID()
-      const lockedSubagentModel = getPlanExecutionSession(
-        ctx.projectSlug,
-        ctx.chatId,
-      ).subagentModel
-      const agentDefinition = await validateSpawnAgentName(
-        ctx.projectRoot,
-        agentName,
-      )
+      const lockedSubagentModel = getPlanExecutionSession(ctx.projectSlug, ctx.chatId).subagentModel
+      const agentDefinition = await validateSpawnAgentName(ctx.projectRoot, agentName)
       const uiTitle = clipTerminalLabel(description) || agentName
       const model = await resolveSpawnModel({
         callModel,

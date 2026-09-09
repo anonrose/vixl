@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import useVixlConfig from '@/composables/use-vixl-config'
 import {
+  resolveActiveTheme,
   resolveActiveCustomTheme,
   resolveCollisionSafeThemeId,
   sanitizeThemeLibrary,
@@ -13,6 +14,7 @@ import {
   type VixlThemeDefinition,
 } from '@/types/appearance/theme'
 import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
+import { isReservedThemeId } from '@/constants/appearance/built-in-theme-registry'
 
 /**
  * Personal theme library bound to Vixl personal settings.
@@ -35,8 +37,14 @@ export const useAppearanceThemes = () => {
     ),
   )
 
+  // Curated bundled themes resolve by stored id even though they never live
+  // in the personal library; null falls back to the built-in default.
   const activeTheme = computed<VixlThemeDefinition>(
-    () => activeCustomTheme.value ?? builtInVixlTheme,
+    () =>
+      resolveActiveTheme(
+        themes.value,
+        config.effectiveSettings.value['appearance.activeThemeId'],
+      ) ?? builtInVixlTheme,
   )
 
   const isBuiltInActive = computed(() => activeCustomTheme.value === null)
@@ -58,7 +66,7 @@ export const useAppearanceThemes = () => {
     theme: VixlThemeDefinition,
     options: { activate?: boolean } = {},
   ): Promise<boolean> => {
-    if (theme.id === BUILTIN_VIXL_THEME_ID) {
+    if (isReservedThemeId(theme.id)) {
       return false
     }
     const parsed = parseThemeDefinition(theme)
@@ -87,7 +95,7 @@ export const useAppearanceThemes = () => {
    * built-in default by clearing the active id in the same settings write.
    */
   const removeTheme = async (id: string): Promise<boolean> => {
-    if (id === BUILTIN_VIXL_THEME_ID) {
+    if (isReservedThemeId(id)) {
       return false
     }
     const current = themes.value
@@ -109,18 +117,22 @@ export const useAppearanceThemes = () => {
   /** Renames a saved theme, preserving its id. */
   const renameTheme = async (id: string, name: string): Promise<boolean> => {
     const theme = themes.value.find((entry) => entry.id === id)
-    if (!theme || theme.id === BUILTIN_VIXL_THEME_ID) {
+    if (!theme || isReservedThemeId(theme.id)) {
       return false
     }
     return saveTheme({ ...theme, name, version: VIXL_THEME_FORMAT_VERSION })
   }
 
-  /** Selects a theme; the built-in default (or unknown) clears the custom id. */
+  /**
+   * Selects a theme: library entries and curated bundled ids persist by id;
+   * the built-in default (or unknown) clears the stored id.
+   */
   const setActiveTheme = async (id: string | null): Promise<void> => {
-    const value =
-      id && id !== BUILTIN_VIXL_THEME_ID && themes.value.some((theme) => theme.id === id)
-        ? id
-        : undefined
+    const selectable =
+      id !== null &&
+      id !== BUILTIN_VIXL_THEME_ID &&
+      (themes.value.some((theme) => theme.id === id) || isReservedThemeId(id))
+    const value = selectable ? id : undefined
     await config.updateSetting('personal', 'appearance.activeThemeId', value)
   }
 

@@ -1,17 +1,13 @@
 <script setup lang="ts">
+import { AppIcon } from '@/icons'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CheckCircle2Icon, Hammer, Network } from '@lucide/vue'
 import { Markdown } from 'vue-stream-markdown'
 import 'vue-stream-markdown/index.css'
 import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/shadcn/ui/alert'
 import { Button } from '@/components/shadcn/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/shadcn/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/shadcn/ui/tooltip'
 import WorkbenchPlansOrchestratePlanDialog from '@/components/workbench/plans/OrchestratePlanDialog.vue'
 import useVixlConfig from '@/composables/use-vixl-config'
 import useStartPlanBuild from '@/composables/use-start-plan-build'
@@ -83,9 +79,7 @@ const buildDisabled = computed(
 const allTodosDone = computed(
   () =>
     todos.value.length > 0 &&
-    todos.value.every(
-      (todo) => todo.status === 'completed' || todo.status === 'cancelled',
-    ),
+    todos.value.every((todo) => todo.status === 'completed' || todo.status === 'cancelled'),
 )
 
 const bodySegments = computed(() => splitPlanBodySegments(body.value))
@@ -226,7 +220,7 @@ watch([planPayload, projectRoot, refreshToken], () => {
         <Tooltip v-if="allTodosDone">
           <TooltipTrigger as-child>
             <span class="inline-flex shrink-0" aria-label="Done">
-              <CheckCircle2Icon class="size-4 text-emerald-500" />
+              <AppIcon name="circle-check-big" class="size-4 text-emerald-500" />
             </span>
           </TooltipTrigger>
           <TooltipContent class="z-60">Done</TooltipContent>
@@ -241,7 +235,7 @@ watch([planPayload, projectRoot, refreshToken], () => {
               aria-label="Orchestrate"
               @click="handleOpenOrchestrate"
             >
-              <Network class="h-4 w-4" />
+              <AppIcon name="network" class="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent class="z-60">Orchestrate</TooltipContent>
@@ -253,11 +247,13 @@ watch([planPayload, projectRoot, refreshToken], () => {
               size="icon"
               class="h-8 w-8"
               :disabled="buildDisabled"
-              :aria-label="buildChatStatus === 'running' ? 'Open the active build chat' : 'Build now'"
+              :aria-label="
+                buildChatStatus === 'running' ? 'Open the active build chat' : 'Build now'
+              "
               @click="handleBuildSlotClick"
             >
               <ChatRunningDots v-if="buildChatStatus === 'running'" />
-              <Hammer v-else class="h-4 w-4" />
+              <AppIcon name="hammer" v-else class="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent class="z-60">
@@ -279,12 +275,9 @@ watch([planPayload, projectRoot, refreshToken], () => {
           <li v-for="todo in todos" :key="todo.id" class="flex items-start gap-2">
             <Tooltip>
               <TooltipTrigger as-child>
-                <span
-                  class="mt-0.5 inline-flex shrink-0"
-                  :aria-label="STATUS_LABELS[todo.status]"
-                >
-                  <component
-                    :is="planTodoStatusIcon(todo.status)"
+                <span class="mt-0.5 inline-flex shrink-0" :aria-label="STATUS_LABELS[todo.status]">
+                  <AppIcon
+                    :name="planTodoStatusIcon(todo.status)"
                     class="size-3.5"
                     :class="statusClass(todo.status)"
                   />

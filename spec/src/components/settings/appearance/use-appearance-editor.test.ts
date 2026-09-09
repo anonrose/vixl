@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
 import type { VixlThemeDefinition } from '@/types/appearance/theme'
-import { useAppearanceEditor } from '@/components/settings/appearance/use-appearance-editor'
+import {
+  useAppearanceEditor,
+  type AppearanceEditorSection,
+} from '@/components/settings/appearance/use-appearance-editor'
 
 const makeTheme = (overrides: Partial<VixlThemeDefinition> = {}): VixlThemeDefinition => ({
   ...structuredClone(builtInVixlTheme),
@@ -88,20 +91,72 @@ describe('use-appearance-editor', () => {
     editor.beginEdit(makeTheme(), 'unused')
 
     editor.setCanvas({
-      type: 'gradient',
-      angle: 450,
-      stops: [
-        { color: '#ffffff', position: 100 },
-        { color: '#000000', position: 0 },
+      fallback: '#101018',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 450,
+          stops: [
+            { color: '#ffffff', position: 100 },
+            { color: '#000000', position: 0 },
+          ],
+        },
       ],
     })
     expect(editor.draft.value?.variants.light.canvas).toEqual({
-      type: 'gradient',
-      angle: 90,
-      stops: [
-        { color: '#000000', position: 0 },
-        { color: '#ffffff', position: 100 },
+      fallback: '#101018',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 90,
+          stops: [
+            { color: '#000000', position: 0 },
+            { color: '#ffffff', position: 100 },
+          ],
+        },
       ],
+    })
+  })
+
+  it('normalizes radial and conic layers and caps the layer count', () => {
+    const editor = useAppearanceEditor()
+    editor.beginEdit(makeTheme(), 'unused')
+
+    const layer = {
+      kind: 'linear' as const,
+      angle: 0,
+      stops: [
+        { color: '#111111', position: 0 },
+        { color: '#222222', position: 100 },
+      ],
+    }
+    editor.setCanvas({
+      fallback: '#101018',
+      layers: [
+        { kind: 'radial', x: -10, y: 150, size: 'closest-side', stops: layer.stops },
+        { kind: 'conic', angle: 405, x: 120, y: -5, stops: layer.stops },
+        layer,
+        layer,
+        layer,
+        layer,
+      ],
+    })
+
+    const canvas = editor.draft.value?.variants.light.canvas
+    expect(canvas?.layers).toHaveLength(4)
+    expect(canvas?.layers[0]).toEqual({
+      kind: 'radial',
+      x: 0,
+      y: 100,
+      size: 'closest-side',
+      stops: layer.stops,
+    })
+    expect(canvas?.layers[1]).toEqual({
+      kind: 'conic',
+      angle: 45,
+      x: 100,
+      y: 0,
+      stops: layer.stops,
     })
   })
 
@@ -116,9 +171,7 @@ describe('use-appearance-editor', () => {
 
     editor.resetVariant()
     // Reset only touches the currently edited (dark) variant.
-    expect(editor.draft.value?.variants.dark.colors).toEqual(
-      builtInVixlTheme.variants.dark.colors,
-    )
+    expect(editor.draft.value?.variants.dark.colors).toEqual(builtInVixlTheme.variants.dark.colors)
     // The untouched variant keeps its edits.
     editor.setVariant('light')
     expect(editor.draft.value?.variants.light.colors.primary).toBe('#010203')
@@ -132,7 +185,7 @@ describe('use-appearance-editor', () => {
     expect(editor.draft.value?.name).toBe('Night Owl')
 
     editor.rename('x'.repeat(200))
-    expect((editor.draft.value?.name.length ?? 0)).toBeLessThanOrEqual(64)
+    expect(editor.draft.value?.name.length ?? 0).toBeLessThanOrEqual(64)
   })
 
   it('clears draft state on cancel', () => {
@@ -143,5 +196,165 @@ describe('use-appearance-editor', () => {
     expect(editor.isEditing.value).toBe(false)
     expect(editor.draft.value).toBeNull()
     expect(editor.isDirty.value).toBe(false)
+  })
+
+  describe('setGlass', () => {
+    it('stores sanitized glass on the edited variant and dirties the draft', () => {
+      const editor = useAppearanceEditor()
+      editor.beginEdit(makeTheme(), 'unused')
+
+      const before = editor.draft.value?.variants.light.glass
+      editor.setGlass({
+        enabled: true,
+        scopes: ['overlays', 'sidebar', 'overlays'],
+        surfaceOpacity: 70,
+        blur: 16,
+        saturation: 130,
+        borderOpacity: 70,
+        shadow: 'medium',
+        radius: 'lg',
+      })
+
+      expect(editor.isDirty.value).toBe(true)
+      const glass = editor.draft.value?.variants.light.glass
+      expect(glass).not.toEqual(before)
+      expect(glass?.scopes).toEqual(['sidebar', 'overlays'])
+      expect(glass?.enabled).toBe(true)
+      // The dark variant is untouched.
+      expect(editor.draft.value?.variants.dark.glass).toEqual(before)
+    })
+
+    it('clamps out-of-range glass values before storing', () => {
+      const editor = useAppearanceEditor()
+      editor.beginEdit(makeTheme(), 'unused')
+
+      editor.setGlass({
+        enabled: true,
+        scopes: ['panels'],
+        surfaceOpacity: 400,
+        blur: 500,
+        saturation: 20,
+        borderOpacity: -8,
+        shadow: 'medium',
+        radius: 'md',
+      })
+
+      const glass = editor.draft.value?.variants.light.glass
+      expect(glass?.surfaceOpacity).toBe(100)
+      expect(glass?.blur).toBe(48)
+      expect(glass?.saturation).toBe(100)
+      expect(glass?.borderOpacity).toBe(0)
+    })
+  })
+
+  describe('resetSection', () => {
+    it('restores only the requested section of the edited variant', () => {
+      const editor = useAppearanceEditor()
+      editor.beginEdit(makeTheme(), 'unused')
+
+      // Dirty every section of the light variant.
+      editor.setToken('primary', '#a1b2c3')
+      editor.setTypography({ uiFontSize: 20 })
+      editor.setCanvas({
+        fallback: '#101018',
+        layers: [
+          {
+            kind: 'linear',
+            angle: 180,
+            stops: [
+              { color: '#ffffff', position: 0 },
+              { color: '#000000', position: 100 },
+            ],
+          },
+        ],
+      })
+      editor.setGlass({
+        enabled: true,
+        scopes: ['panels'],
+        surfaceOpacity: 70,
+        blur: 16,
+        saturation: 130,
+        borderOpacity: 70,
+        shadow: 'medium',
+        radius: 'lg',
+      })
+      editor.setIcons({ pack: 'tabler', weight: 2.5, sizeScale: 1.5, tint: '#ff0000' })
+      expect(editor.isDirty.value).toBe(true)
+
+      editor.resetSection('colors')
+      const light = editor.draft.value?.variants.light
+      const defaults = builtInVixlTheme.variants.light
+      expect(light?.colors).toEqual(defaults.colors)
+      // Other sections keep their edits; the dark variant is untouched.
+      expect(light?.typography.uiFontSize).toBe(20)
+      expect(light?.canvas.layers).toHaveLength(1)
+      expect(light?.glass.enabled).toBe(true)
+      expect(light?.icons.pack).toBe('tabler')
+      expect(editor.draft.value?.variants.dark.colors).toEqual(
+        builtInVixlTheme.variants.dark.colors,
+      )
+      expect(editor.isDirty.value).toBe(true)
+    })
+
+    it('resets every supported section to the built-in defaults', () => {
+      const sections: AppearanceEditorSection[] = [
+        'colors',
+        'typography',
+        'background',
+        'glass',
+        'icons',
+      ]
+      const actualFor = (section: AppearanceEditorSection, editor: ReturnType<typeof useAppearanceEditor>) => {
+        const light = editor.draft.value?.variants.light
+        switch (section) {
+          case 'colors':
+            return light?.colors
+          case 'typography':
+            return light?.typography
+          case 'background':
+            return light?.canvas
+          case 'glass':
+            return light?.glass
+          case 'icons':
+            return light?.icons
+        }
+      }
+      const defaultsFor = (section: AppearanceEditorSection) => {
+        const defaults = builtInVixlTheme.variants.light
+        switch (section) {
+          case 'colors':
+            return defaults.colors
+          case 'typography':
+            return defaults.typography
+          case 'background':
+            return defaults.canvas
+          case 'glass':
+            return defaults.glass
+          case 'icons':
+            return defaults.icons
+        }
+      }
+      for (const section of sections) {
+        const editor = useAppearanceEditor()
+        editor.beginEdit(makeTheme(), 'unused')
+        editor.resetSection(section)
+        expect(actualFor(section, editor)).toEqual(defaultsFor(section))
+      }
+    })
+
+    it('respects the editing variant and no-ops without a draft', () => {
+      const editor = useAppearanceEditor()
+      editor.beginEdit(makeTheme(), 'unused')
+      editor.setVariant('dark')
+      editor.setToken('primary', '#a1b2c3')
+      editor.resetSection('colors')
+      expect(editor.draft.value?.variants.dark.colors).toEqual(
+        builtInVixlTheme.variants.dark.colors,
+      )
+
+      const idle = useAppearanceEditor()
+      expect(() => idle.resetSection('colors')).not.toThrow()
+      expect(idle.draft.value).toBeNull()
+    })
   })
 })

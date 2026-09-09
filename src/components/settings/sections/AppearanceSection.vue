@@ -1,30 +1,28 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { Label } from '@/components/shadcn/ui/label'
-import { NativeSelect } from '@/components/shadcn/ui/native-select'
 import SettingsSectionScroll from '@/components/settings/SettingsSectionScroll.vue'
 import useVixlConfig from '@/composables/use-vixl-config'
 import useAppearance from '@/composables/use-appearance'
 import formatUnknownError from '@/utils/format-unknown-error'
 import AppearanceModeSelect from '@/components/settings/appearance/AppearanceModeSelect.vue'
-import AppearanceThemeActions from '@/components/settings/appearance/AppearanceThemeActions.vue'
-import AppearanceThemeDialogs from '@/components/settings/appearance/AppearanceThemeDialogs.vue'
-import AppearanceThemeEditor from '@/components/settings/appearance/AppearanceThemeEditor.vue'
-import AppearanceThemeImportDialog from '@/components/settings/appearance/AppearanceThemeImportDialog.vue'
+import AppearanceEditorPanel from '@/components/settings/appearance/AppearanceEditorPanel.vue'
+import AppearanceThemeDialogsArea from '@/components/settings/appearance/AppearanceThemeDialogsArea.vue'
+import AppearanceThemePicker from '@/components/settings/appearance/AppearanceThemePicker.vue'
 import { isBuiltInTheme } from '@/components/settings/appearance/appearance-ui'
-import { useAppearanceEditor } from '@/components/settings/appearance/use-appearance-editor'
+import { useAppearanceGallery } from '@/components/settings/appearance/use-appearance-gallery'
+import {
+  useAppearanceEditor,
+  type AppearanceEditorSection,
+} from '@/components/settings/appearance/use-appearance-editor'
 import { useAppearanceThemes } from '@/components/settings/appearance/use-appearance-themes'
 import { useAppearanceSharing } from '@/components/settings/appearance/use-appearance-sharing'
-import { BUILTIN_VIXL_THEME_ID } from '@/types/appearance/theme'
-import type { VixlTheme } from '@/types/vixl/vixl-settings'
 
 const config = useVixlConfig()
 const runtime = useAppearance()
 const {
   themes: savedThemes,
   activeTheme,
-  isBuiltInActive,
   selectedThemeId,
   generateThemeId,
   saveTheme,
@@ -48,7 +46,10 @@ const {
   setToken,
   setTypography,
   setCanvas,
+  setGlass,
+  setIcons,
   resetVariant,
+  resetSection,
 } = useAppearanceEditor()
 
 const renameOpen = ref(false)
@@ -70,42 +71,18 @@ const {
   handleExport,
 } = useAppearanceSharing({
   existingThemeIds: () => savedThemes.value.map((entry) => entry.id),
-  exportTarget: () => (selectedIsBuiltIn.value ? null : selectedTheme.value),
+  // Built-ins are exportable (read-only, canonical v2); a missing target only
+  // occurs when nothing valid is selected.
+  exportTarget: () => selectedTheme.value,
 })
 
-const theme = computed(
-  () => config.effectiveSettings.value['appearance.theme'] ?? 'system',
-)
-
-const themeOptions = computed(() => [
-  { id: BUILTIN_VIXL_THEME_ID, name: 'Vixl Default' },
-  ...savedThemes.value.map((entry) => ({ id: entry.id, name: entry.name })),
-])
+const theme = computed(() => config.effectiveSettings.value['appearance.theme'] ?? 'system')
 
 const selectedTheme = computed(() => activeTheme.value)
 const selectedIsBuiltIn = computed(() => isBuiltInTheme(selectedTheme.value))
 
-const setMode = async (value: VixlTheme): Promise<void> => {
-  try {
-    await config.setTheme('personal', value)
-  } catch (error) {
-    toast.error('Failed to save mode', {
-      description: formatUnknownError(error),
-    })
-  }
-}
-
-const handleSelectTheme = async (id: string): Promise<void> => {
-  try {
-    await setActiveTheme(id === BUILTIN_VIXL_THEME_ID ? null : id)
-  } catch (error) {
-    toast.error('Failed to switch theme', {
-      description: formatUnknownError(error),
-    })
-  }
-}
-
 const startEditing = (mode: 'create' | 'edit' | 'duplicate'): void => {
+  cancelPreview()
   // In System mode the editor targets the currently resolved variant.
   const variant = runtime.effectiveAppearance.value.variant
   const id = generateThemeId(
@@ -118,6 +95,63 @@ const startEditing = (mode: 'create' | 'edit' | 'duplicate'): void => {
   } else {
     beginEdit(selectedTheme.value, id, variant)
   }
+}
+
+// Visual theme gallery: grouping, selection, preview/apply, customize, delete
+// targeting, and the draft-editor live-preview channel (stale-preview cleanup).
+const {
+  galleryGroups,
+  previewThemeId,
+  previewingTheme,
+  previewVariant,
+  selectTheme: handleSelectTheme,
+  setMode,
+  togglePreview,
+  cancelPreview,
+  useTheme: handleGalleryUse,
+  applyPreviewedTheme,
+  customizeTheme: handleGalleryCustomize,
+  editTheme: handleGalleryEdit,
+  requestDelete: requestDeleteTarget,
+  deleteTargetId,
+  pendingDeleteTheme,
+} = useAppearanceGallery({
+  savedThemes: () => savedThemes.value,
+  selectedTheme: () => selectedTheme.value,
+  isEditing,
+  runtime,
+  setActiveTheme,
+  setThemeMode: (value) => config.setTheme('personal', value),
+  resolvedVariant: () => runtime.effectiveAppearance.value.variant,
+  newThemeId: (name) => generateThemeId(name),
+  beginDuplicate,
+  beginEdit,
+  beginCreate,
+  draft: () => draft.value,
+  editingVariant: () => editingVariant.value,
+  cancelDraft,
+})
+
+const requestDelete = (id: string): void => {
+  requestDeleteTarget(id)
+  if (pendingDeleteTheme.value !== null) {
+    deleteOpen.value = true
+  }
+}
+
+const openRename = (): void => {
+  renameValue.value = selectedTheme.value.name
+  renameOpen.value = true
+}
+
+const handleResetVariant = (): void => {
+  resetVariant()
+  toast.success(`Reset ${editingVariant.value} variant to Vixl defaults`)
+}
+
+const handleResetSection = (section: AppearanceEditorSection): void => {
+  resetSection(section)
+  toast.success(`Reset ${section} to Vixl defaults (${editingVariant.value} variant)`)
 }
 
 const handleRenameConfirm = async (): Promise<void> => {
@@ -141,13 +175,22 @@ const handleRenameConfirm = async (): Promise<void> => {
 }
 
 const handleDelete = async (): Promise<void> => {
-  const wasActive = !isBuiltInActive.value && selectedTheme.value.id !== BUILTIN_VIXL_THEME_ID
+  const target = pendingDeleteTheme.value
+  if (!target) {
+    deleteOpen.value = false
+    return
+  }
+  const wasActive = target.id === selectedThemeId.value
   try {
-    if (!(await removeTheme(selectedTheme.value.id))) {
+    if (!(await removeTheme(target.id))) {
       toast.error('Failed to delete theme')
       return
     }
     deleteOpen.value = false
+    deleteTargetId.value = null
+    if (previewThemeId.value === target.id) {
+      cancelPreview()
+    }
     toast.success(wasActive ? 'Theme deleted; reverted to Vixl Default' : 'Theme deleted')
   } catch (error) {
     toast.error('Failed to delete theme', {
@@ -193,75 +236,45 @@ const handleDiscard = (): void => {
   cancelOpen.value = false
   cancelDraft()
 }
-
-// Live preview: experimental edits render immediately without persisting.
-watch(
-  [draft, editingVariant],
-  () => {
-    if (draft.value) {
-      runtime.updatePreview({ theme: draft.value, variant: editingVariant.value })
-    } else if (runtime.isPreviewing.value) {
-      runtime.cancelPreview()
-    }
-  },
-  { deep: true },
-)
-
-// Never leave stale preview state behind when the editor closes.
-onUnmounted(() => {
-  if (draft.value) {
-    cancelDraft()
-  }
-  runtime.cancelPreview()
-})
 </script>
 
 <template>
   <SettingsSectionScroll title="Appearance">
     <div class="space-y-8">
       <!-- Color mode (moved from General so there is a single control) -->
-      <AppearanceModeSelect
-        :mode="theme"
-        @select="setMode"
+      <AppearanceModeSelect :mode="theme" @select="setMode" />
+
+      <!-- Theme selection, gallery, and management -->
+      <AppearanceThemePicker
+        :selected-theme-id="selectedThemeId"
+        :selected-is-built-in="selectedIsBuiltIn"
+        :importing="importing"
+        :exporting="exporting"
+        :built-in="galleryGroups.builtIn"
+        :custom="galleryGroups.custom"
+        :previewing-id="previewThemeId"
+        :editing="isEditing"
+        :previewing-theme-name="previewingTheme?.name ?? null"
+        :preview-variant="previewVariant"
+        @select="handleSelectTheme"
+        @create="startEditing('create')"
+        @edit="startEditing('edit')"
+        @duplicate="startEditing('duplicate')"
+        @rename="openRename"
+        @delete="requestDelete(selectedTheme.id)"
+        @export="handleExport"
+        @import="handleImport"
+        @gallery-use="handleGalleryUse"
+        @gallery-preview="togglePreview"
+        @gallery-customize="handleGalleryCustomize"
+        @gallery-edit="handleGalleryEdit"
+        @gallery-delete="requestDelete"
+        @preview-apply="applyPreviewedTheme"
+        @preview-exit="cancelPreview"
       />
 
-      <!-- Theme selection and management -->
-      <div class="space-y-2">
-        <Label for="appearance-theme-select">Theme</Label>
-        <div class="flex flex-wrap items-center gap-2">
-          <NativeSelect
-            id="appearance-theme-select"
-            :model-value="selectedThemeId"
-            class="w-56"
-            aria-label="Active appearance theme"
-            @change="handleSelectTheme(($event.target as HTMLSelectElement).value)"
-          >
-            <option
-              v-for="option in themeOptions"
-              :key="option.id"
-              :value="option.id"
-            >
-              {{ option.name }}
-            </option>
-          </NativeSelect>
-
-          <AppearanceThemeActions
-            :selected-is-built-in="selectedIsBuiltIn"
-            :importing="importing"
-            :exporting="exporting"
-            @create="startEditing('create')"
-            @edit="startEditing('edit')"
-            @duplicate="startEditing('duplicate')"
-            @rename="renameValue = selectedTheme.name; renameOpen = true"
-            @delete="deleteOpen = true"
-            @export="handleExport"
-            @import="handleImport"
-          />
-        </div>
-      </div>
-
       <!-- Theme editor (draft; nothing persists until Apply) -->
-      <AppearanceThemeEditor
+      <AppearanceEditorPanel
         v-if="isEditing && draft"
         :draft="draft"
         :editing-variant="editingVariant"
@@ -273,38 +286,37 @@ onUnmounted(() => {
         @set-token="setToken"
         @set-typography="setTypography"
         @set-canvas="setCanvas"
-        @reset-variant="resetVariant(); toast.success(`Reset ${editingVariant} variant to Vixl defaults`)"
+        @set-glass="setGlass"
+        @set-icons="setIcons"
+        @reset-variant="handleResetVariant"
+        @reset-section="handleResetSection"
         @apply="handleApply"
         @cancel="handleCancelRequest"
       />
     </div>
 
-    <!-- Confirmation and rename dialogs -->
-    <AppearanceThemeDialogs
-      :theme-name="selectedTheme.name"
+    <!-- Confirmation, rename, delete, and import dialogs -->
+    <AppearanceThemeDialogsArea
+      :delete-theme-name="pendingDeleteTheme?.name ?? selectedTheme.name"
       :rename-open="renameOpen"
       :rename-value="renameValue"
       :delete-open="deleteOpen"
       :cancel-open="cancelOpen"
+      :import-open="importOpen"
+      :import-summary="pendingImport?.summary ?? null"
+      :renamed-from-id="pendingImport?.renamedFromId ?? null"
+      :import-activate="importActivate"
+      :importing="importing"
       @update:rename-open="(open: boolean) => (renameOpen = open)"
       @update:rename-value="(value: string) => (renameValue = value)"
       @update:delete-open="(open: boolean) => (deleteOpen = open)"
       @update:cancel-open="(open: boolean) => (cancelOpen = open)"
+      @update:import-open="(open: boolean) => (open ? (importOpen = true) : closeImport())"
+      @update:import-activate="(value: boolean) => (importActivate = value)"
       @confirm-rename="handleRenameConfirm"
       @confirm-delete="handleDelete"
       @discard="handleDiscard"
-    />
-
-    <!-- Import summary and confirmation -->
-    <AppearanceThemeImportDialog
-      :open="importOpen"
-      :summary="pendingImport?.summary ?? null"
-      :renamed-from-id="pendingImport?.renamedFromId ?? null"
-      :activate="importActivate"
-      :importing="importing"
-      @update:open="(open: boolean) => (open ? (importOpen = true) : closeImport())"
-      @update:activate="(value: boolean) => (importActivate = value)"
-      @confirm="handleImportConfirm"
+      @confirm-import="handleImportConfirm"
     />
   </SettingsSectionScroll>
 </template>

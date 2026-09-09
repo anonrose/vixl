@@ -41,8 +41,7 @@ export const MONACO_EDITOR_OPTIONS: monaco.editor.IStandaloneEditorConstructionO
 let vixlThemesRegistered = false
 
 const isDarkMode = (): boolean =>
-  typeof document !== 'undefined' &&
-  document.documentElement.classList.contains('dark')
+  typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
 
 /** Register solid vixl chrome themes before Shiki loads so the first paint matches. */
 export const ensureMonacoBaseThemes = (monacoApi: typeof monaco): void => {
@@ -111,18 +110,12 @@ export const resolveMonacoTypographyOptions = (
     lineHeight: Math.max(
       1,
       Math.round(
-        (fontSize *
-          ((MONACO_EDITOR_OPTIONS.lineHeight ?? 20) /
-            MONACO_EDITOR_FONT_SIZE_DEFAULT)) *
+        fontSize *
+          ((MONACO_EDITOR_OPTIONS.lineHeight ?? 20) / MONACO_EDITOR_FONT_SIZE_DEFAULT) *
           100,
       ) / 100,
     ),
-    letterSpacing:
-      Math.round(
-        fontSize *
-          (0.3 / MONACO_EDITOR_FONT_SIZE_DEFAULT) *
-          100,
-      ) / 100,
+    letterSpacing: Math.round(fontSize * (0.3 / MONACO_EDITOR_FONT_SIZE_DEFAULT) * 100) / 100,
     fontLigatures: true,
   }
 }
@@ -143,7 +136,7 @@ export const resolveMonacoEditorOptions = (
   // When no explicit typography is passed, use the effective appearance
   // typography for custom themes so newly mounted editors match the runtime.
   const state = getEditorAppearanceState()
-  const effectiveTypography = typography ?? (state.builtIn ? undefined : state.typography)
+  const effectiveTypography = typography ?? (state.readOnlyBuiltIn ? undefined : state.typography)
   if (!effectiveTypography) {
     return {
       ...MONACO_EDITOR_OPTIONS,
@@ -157,7 +150,7 @@ export const resolveMonacoEditorOptions = (
     fontSize: typography ? fontSize : state.typography.editorFontSize,
     // Custom themes follow the resolved adapter variant; the built-in theme
     // keeps the legacy root-class behavior for pixel-identical fallback.
-    theme: state.builtIn
+    theme: state.readOnlyBuiltIn
       ? resolveMonacoThemeId()
       : state.variant === 'dark'
         ? getEditorThemeIds(state.themeId).dark
@@ -180,10 +173,7 @@ const applyEffectiveMonacoTheme = (monacoApi: typeof monaco): void => {
   const themeId = state.variant === 'dark' ? ids.dark : ids.light
   monacoApi.editor.defineTheme(
     themeId,
-    buildEditorMonacoThemeData(
-      state.variant,
-      state.editor,
-    ) as monaco.editor.IStandaloneThemeData,
+    buildEditorMonacoThemeData(state.variant, state.editor) as monaco.editor.IStandaloneThemeData,
   )
   monacoApi.editor.setTheme(themeId)
 }

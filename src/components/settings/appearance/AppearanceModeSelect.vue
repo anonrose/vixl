@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Monitor, Moon, Sun } from '@lucide/vue'
+import { AppIcon, type AppIconName } from '@/icons'
 import { Button } from '@/components/shadcn/ui/button'
 import { Label } from '@/components/shadcn/ui/label'
 import type { VixlTheme } from '@/types/vixl/vixl-settings'
@@ -13,10 +13,10 @@ const emit = defineEmits<{
 }>()
 
 const modeOptions = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
-] as const
+  { value: 'light', label: 'Light', icon: 'sun' },
+  { value: 'dark', label: 'Dark', icon: 'moon' },
+  { value: 'system', label: 'System', icon: 'monitor' },
+] as const satisfies readonly { value: VixlTheme; label: string; icon: AppIconName }[]
 </script>
 
 <template>
@@ -35,14 +35,9 @@ const modeOptions = [
         :aria-pressed="mode === option.value"
         @click="emit('select', option.value)"
       >
-        <component
-          :is="option.icon"
-          class="h-4 w-4"
-        />
+        <AppIcon :name="option.icon" class="h-4 w-4" />
       </Button>
-      <span class="ml-2 text-xs text-muted-foreground">
-        Light, dark, or follow the system
-      </span>
+      <span class="ml-2 text-xs text-muted-foreground"> Light, dark, or follow the system </span>
     </div>
   </div>
 </template>

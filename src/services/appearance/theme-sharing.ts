@@ -1,10 +1,17 @@
 import {
-  BUILT_IN_THEME_ID,
   THEME_FILE_MAX_BYTES,
   themeFilePayloadSchema,
+  themeFilePayloadV1Schema,
 } from '@/schemas/appearance/theme-file'
 import type { ThemeFilePayload } from '@/schemas/appearance/theme-file'
-import { pickThemeFile, pickThemeSavePath, readThemeFile, writeThemeFile } from '@/services/vixl/vixl-tauri/theme-files'
+import { isReservedThemeId } from '@/constants/appearance/built-in-theme-registry'
+import { migrateThemeFileV1 } from './theme-migration'
+import {
+  pickThemeFile,
+  pickThemeSavePath,
+  readThemeFile,
+  writeThemeFile,
+} from '@/services/vixl/vixl-tauri/theme-files'
 import {
   describeThemeFile,
   formatSchemaIssue,
@@ -57,8 +64,10 @@ export const assertThemeFileSize = (text: string): void => {
 
 /**
  * Parse raw theme file text: enforce the size cap before parsing, then apply
- * the strict versioned schema (unknown keys, unsafe colors/fonts/values and
- * unsupported versions are rejected).
+ * the strict versioned schemas. Both canonical v2 files and legacy v1 files
+ * are accepted — v1 payloads are migrated to v2 (glass off, Lucide icons, one
+ * linear layer) before returning. Unknown keys, unsafe colors/fonts/values,
+ * and future versions are rejected.
  */
 export const parseThemeFileText = (text: string): ThemeFilePayload => {
   assertThemeFileSize(text)
@@ -70,16 +79,39 @@ export const parseThemeFileText = (text: string): ThemeFilePayload => {
     throw new ThemeFileError('Theme file is not valid JSON')
   }
 
-  const parsed = themeFilePayloadSchema.safeParse(raw)
-  if (!parsed.success) {
-    throw new ThemeFileError(formatSchemaIssue(parsed.error))
+  // Reject future versions explicitly so the error is actionable instead of
+  // surfacing as a cascade of missing-field validation issues.
+  if (
+    raw !== null &&
+    typeof raw === 'object' &&
+    'version' in raw &&
+    (raw as { version?: unknown }).version !== 1 &&
+    (raw as { version?: unknown }).version !== 2
+  ) {
+    throw new ThemeFileError(
+      `Theme file version ${(raw as { version: unknown }).version} is not supported (expected 1 or 2)`,
+    )
   }
 
-  if (parsed.data.id === BUILT_IN_THEME_ID) {
-    throw new ThemeFileError(`'${BUILT_IN_THEME_ID}' is reserved for the built-in Vixl theme`)
+  // Canonical v2 files validate strictly and pass through unchanged.
+  const parsedV2 = themeFilePayloadSchema.safeParse(raw)
+  if (parsedV2.success) {
+    if (isReservedThemeId(parsedV2.data.id)) {
+      throw new ThemeFileError(`'${parsedV2.data.id}' is reserved for a bundled built-in theme`)
+    }
+    return parsedV2.data
   }
 
-  return parsed.data
+  // Legacy v1 files are migrated to v2 with the pure migration function.
+  const parsedV1 = themeFilePayloadV1Schema.safeParse(raw)
+  if (parsedV1.success) {
+    if (isReservedThemeId(parsedV1.data.id)) {
+      throw new ThemeFileError(`'${parsedV1.data.id}' is reserved for a bundled built-in theme`)
+    }
+    return migrateThemeFileV1(parsedV1.data)
+  }
+
+  throw new ThemeFileError(formatSchemaIssue(parsedV2.error))
 }
 
 const toError = (reason: unknown): Error =>

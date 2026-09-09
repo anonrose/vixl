@@ -53,7 +53,7 @@ describe('sanitizeThemeLibrary', () => {
     )
     const library = sanitizeThemeLibrary(raw)
     expect(library).toHaveLength(THEME_LIBRARY_MAX_SIZE)
-   })
+  })
 })
 
 describe('resolveThemeById', () => {
@@ -90,9 +90,7 @@ describe('resolveCollisionSafeThemeId', () => {
   })
 
   it('never returns the reserved built-in id', () => {
-    expect(resolveCollisionSafeThemeId(BUILTIN_VIXL_THEME_ID, [])).toBe(
-      'vixl-default-2',
-    )
+    expect(resolveCollisionSafeThemeId(BUILTIN_VIXL_THEME_ID, [])).toBe('vixl-default-2')
   })
 
   it('suffixes colliding ids while preserving the display name', () => {
@@ -248,11 +246,32 @@ describe('theme file payload interop', () => {
     expect(theme.name).toBe('Imported Theme')
     expect(theme.variants.light.colors.background).toBe(theme.variants.dark.colors.background)
     const canvas = theme.variants.light.canvas
-    if (canvas.type !== 'gradient') {
-      throw new Error('expected gradient canvas')
+    // v1 single gradients migrate into exactly one v2 linear layer.
+    const layer = canvas.layers[0]
+    if (layer?.kind !== 'linear') {
+      throw new Error('expected a migrated linear layer')
     }
     expect(canvas.fallback).toBe('#100032')
-    expect(canvas.stops).toHaveLength(2)
+    expect(layer.angle).toBe(90)
+    expect(layer.stops).toHaveLength(2)
+    // Glass defaults to disabled; icons default to the Lucide compatibility
+    // settings.
+    expect(theme.variants.light.glass).toEqual({
+      enabled: false,
+      scopes: [],
+      surfaceOpacity: 100,
+      blur: 0,
+      saturation: 100,
+      borderOpacity: 0,
+      shadow: 'none',
+      radius: 'none',
+    })
+    expect(theme.variants.light.icons).toEqual({
+      pack: 'lucide',
+      weight: 2,
+      sizeScale: 1,
+      tint: 'inherit',
+    })
     // Widget colors and font fallbacks are filled from the built-in theme.
     expect(theme.variants.light.editor.hoverWidgetBackground).toBe(
       builtInVixlTheme.variants.light.editor.hoverWidgetBackground,
@@ -260,6 +279,64 @@ describe('theme file payload interop', () => {
     expect(theme.variants.light.typography.uiFontFallbacks).toEqual(
       builtInVixlTheme.variants.light.typography.uiFontFallbacks,
     )
+  })
+
+  it('migrates persisted v1 domain entries into the v2 shape', () => {
+    // A v1 entry never carried glass/icons; drop the v2-only fields the way a
+    // real persisted v1 value would look.
+    const light = structuredClone(builtInVixlTheme.variants.light) as Record<string, unknown>
+    const dark = structuredClone(builtInVixlTheme.variants.dark) as Record<string, unknown>
+    for (const variant of [light, dark]) {
+      delete variant.glass
+      delete variant.icons
+    }
+    light.canvas = {
+      type: 'gradient',
+      angle: 135,
+      stops: [
+        { color: '#101018', position: 0 },
+        { color: '#1c1c2a', position: 100 },
+      ],
+    }
+    dark.canvas = { type: 'solid', color: '#050508' }
+
+    const v1Entry = {
+      ...structuredClone(builtInVixlTheme),
+      id: 'legacy-theme',
+      name: 'Legacy Theme',
+      version: 1,
+      variants: { light, dark },
+    } as Record<string, unknown>
+
+    const library = sanitizeThemeLibrary([v1Entry])
+    expect(library).toHaveLength(1)
+    const theme = library[0]
+    if (!theme) {
+      throw new Error('expected a migrated theme')
+    }
+    expect(theme.version).toBe(2)
+    expect(theme.variants.light.canvas).toEqual({
+      fallback: '#101018',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 135,
+          stops: [
+            { color: '#101018', position: 0 },
+            { color: '#1c1c2a', position: 100 },
+          ],
+        },
+      ],
+    })
+    // Solid v1 canvases keep their color as the v2 fallback with no layers.
+    expect(theme.variants.dark.canvas).toEqual({ fallback: '#050508', layers: [] })
+    expect(theme.variants.light.glass.enabled).toBe(false)
+    expect(theme.variants.light.icons.pack).toBe('lucide')
+    // Colors and editor palettes are copied unchanged.
+    expect(theme.variants.light.colors.background).toBe(
+      builtInVixlTheme.variants.light.colors.background,
+    )
+    expect(theme.variants.light.editor).toEqual(builtInVixlTheme.variants.light.editor)
   })
 
   it('never lets a file-format entry store the reserved built-in id', () => {

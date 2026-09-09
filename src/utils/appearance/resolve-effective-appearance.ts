@@ -1,13 +1,15 @@
-import {
-  BUILTIN_VIXL_THEME_ID,
-  type VixlThemeCanvasBackground,
-  type VixlThemeDefinition,
-  type VixlThemeEditorPalette,
-  type VixlThemeSemanticTokens,
-  type VixlThemeTypography,
-  type VixlThemeVariantKind,
+import type {
+  VixlThemeCanvas,
+  VixlThemeDefinition,
+  VixlThemeEditorPalette,
+  VixlThemeGlass,
+  VixlThemeIconAppearance,
+  VixlThemeSemanticTokens,
+  VixlThemeTypography,
+  VixlThemeVariantKind,
 } from '@/types/appearance/theme'
 import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
+import { getBuiltinThemeMeta } from '@/constants/appearance/built-in-theme-registry'
 
 /**
  * Pure effective-theme resolver.
@@ -34,12 +36,24 @@ export type AppearancePreviewDraft = {
 export type EffectiveAppearance = {
   themeId: string
   themeName: string
-  /** True when the effective theme is the unstored built-in default. */
-  builtIn: boolean
+  /**
+   * True when the effective theme is a bundled built-in: immutable, never
+   * stored in the personal library, and not editable or deletable.
+   */
+  readOnlyBuiltIn: boolean
+  /**
+   * True when the theme's palette exactly matches the hard-coded CSS cascade
+   * defaults, so the runtime clears its variables instead of writing them.
+   * Only the original Vixl Default theme uses CSS defaults; other read-only
+   * built-ins still receive their own runtime variables.
+   */
+  usesCssDefaults: boolean
   colorMode: VixlColorMode
   variant: VixlThemeVariantKind
   colors: VixlThemeSemanticTokens
-  canvas: VixlThemeCanvasBackground
+  canvas: VixlThemeCanvas
+  glass: VixlThemeGlass
+  icons: VixlThemeIconAppearance
   typography: VixlThemeTypography
   editor: VixlThemeEditorPalette
 }
@@ -65,7 +79,8 @@ export const VIXL_APPEARANCE_CHANGE_EVENT = 'vixl:appearance-change'
 export type AppearanceChangeEventDetail = {
   themeId: string
   themeName: string
-  builtIn: boolean
+  readOnlyBuiltIn: boolean
+  usesCssDefaults: boolean
   colorMode: VixlColorMode
   variant: VixlThemeVariantKind
   /** Monotonic counter bumped on every applied runtime change. */
@@ -92,10 +107,10 @@ export const resolveAppearanceVariant = (
 /**
  * Resolve the effective appearance. Malformed or missing saved themes fall
  * back to the built-in default; a preview draft wins over the selection.
+ * Built-in metadata (`readOnlyBuiltIn` / `usesCssDefaults`) comes from the
+ * reserved built-in registry so every bundled id is classified consistently.
  */
-export const resolveEffectiveAppearance = (
-  input: ResolveAppearanceInput,
-): EffectiveAppearance => {
+export const resolveEffectiveAppearance = (input: ResolveAppearanceInput): EffectiveAppearance => {
   const previewTheme = input.preview?.theme ?? null
   const theme: VixlThemeDefinition =
     previewTheme ?? (input.theme?.variants ? input.theme : null) ?? builtInVixlTheme
@@ -105,15 +120,19 @@ export const resolveEffectiveAppearance = (
     input.preview?.variant,
   )
   const variant = theme.variants?.[variantKind] ?? builtInVixlTheme.variants[variantKind]
+  const meta = getBuiltinThemeMeta(theme.id)
 
   return {
     themeId: theme.id,
     themeName: theme.name,
-    builtIn: previewTheme === null && theme.id === BUILTIN_VIXL_THEME_ID,
+    readOnlyBuiltIn: previewTheme === null ? meta !== null : false,
+    usesCssDefaults: previewTheme === null && (meta?.usesCssDefaults ?? false),
     colorMode: input.colorMode,
     variant: variantKind,
     colors: variant.colors,
     canvas: variant.canvas,
+    glass: variant.glass,
+    icons: variant.icons,
     typography: variant.typography,
     editor: variant.editor,
   }
@@ -128,9 +147,12 @@ export const getEffectiveAppearanceSignature = (
     themeId: appearance.themeId,
     variant: appearance.variant,
     colorMode: appearance.colorMode,
-    builtIn: appearance.builtIn,
+    readOnlyBuiltIn: appearance.readOnlyBuiltIn,
+    usesCssDefaults: appearance.usesCssDefaults,
     colors: appearance.colors,
     canvas: appearance.canvas,
+    glass: appearance.glass,
+    icons: appearance.icons,
     typography: appearance.typography,
     editor: appearance.editor,
     previewing: extra.previewing,

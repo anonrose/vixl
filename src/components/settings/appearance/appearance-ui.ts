@@ -1,16 +1,15 @@
-import {
-  THEME_FONT_SIZE_MAX,
-  THEME_FONT_SIZE_MIN,
-} from '@/schemas/appearance/theme'
-import {
-  BUILTIN_VIXL_THEME_ID,
-  type VixlThemeCanvasBackground,
-  type VixlThemeDefinition,
-  type VixlThemeSemanticTokens,
-  type VixlThemeTypography,
-  type VixlThemeVariantKind,
-} from '@/types/appearance/theme'
+import { THEME_FONT_SIZE_MAX, THEME_FONT_SIZE_MIN } from '@/schemas/appearance/theme'
 import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
+import { getBuiltinThemeMeta } from '@/constants/appearance/built-in-theme-registry'
+import { buildCanvasCss } from '@/utils/appearance/appearance-css'
+import { contrastRatio, isValidHexColor } from '@/utils/appearance/color-contrast'
+import type {
+  VixlThemeCanvas,
+  VixlThemeDefinition,
+  VixlThemeSemanticTokens,
+  VixlThemeTypography,
+  VixlThemeVariantKind,
+} from '@/types/appearance/theme'
 
 /**
  * UI helpers for the Appearance settings section, layered on the appearance
@@ -19,12 +18,11 @@ import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
 
 export type { VixlThemeVariantKind as AppearanceVariant }
 
-const HEX_COLOR_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
+export { contrastRatio, isValidHexColor }
 
-export const isValidHexColor = (value: string): boolean => HEX_COLOR_PATTERN.test(value.trim())
-
+/** True for any bundled built-in theme (the default or a curated theme). */
 export const isBuiltInTheme = (theme: VixlThemeDefinition): boolean =>
-  theme.id === BUILTIN_VIXL_THEME_ID
+  getBuiltinThemeMeta(theme.id) !== null
 
 export const cloneThemeDefinition = (theme: VixlThemeDefinition): VixlThemeDefinition =>
   structuredClone(theme)
@@ -57,16 +55,16 @@ export const clampStopPosition = (value: number): number => {
 export const sortStops = (stops: Array<{ color: string; position: number }>) =>
   [...stops].sort((a, b) => a.position - b.position)
 
-/** Renders the structured canvas as a CSS background value for previews. */
-export const canvasToCss = (canvas: VixlThemeCanvasBackground, fallbackColor: string): string => {
-  if (canvas.type === 'solid') {
-    return canvas.color
-  }
-  if (canvas.stops.length < 2) {
-    return fallbackColor
-  }
-  const parts = sortStops(canvas.stops).map((stop) => `${stop.color} ${stop.position}%`)
-  return `linear-gradient(${clampAngle(canvas.angle)}deg, ${parts.join(', ')})`
+/**
+ * Renders the structured v2 canvas as a single CSS `background` value for
+ * previews. Layers come first (earlier layers paint above later ones) and the
+ * explicit solid fallback is the final layer, so it shows through when
+ * gradients are unsupported. Delegates to the same runtime serializer
+ * (`buildCanvasCss`) used by the CSS runtime so previews match production.
+ */
+export const canvasToCss = (canvas: VixlThemeCanvas): string => {
+  const { color, image } = buildCanvasCss(canvas)
+  return image === 'none' ? color : `${image}, ${color}`
 }
 
 export type TokenFieldMeta = {
@@ -132,41 +130,6 @@ export const contrastTargetFor = (
   return target ? tokens[target] : undefined
 }
 
-const hexToRgb = (hex: string): [number, number, number] => {
-  const value = hex.trim()
-  const channel = (raw: string): number => {
-    const parsed = Number.parseInt(raw, 16)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-  if (value.length === 4) {
-    return [
-      channel(`${value[1] ?? '0'}${value[1] ?? '0'}`),
-      channel(`${value[2] ?? '0'}${value[2] ?? '0'}`),
-      channel(`${value[3] ?? '0'}${value[3] ?? '0'}`),
-    ]
-  }
-  return [
-    channel(value.slice(1, 3)),
-    channel(value.slice(3, 5)),
-    channel(value.slice(5, 7)),
-  ]
-}
-
-const relativeLuminance = (hex: string): number => {
-  const [r, g, b] = hexToRgb(hex).map((channel) => {
-    const scaled = channel / 255
-    return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4
-  })
-  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0)
-}
-
-/** WCAG contrast ratio between two colors (1 to 21). */
-export const contrastRatio = (a: string, b: string): number => {
-  const la = relativeLuminance(a.trim())
-  const lb = relativeLuminance(b.trim())
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
-}
-
 export const hasInsufficientContrast = (foreground: string, background: string): boolean =>
   isValidHexColor(foreground) &&
   isValidHexColor(background) &&
@@ -177,9 +140,7 @@ export type ContrastWarning = {
   ratio: number
 }
 
-export const contrastWarnings = (
-  tokens: VixlThemeSemanticTokens,
-): ContrastWarning[] => {
+export const contrastWarnings = (tokens: VixlThemeSemanticTokens): ContrastWarning[] => {
   const pairs: Array<[string, keyof VixlThemeSemanticTokens]> = [
     ['Text on background', 'foreground'],
     ['Text on card', 'cardForeground'],
@@ -188,7 +149,9 @@ export const contrastWarnings = (
     ['Sidebar text', 'sidebarForeground'],
   ]
   return pairs
-    .filter(([, key]) => hasInsufficientContrast(tokens[key], contrastTargetFor(key, tokens) ?? tokens.background))
+    .filter(([, key]) =>
+      hasInsufficientContrast(tokens[key], contrastTargetFor(key, tokens) ?? tokens.background),
+    )
     .map(([label, key]) => ({
       label,
       ratio: contrastRatio(tokens[key], contrastTargetFor(key, tokens) ?? tokens.background),
@@ -248,10 +211,11 @@ export const typographyPresetValue = (
 export const fontStackCss = (typography: VixlThemeTypography, kind: 'ui' | 'mono'): string => {
   const family = kind === 'ui' ? typography.uiFontFamily : typography.monoFontFamily
   const fallbacks = kind === 'ui' ? typography.uiFontFallbacks : typography.monoFontFallbacks
-  return [family, ...fallbacks].map((name) => (/^[A-Za-z0-9 _-]+$/.test(name) ? name : `'${name}'`)).join(', ')
+  return [family, ...fallbacks]
+    .map((name) => (/^[A-Za-z0-9 _-]+$/.test(name) ? name : `'${name}'`))
+    .join(', ')
 }
 
 /** Draft helpers ----------------------------------------------------------- */
 
-export const builtInVariant = (variant: VixlThemeVariantKind) =>
-  builtInVixlTheme.variants[variant]
+export const builtInVariant = (variant: VixlThemeVariantKind) => builtInVixlTheme.variants[variant]

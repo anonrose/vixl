@@ -1,21 +1,12 @@
 <script setup lang="ts">
+import { AppIcon } from '@/icons'
 import { computed, ref } from 'vue'
-import { Keyboard, Loader2, RefreshCw } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/shadcn/ui/button'
 import { Label } from '@/components/shadcn/ui/label'
 import { Progress } from '@/components/shadcn/ui/progress'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shadcn/ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/shadcn/ui/tooltip'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/shadcn/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/shadcn/ui/tooltip'
 import SettingsSectionScroll from '@/components/settings/SettingsSectionScroll.vue'
 import useAppUpdater from '@/composables/use-app-updater'
 import { appShortcutHelp } from '@/utils/keyboard'
@@ -96,7 +87,7 @@ const handleDownloadAndRestart = async (): Promise<void> => {
               aria-label="View shortcuts"
               @click="shortcutsOpen = true"
             >
-              <Keyboard class="h-4 w-4" />
+              <AppIcon name="keyboard" class="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>View shortcuts</TooltipContent>
@@ -116,14 +107,8 @@ const handleDownloadAndRestart = async (): Promise<void> => {
                 :disabled="updater.checking.value"
                 @click="handleCheckForUpdates"
               >
-                <Loader2
-                  v-if="updater.checking.value"
-                  class="h-4 w-4 animate-spin"
-                />
-                <RefreshCw
-                  v-else
-                  class="h-4 w-4"
-                />
+                <AppIcon name="loader" v-if="updater.checking.value" class="h-4 w-4 animate-spin" />
+                <AppIcon name="refresh-cw" v-else class="h-4 w-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Check for updates</TooltipContent>
@@ -160,10 +145,7 @@ const handleDownloadAndRestart = async (): Promise<void> => {
           </div>
         </div>
 
-        <p
-          v-else-if="lastCheckedLabel"
-          class="text-sm text-muted-foreground"
-        >
+        <p v-else-if="lastCheckedLabel" class="text-sm text-muted-foreground">
           Last checked: {{ lastCheckedLabel }}
         </p>
       </div>

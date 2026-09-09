@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
 import type { VixlThemeDefinition } from '@/types/appearance/theme'
 
-const updateSetting = vi.hoisted(() => vi.fn<(tab: string, key: string, value: unknown) => Promise<void>>())
+const updateSetting = vi.hoisted(() =>
+  vi.fn<(tab: string, key: string, value: unknown) => Promise<void>>(),
+)
 
 const settingsRecord = vi.hoisted(() => ({
   value: {
@@ -27,7 +29,7 @@ const makeTheme = (id: string, name = 'My Theme'): VixlThemeDefinition => ({
   ...structuredClone(builtInVixlTheme),
   id,
   name,
-  version: 1,
+  version: 2,
 })
 
 const setStoredState = (themeLibrary: VixlThemeDefinition[], customThemeId?: string) => {
@@ -65,11 +67,7 @@ describe('use-appearance-themes', () => {
       'appearance.themeLibrary',
       expect.arrayContaining([expect.objectContaining({ id: 'nightfall', name: 'Nightfall' })]),
     )
-    expect(updateSetting).toHaveBeenCalledWith(
-      'personal',
-      'appearance.activeThemeId',
-      'nightfall',
-    )
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.activeThemeId', 'nightfall')
     // The active id points at a theme that exists in the persisted library.
     expect(settingsRecord.value['appearance.activeThemeId']).toBe('nightfall')
     expect(
@@ -98,16 +96,8 @@ describe('use-appearance-themes', () => {
     const themes = useAppearanceThemes()
 
     expect(await themes.removeTheme('nightfall')).toBe(true)
-    expect(updateSetting).toHaveBeenCalledWith(
-      'personal',
-      'appearance.themeLibrary',
-      [],
-    )
-    expect(updateSetting).toHaveBeenCalledWith(
-      'personal',
-      'appearance.activeThemeId',
-      undefined,
-    )
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.themeLibrary', [])
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.activeThemeId', undefined)
   })
 
   it('refuses to delete unknown or built-in themes', async () => {
@@ -124,11 +114,9 @@ describe('use-appearance-themes', () => {
     const themes = useAppearanceThemes()
 
     expect(await themes.renameTheme('nightfall', 'Midnight')).toBe(true)
-    expect(updateSetting).toHaveBeenCalledWith(
-      'personal',
-      'appearance.themeLibrary',
-      [expect.objectContaining({ id: 'nightfall', name: 'Midnight' })],
-    )
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.themeLibrary', [
+      expect.objectContaining({ id: 'nightfall', name: 'Midnight' }),
+    ])
   })
 
   it('generates collision-safe ids derived from the name', () => {
@@ -146,17 +134,37 @@ describe('use-appearance-themes', () => {
     const themes = useAppearanceThemes()
 
     await themes.setActiveTheme('ghost-theme')
-    expect(updateSetting).toHaveBeenCalledWith(
-      'personal',
-      'appearance.activeThemeId',
-      undefined,
-    )
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.activeThemeId', undefined)
 
     await themes.setActiveTheme('nightfall')
-    expect(updateSetting).toHaveBeenCalledWith(
-      'personal',
-      'appearance.activeThemeId',
-      'nightfall',
-    )
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.activeThemeId', 'nightfall')
+  })
+
+  it('selects curated bundled themes without adding them to the library', async () => {
+    setStoredState([], 'midnight-aurora')
+    const themes = useAppearanceThemes()
+
+    // The curated definition resolves by id even though the library is empty.
+    expect(themes.activeTheme.value.id).toBe('midnight-aurora')
+    expect(themes.activeTheme.value.name).toBe('Midnight Aurora')
+    expect(themes.isBuiltInActive.value).toBe(true)
+    expect(themes.themes.value).toEqual([])
+
+    await themes.setActiveTheme('midnight-aurora')
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.activeThemeId', 'midnight-aurora')
+
+    // Selecting the built-in default clears the stored id.
+    await themes.setActiveTheme('vixl-default')
+    expect(updateSetting).toHaveBeenCalledWith('personal', 'appearance.activeThemeId', undefined)
+  })
+
+  it('refuses to persist curated built-in themes into the library', async () => {
+    const themes = useAppearanceThemes()
+    const bundled = structuredClone(builtInVixlTheme)
+    bundled.id = 'midnight-aurora'
+    bundled.name = 'Midnight Aurora'
+    expect(await themes.saveTheme(bundled)).toBe(false)
+    expect(updateSetting).not.toHaveBeenCalled()
+    expect(await themes.renameTheme('nordic-frost', 'Renamed')).toBe(false)
   })
 })

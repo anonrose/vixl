@@ -1,7 +1,10 @@
 import {
   BUILTIN_VIXL_THEME_ID,
+  type VixlThemeCanvas,
   type VixlThemeDefinition,
   type VixlThemeEditorPalette,
+  type VixlThemeGlass,
+  type VixlThemeIconAppearance,
   type VixlThemeSemanticTokens,
   type VixlThemeTypography,
 } from '@/types/appearance/theme'
@@ -148,20 +151,50 @@ const darkEditorPalette: VixlThemeEditorPalette = {
   suggestWidgetBorder: '#3c3c3c',
 }
 
+/**
+ * Glass configuration for the built-in default: disabled, fully opaque. The
+ * default theme relies on the hard-coded CSS cascade surfaces.
+ */
+export const BUILTIN_GLASS_DISABLED: VixlThemeGlass = {
+  enabled: false,
+  scopes: [],
+  surfaceOpacity: 100,
+  blur: 0,
+  saturation: 100,
+  borderOpacity: 0,
+  shadow: 'none',
+  radius: 'none',
+}
+
+/**
+ * Icon appearance for the built-in default: Lucide with the shipped stroke
+ * weight, intrinsic sizing, and `currentColor` tint.
+ */
+export const BUILTIN_ICONS_DEFAULT: VixlThemeIconAppearance = {
+  pack: 'lucide',
+  weight: 2,
+  sizeScale: 1,
+  tint: 'inherit',
+}
+
 export const builtInVixlTheme: VixlThemeDefinition = {
   id: BUILTIN_VIXL_THEME_ID,
   name: BUILTIN_VIXL_THEME_NAME,
-  version: 1,
+  version: 2,
   variants: {
     light: {
       colors: lightSemanticTokens,
-      canvas: { type: 'solid', color: '#ffffff' },
+      canvas: { fallback: '#ffffff', layers: [] } satisfies VixlThemeCanvas,
+      glass: BUILTIN_GLASS_DISABLED,
+      icons: BUILTIN_ICONS_DEFAULT,
       typography: BUILTIN_UI_TYPOGRAPHY,
       editor: lightEditorPalette,
     },
     dark: {
       colors: darkSemanticTokens,
-      canvas: { type: 'solid', color: '#0a0a0a' },
+      canvas: { fallback: '#0a0a0a', layers: [] } satisfies VixlThemeCanvas,
+      glass: BUILTIN_GLASS_DISABLED,
+      icons: BUILTIN_ICONS_DEFAULT,
       typography: BUILTIN_UI_TYPOGRAPHY,
       editor: darkEditorPalette,
     },

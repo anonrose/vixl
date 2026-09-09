@@ -55,21 +55,21 @@ describe('appearance-ui helpers', () => {
   })
 
   it('renders structured canvas backgrounds as CSS', () => {
-    expect(canvasToCss({ type: 'solid', color: '#101010' }, '#000000')).toBe('#101010')
-    const gradientCss = canvasToCss(
-      {
-        type: 'gradient',
-        angle: 45,
-        stops: [
-          { color: '#ff0000', position: 100 },
-          { color: '#0000ff', position: 0 },
-        ],
-      },
-      '#000000',
-    )
-    expect(gradientCss).toBe(
-      'linear-gradient(45deg, #0000ff 0%, #ff0000 100%)',
-    )
+    expect(canvasToCss({ fallback: '#101010', layers: [] })).toBe('#101010')
+    const gradientCss = canvasToCss({
+      fallback: '#000000',
+      layers: [
+        {
+          kind: 'linear',
+          angle: 45,
+          stops: [
+            { color: '#ff0000', position: 100 },
+            { color: '#0000ff', position: 0 },
+          ],
+        },
+      ],
+    })
+    expect(gradientCss).toBe('linear-gradient(45deg, #0000ff 0%, #ff0000 100%), #000000')
   })
 
   it('clamps values into schema-safe ranges', () => {
@@ -88,11 +88,9 @@ describe('appearance-ui helpers', () => {
       'Inter Variable|Inter,ui-sans-serif,system-ui,sans-serif',
     )
     expect(fontStackCss(typography, 'ui')).toBe(
-      "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif",
+      'Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif',
     )
-    expect(fontStackCss(typography, 'mono')).toBe(
-      'JetBrains Mono, ui-monospace, Menlo, monospace',
-    )
+    expect(fontStackCss(typography, 'mono')).toBe('JetBrains Mono, ui-monospace, Menlo, monospace')
   })
 
   it('identifies the built-in theme', () => {

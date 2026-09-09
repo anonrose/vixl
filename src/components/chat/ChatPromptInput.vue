@@ -1,14 +1,10 @@
 <script setup lang="ts">
+import { AppIcon } from '@/icons'
 import { computed, reactive, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import type { ChatStatus } from 'ai'
-import { FolderIcon, ChevronDownIcon, XIcon, SquareIcon } from '@lucide/vue'
 import { Button } from '@/components/shadcn/ui/button'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/shadcn/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/shadcn/ui/tooltip'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,20 +79,24 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  submit: [payload: {
-    text: string
-    mode: VixlChatMode
-    model: string
-    projectId: string | null
-    permissionLevel: PermissionLevel
-    files?: FileUIPart[]
-    mentions?: ContextMention[]
-  }]
-  submitEdit: [payload: {
-    text: string
-    mode: VixlChatMode
-    model: string
-  }]
+  submit: [
+    payload: {
+      text: string
+      mode: VixlChatMode
+      model: string
+      projectId: string | null
+      permissionLevel: PermissionLevel
+      files?: FileUIPart[]
+      mentions?: ContextMention[]
+    },
+  ]
+  submitEdit: [
+    payload: {
+      text: string
+      mode: VixlChatMode
+      model: string
+    },
+  ]
   stop: []
   'update:permissionLevel': [value: PermissionLevel]
 }>()
@@ -129,9 +129,7 @@ const syncDraftSelection = (): void => {
 }
 
 const resolveDefaultPermissionLevel = (): PermissionLevel =>
-  props.permissionLevel
-  ?? config.effectiveSettings.value['agent.permissionLevel']
-  ?? 'allowlist'
+  props.permissionLevel ?? config.effectiveSettings.value['agent.permissionLevel'] ?? 'allowlist'
 
 const localPermissionLevel = ref<PermissionLevel>(resolveDefaultPermissionLevel())
 
@@ -177,8 +175,7 @@ const isWaitingOnReply = computed(
 const isEditing = computed(() => chatStore.editingMessageId.value !== null)
 
 const promptInputClass = computed(() => {
-  const base =
-    'w-full [&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:shadow-sm'
+  const base = 'w-full [&_[data-slot=input-group]]:rounded-xl [&_[data-slot=input-group]]:shadow-sm'
   if (isWaitingOnReply.value) {
     return base
   }
@@ -191,8 +188,8 @@ const promptWorkspaceRoot = computed((): string | null => {
       return null
     }
     return (
-      fleet.projects.value.find((project) => project.id === session.selectedProjectId)
-        ?.rootPath ?? null
+      fleet.projects.value.find((project) => project.id === session.selectedProjectId)?.rootPath ??
+      null
     )
   }
 
@@ -209,15 +206,11 @@ const promptWorkspaceRoot = computed((): string | null => {
   return fleet.activeProject.value?.rootPath ?? null
 })
 
-const showGitBranch = computed(
-  () => git.isRepo.value && promptWorkspaceRoot.value !== null,
-)
+const showGitBranch = computed(() => git.isRepo.value && promptWorkspaceRoot.value !== null)
 
 const resolveInitialModelRef = (mode: VixlChatMode, metaModel?: string): string => {
   const settings = config.effectiveSettings.value
-  const normalizedMeta = metaModel
-    ? normalizeStoredModelRef(metaModel) ?? metaModel
-    : undefined
+  const normalizedMeta = metaModel ? (normalizeStoredModelRef(metaModel) ?? metaModel) : undefined
 
   if (normalizedMeta) {
     return normalizedMeta
@@ -263,9 +256,7 @@ const handlePermissionLevelChange = (level: PermissionLevel): void => {
   emit('update:permissionLevel', level)
 }
 
-const enrichMentionsBeforeSend = async (
-  mentions: ContextMention[],
-): Promise<ContextMention[]> => {
+const enrichMentionsBeforeSend = async (mentions: ContextMention[]): Promise<ContextMention[]> => {
   const codegraphConnected =
     mcpServers.serverStates.value[CODEGRAPH_SERVER_ID]?.status === 'connected'
   if (!codegraphConnected) {
@@ -273,10 +264,7 @@ const enrichMentionsBeforeSend = async (
   }
 
   const freeTokens = contextUsage.free.value
-  const maxChars = Math.min(
-    PREFETCH_MAX_CONTENT_CHARS,
-    Math.max(0, (freeTokens - 1000) * 4),
-  )
+  const maxChars = Math.min(PREFETCH_MAX_CONTENT_CHARS, Math.max(0, (freeTokens - 1000) * 4))
   if (freeTokens < PREFETCH_MIN_FREE_TOKENS || maxChars < 500) {
     return mentions
   }
@@ -288,11 +276,9 @@ const enrichMentionsBeforeSend = async (
       continue
     }
     try {
-      const raw = await mcpRuntime.callTool(
-        CODEGRAPH_SERVER_ID,
-        'codegraph_explore',
-        { query: mention.query },
-      )
+      const raw = await mcpRuntime.callTool(CODEGRAPH_SERVER_ID, 'codegraph_explore', {
+        query: mention.query,
+      })
       const normalized = normalizeCodegraphResult.tool(raw)
       const content = [
         normalized.summary,
@@ -358,7 +344,7 @@ const handleSubmit = async (payload: PromptInputMessage): Promise<void> => {
     model: session.selectedModelRef,
     projectId: props.showProjectSelect
       ? session.selectedProjectId
-      : fleet.activeProject.value?.id ?? null,
+      : (fleet.activeProject.value?.id ?? null),
     permissionLevel: localPermissionLevel.value,
     files,
     mentions,
@@ -425,17 +411,13 @@ watch(
 )
 
 watch(
-  [
-    () => chatStore.meta.value?.model,
-    () => chatStore.meta.value?.mode,
-  ],
+  [() => chatStore.meta.value?.model, () => chatStore.meta.value?.mode],
   ([model, mode]) => {
     if (!chatStore.meta.value) {
       return
     }
     if (model) {
-      const normalized =
-        normalizeStoredModelRef(model) ?? model
+      const normalized = normalizeStoredModelRef(model) ?? model
       session.selectedModelRef = normalized.includes('::')
         ? normalized
         : resolveInitialModelRef(mode ?? session.selectedMode, undefined)
@@ -459,15 +441,13 @@ watch(
           class="mb-2 h-8 w-fit max-w-full gap-1.5 px-1 text-muted-foreground hover:text-foreground"
           :title="`${activeProjectName} project`"
         >
-          <FolderIcon class="size-4 shrink-0" />
+          <AppIcon name="folder" class="size-4 shrink-0" />
           <span class="truncate text-sm">{{ activeProjectName }}</span>
-          <ChevronDownIcon class="size-3 shrink-0 opacity-60" />
+          <AppIcon name="chevron-down" class="size-3 shrink-0 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" class="w-56">
-        <DropdownMenuItem @select="handleProjectSelect(null)">
-          No project
-        </DropdownMenuItem>
+        <DropdownMenuItem @select="handleProjectSelect(null)"> No project </DropdownMenuItem>
         <DropdownMenuItem
           v-for="project in fleet.projects.value"
           :key="project.id"
@@ -490,18 +470,13 @@ watch(
         class="h-7 gap-1 px-2"
         @click="handleCancelEdit"
       >
-        <XIcon class="size-3.5" />
+        <AppIcon name="x" class="size-3.5" />
         Cancel
       </Button>
     </div>
 
     <div :class="isWaitingOnReply ? 'chat-prompt-aurora' : undefined">
-      <PromptInput
-        accept="image/*"
-        :class="promptInputClass"
-        multiple
-        @submit="handleSubmit"
-      >
+      <PromptInput accept="image/*" :class="promptInputClass" multiple @submit="handleSubmit">
         <ChatPromptAttachments />
         <ChatQueueHandlers ref="queueHandlersRef" />
         <PromptInputBody>
@@ -528,8 +503,10 @@ watch(
                 class="shrink-0"
                 :title="`${selectedModeMeta.label} mode`"
               >
-                <component :is="selectedModeMeta.icon" class="size-4 shrink-0" />
-                <span class="text-sm @max-[22rem]/composer:hidden">{{ selectedModeMeta.label }}</span>
+                <AppIcon :name="selectedModeMeta.icon" class="size-4 shrink-0" />
+                <span class="text-sm @max-[22rem]/composer:hidden">{{
+                  selectedModeMeta.label
+                }}</span>
               </PromptInputActionMenuTrigger>
               <PromptInputActionMenuContent>
                 <PromptInputActionMenuItem
@@ -538,7 +515,7 @@ watch(
                   class="gap-2"
                   @select="handleModeSelect(mode.value)"
                 >
-                  <component :is="mode.icon" class="size-4 shrink-0" />
+                  <AppIcon :name="mode.icon" class="size-4 shrink-0" />
                   {{ mode.label }}
                 </PromptInputActionMenuItem>
               </PromptInputActionMenuContent>
@@ -568,7 +545,7 @@ watch(
                   aria-label="Stop generating"
                   @click="emit('stop')"
                 >
-                  <SquareIcon class="size-4" />
+                  <AppIcon name="square" class="size-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Stop generating</TooltipContent>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { AppIcon } from '@/icons'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { CircleAlert, GitFork, KeyRound, MessageCircleQuestion, Pencil, Pin, PinOff, ShieldAlert, Trash2 } from '@lucide/vue'
 import type { FleetSidebarChat } from '@/types/fleet/fleet-sidebar-chat'
 import NavigationAsideLeftChatRunningDots from '@/components/navigation/aside/left/ChatRunningDots.vue'
 import {
@@ -37,12 +37,7 @@ import { dropAgentHarness } from '@/composables/use-agent-harness'
 import useChatStore from '@/composables/use-chat-store'
 import useFleetSidebar, { refreshFleetSidebar } from '@/composables/use-fleet-sidebar'
 import { killShellsForChat } from '@/services/harness/shell/registry'
-import {
-  deleteChat,
-  forkChat,
-  pinChat,
-  updateChatMeta,
-} from '@/services/vixl/vixl-tauri'
+import { deleteChat, forkChat, pinChat, updateChatMeta } from '@/services/vixl/vixl-tauri'
 import chatRouteFor from '@/utils/chat-route-for'
 
 const props = defineProps<{
@@ -80,13 +75,9 @@ const liveMeta = computed(() => {
   return meta
 })
 
-const displayStatus = computed(
-  () => liveMeta.value?.status ?? props.chat.status,
-)
+const displayStatus = computed(() => liveMeta.value?.status ?? props.chat.status)
 
-const displayAttention = computed(
-  () => liveMeta.value?.attention ?? props.chat.attention ?? null,
-)
+const displayAttention = computed(() => liveMeta.value?.attention ?? props.chat.attention ?? null)
 
 const statusLabel = computed((): string | null => {
   if (displayStatus.value === 'running') {
@@ -240,20 +231,21 @@ watch(
         <span class="block min-w-0 flex-1 truncate text-left text-sm">
           {{ chat.title }}
         </span>
-        <NavigationAsideLeftChatRunningDots
-          v-if="displayStatus === 'running'"
-        />
-        <ShieldAlert
+        <NavigationAsideLeftChatRunningDots v-if="displayStatus === 'running'" />
+        <AppIcon
+          name="shield-alert"
           v-else-if="displayAttention === 'needs_approval'"
           class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
           aria-label="Needs approval"
         />
-        <MessageCircleQuestion
+        <AppIcon
+          name="message-circle-question"
           v-else-if="displayAttention === 'needs_input'"
           class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
           aria-label="Needs input"
         />
-        <KeyRound
+        <AppIcon
+          name="key-round"
           v-else-if="displayAttention === 'needs_mcp_auth'"
           class="size-3.5 shrink-0 text-amber-600 dark:text-amber-400"
           aria-label="Needs MCP auth"
@@ -263,7 +255,8 @@ watch(
           class="size-1.5 shrink-0 rounded-full bg-[#D4C1EC]"
           aria-label="Done"
         />
-        <CircleAlert
+        <AppIcon
+          name="circle-alert"
           v-else-if="displayAttention === 'error'"
           class="size-3.5 shrink-0 text-destructive"
           aria-label="Error"
@@ -272,21 +265,21 @@ watch(
     </ContextMenuTrigger>
     <ContextMenuContent class="w-48">
       <ContextMenuItem :disabled="savingRename" @select="openRenameDialog">
-        <Pencil />
+        <AppIcon name="pencil" />
         Rename
       </ContextMenuItem>
       <ContextMenuItem :disabled="forking" @select="handleFork">
-        <GitFork />
+        <AppIcon name="git-fork" />
         Fork
       </ContextMenuItem>
       <ContextMenuItem :disabled="pinning" @select="handleTogglePin">
-        <PinOff v-if="isPinned" />
-        <Pin v-else />
+        <AppIcon name="pin-off" v-if="isPinned" />
+        <AppIcon name="pin" v-else />
         {{ isPinned ? 'Unpin' : 'Pin' }}
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem variant="destructive" @select="deleteOpen = true">
-        <Trash2 />
+        <AppIcon name="trash" />
         Delete
       </ContextMenuItem>
     </ContextMenuContent>
@@ -298,11 +291,7 @@ watch(
         <DialogTitle>Rename chat</DialogTitle>
         <DialogDescription>Enter a new title for this chat.</DialogDescription>
       </DialogHeader>
-      <Input
-        v-model="renameTitle"
-        autocomplete="off"
-        @keydown.enter.prevent="handleRename"
-      />
+      <Input v-model="renameTitle" autocomplete="off" @keydown.enter.prevent="handleRename" />
       <DialogFooter>
         <Button variant="outline" @click="renameOpen = false">Cancel</Button>
         <Button :disabled="savingRename || !renameTitle.trim()" @click="handleRename">

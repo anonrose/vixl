@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { builtInVixlTheme } from '@/constants/appearance/built-in-theme'
-import {
-  BUILTIN_VIXL_THEME_ID,
-} from '@/types/appearance/theme'
+import { BUILTIN_VIXL_THEME_ID } from '@/types/appearance/theme'
 import {
   VIXL_CODE_THEME_DARK,
   VIXL_CODE_THEME_LIGHT,
@@ -31,7 +29,8 @@ const makeDetail = (
 ): AppearanceChangeEventDetail => ({
   themeId: 'midnight-run',
   themeName: 'Midnight Run',
-  builtIn: false,
+  readOnlyBuiltIn: false,
+  usesCssDefaults: false,
   colorMode: 'dark',
   variant: 'dark',
   revision: 1,
@@ -114,14 +113,9 @@ describe('editor theme data', () => {
   })
 
   it('builds a light Monaco theme with readable widget colors', () => {
-    const data = buildEditorMonacoThemeData(
-      'light',
-      builtInVixlTheme.variants.light.editor,
-    )
+    const data = buildEditorMonacoThemeData('light', builtInVixlTheme.variants.light.editor)
     expect(data.base).toBe('vs')
-    expect(data.colors['editor.background']).toBe(
-      builtInVixlTheme.variants.light.editor.background,
-    )
+    expect(data.colors['editor.background']).toBe(builtInVixlTheme.variants.light.editor.background)
     expect(data.colors['editorSuggestWidget.background']).toBe(
       builtInVixlTheme.variants.light.editor.suggestWidgetBackground,
     )
@@ -129,11 +123,7 @@ describe('editor theme data', () => {
 
   it('builds a Shiki registration from the effective palette', () => {
     const ids = getEditorThemeIds('midnight-run')
-    const registration = buildEditorShikiTheme(
-      'midnight-run',
-      'dark',
-      makeDetail().editor,
-    )
+    const registration = buildEditorShikiTheme('midnight-run', 'dark', makeDetail().editor)
     expect(registration.name).toBe(ids.dark)
     expect(registration.type).toBe('dark')
     expect(registration.fg).toBe(makeDetail().editor.foreground)
@@ -144,7 +134,7 @@ describe('editor theme data', () => {
 
 describe('appearance-change synchronization', () => {
   it('defaults to the built-in appearance', () => {
-    expect(getEditorAppearanceState().builtIn).toBe(true)
+    expect(getEditorAppearanceState().readOnlyBuiltIn).toBe(true)
     expect(getEditorAppearanceState().themeId).toBe(BUILTIN_VIXL_THEME_ID)
     expect(getActiveEditorTypography()).toEqual(builtInVixlTheme.variants.light.typography)
   })
@@ -158,7 +148,7 @@ describe('appearance-change synchronization', () => {
 
     const state = getEditorAppearanceState()
     expect(state.themeId).toBe('midnight-run')
-    expect(state.builtIn).toBe(false)
+    expect(state.readOnlyBuiltIn).toBe(false)
     expect(state.variant).toBe('dark')
     expect(state.revision).toBe(7)
     expect(state.editor.background).toBe('#101018')

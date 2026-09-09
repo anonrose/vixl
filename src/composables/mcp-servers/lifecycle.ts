@@ -3,10 +3,7 @@ import type { McpServerConfig } from '@/types/vixl/mcp-config'
 import { isMcpHttpServer } from '@/types/vixl/mcp-config'
 import { listEffectiveMcpServers } from '@/services/mcp/merge-mcp-config'
 import mcpRuntime, { type McpRuntimeOptions } from '@/services/mcp/mcp-runtime'
-import {
-  patchPendingMcpAuthForServer,
-  resolveMcpAuthForServer,
-} from '@/services/mcp/mcp-auth-gate'
+import { patchPendingMcpAuthForServer, resolveMcpAuthForServer } from '@/services/mcp/mcp-auth-gate'
 import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
 import { isMcpTrusted, sessionTrusts } from '@/services/mcp/mcp-trust'
 import { getHttpOauthChallenge } from '@/services/mcp/mcp-http-client'
@@ -23,103 +20,86 @@ import {
   startInFlight,
 } from './state'
 
-export const createRuntimeOptions = (
-  config: ReturnType<typeof useVixlConfig>,
-) => (
-  extras?: Pick<
-    McpRuntimeOptions,
-    | 'confirmAuthorizationServerOrigin'
-    | 'skipTrustCheck'
-    | 'scope'
-    | 'resourceMetadataUrl'
-  >,
-): McpRuntimeOptions => ({
-  settings: config.effectiveSettings.value as VixlSettings,
-  ...extras,
-})
+export const createRuntimeOptions =
+  (config: ReturnType<typeof useVixlConfig>) =>
+  (
+    extras?: Pick<
+      McpRuntimeOptions,
+      'confirmAuthorizationServerOrigin' | 'skipTrustCheck' | 'scope' | 'resourceMetadataUrl'
+    >,
+  ): McpRuntimeOptions => ({
+    settings: config.effectiveSettings.value as VixlSettings,
+    ...extras,
+  })
 
-export const createAssertTrustedOrThrow = (
-  config: ReturnType<typeof useVixlConfig>,
-) => (serverId: string, serverConfig: McpServerConfig): void => {
-  if (isInternalMcpServer(serverId)) {
-    return
+export const createAssertTrustedOrThrow =
+  (config: ReturnType<typeof useVixlConfig>) =>
+  (serverId: string, serverConfig: McpServerConfig): void => {
+    if (isInternalMcpServer(serverId)) {
+      return
+    }
+    const fingerprint = mcpServerFingerprint(serverConfig)
+    if (!isMcpTrusted(config.effectiveSettings.value, serverId, fingerprint, sessionTrusts)) {
+      throw new Error(`MCP server "${serverId}" is not trusted for the current configuration`)
+    }
   }
-  const fingerprint = mcpServerFingerprint(serverConfig)
-  if (
-    !isMcpTrusted(
-      config.effectiveSettings.value,
-      serverId,
-      fingerprint,
-      sessionTrusts,
-    )
-  ) {
-    throw new Error(
-      `MCP server "${serverId}" is not trusted for the current configuration`,
-    )
-  }
-}
 
 type RuntimeOptionsFn = ReturnType<typeof createRuntimeOptions>
 type AssertTrustedFn = ReturnType<typeof createAssertTrustedOrThrow>
 
-export const createStartServer = (
-  assertTrustedOrThrow: AssertTrustedFn,
-  runtimeOptions: RuntimeOptionsFn,
-) => async (
-  serverId: string,
-  serverConfig: McpServerConfig,
-  options?: { quiet?: boolean; manageLoading?: boolean },
-): Promise<void> => {
-  const existing = startInFlight.get(serverId)
-  if (existing) {
-    await existing
-    return
-  }
+export const createStartServer =
+  (assertTrustedOrThrow: AssertTrustedFn, runtimeOptions: RuntimeOptionsFn) =>
+  async (
+    serverId: string,
+    serverConfig: McpServerConfig,
+    options?: { quiet?: boolean; manageLoading?: boolean },
+  ): Promise<void> => {
+    const existing = startInFlight.get(serverId)
+    if (existing) {
+      await existing
+      return
+    }
 
-  const run = async (): Promise<void> => {
-    try {
-      assertTrustedOrThrow(serverId, serverConfig)
-      const state = await mcpRuntime.start(
-        serverId,
-        serverConfig,
-        runtimeOptions(),
-      )
-      patchServerState(serverId, state)
-      if (!options?.quiet && !isInternalMcpServer(serverId)) {
-        toast.success(`${serverId} connected (${state.tools.length} tools)`)
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      patchServerState(serverId, {
-        serverId,
-        status: 'error',
-        tools: [],
-        error: message,
-      })
-      if (!options?.quiet) {
-        toast.error('Failed to start server', {
-          description: message,
+    const run = async (): Promise<void> => {
+      try {
+        assertTrustedOrThrow(serverId, serverConfig)
+        const state = await mcpRuntime.start(serverId, serverConfig, runtimeOptions())
+        patchServerState(serverId, state)
+        if (!options?.quiet && !isInternalMcpServer(serverId)) {
+          toast.success(`${serverId} connected (${state.tools.length} tools)`)
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        patchServerState(serverId, {
+          serverId,
+          status: 'error',
+          tools: [],
+          error: message,
         })
-        return
+        if (!options?.quiet) {
+          toast.error('Failed to start server', {
+            description: message,
+          })
+          return
+        }
+        throw error instanceof Error ? error : new Error(message)
       }
-      throw error instanceof Error ? error : new Error(message)
     }
-  }
 
-  const pending = (async () => {
-    try {
-      if (options?.manageLoading === false) {
-        await run()
-        return
+    const pending = (async () => {
+      try {
+        if (options?.manageLoading === false) {
+          await run()
+          return
+        }
+        await withServerLoading(serverId, run)
+      } finally {
+        startInFlight.delete(serverId)
       }
-      await withServerLoading(serverId, run)
-    } finally {
-      startInFlight.delete(serverId)
-    }
-  })()
-  startInFlight.set(serverId, pending)
-  await pending
-}
+    })()
+    startInFlight.set(serverId, pending)
+    await pending
+  }
 
 export const refreshServer = async (
   serverId: string,
@@ -146,96 +126,89 @@ export const refreshServer = async (
   })
 }
 
-export const createRefreshOrStartServer = (
-  startServer: ReturnType<typeof createStartServer>,
-) => async (
-  serverId: string,
-  config: McpServerConfig,
-  options?: { quiet?: boolean },
-): Promise<void> => {
-  const status = serverStates.value[serverId]?.status ?? 'stopped'
-  if (status === 'connected' || status === 'error' || status === 'refreshing') {
-    await refreshServer(serverId, config, options)
-    return
+export const createRefreshOrStartServer =
+  (startServer: ReturnType<typeof createStartServer>) =>
+  async (
+    serverId: string,
+    config: McpServerConfig,
+    options?: { quiet?: boolean },
+  ): Promise<void> => {
+    const status = serverStates.value[serverId]?.status ?? 'stopped'
+    if (status === 'connected' || status === 'error' || status === 'refreshing') {
+      await refreshServer(serverId, config, options)
+      return
+    }
+    await startServer(serverId, config, options)
   }
-  await startServer(serverId, config, options)
-}
 
-export const createRefreshAllServers = (
-  refreshOrStartServer: ReturnType<typeof createRefreshOrStartServer>,
-) => async (
-  servers: Array<{ id: string; config: McpServerConfig }>,
-): Promise<void> => {
-  for (const server of servers) {
-    await refreshOrStartServer(server.id, server.config, { quiet: true })
+export const createRefreshAllServers =
+  (refreshOrStartServer: ReturnType<typeof createRefreshOrStartServer>) =>
+  async (servers: Array<{ id: string; config: McpServerConfig }>): Promise<void> => {
+    for (const server of servers) {
+      await refreshOrStartServer(server.id, server.config, { quiet: true })
+    }
+    toast.success('All servers refreshed')
   }
-  toast.success('All servers refreshed')
-}
 
-export const createAuthenticateServer = (
-  assertTrustedOrThrow: AssertTrustedFn,
-  runtimeOptions: RuntimeOptionsFn,
-) => async (
-  serverId: string,
-  serverConfig: McpServerConfig,
-  extras?: Pick<McpRuntimeOptions, 'confirmAuthorizationServerOrigin'>,
-): Promise<void> => {
-  authenticatingServers.value = {
-    ...authenticatingServers.value,
-    [serverId]: true,
-  }
-  await withServerLoading(serverId, async () => {
-    try {
-      assertTrustedOrThrow(serverId, serverConfig)
-      const stored = getHttpOauthChallenge(serverId)
-      const fromUrl =
-        isMcpHttpServer(serverConfig)
+export const createAuthenticateServer =
+  (assertTrustedOrThrow: AssertTrustedFn, runtimeOptions: RuntimeOptionsFn) =>
+  async (
+    serverId: string,
+    serverConfig: McpServerConfig,
+    extras?: Pick<McpRuntimeOptions, 'confirmAuthorizationServerOrigin'>,
+  ): Promise<void> => {
+    authenticatingServers.value = {
+      ...authenticatingServers.value,
+      [serverId]: true,
+    }
+    await withServerLoading(serverId, async () => {
+      try {
+        assertTrustedOrThrow(serverId, serverConfig)
+        const stored = getHttpOauthChallenge(serverId)
+        const fromUrl = isMcpHttpServer(serverConfig)
           ? getLastOAuthChallenge(serverConfig.url)
           : undefined
-      const challenge = stored ?? fromUrl
-      const state = await mcpRuntime.authenticate(
-        serverId,
-        serverConfig,
-        runtimeOptions({
-          ...extras,
-          scope: challenge?.scope,
-          resourceMetadataUrl: challenge?.resourceMetadataUrl,
-        }),
-      )
-      patchServerState(serverId, state)
-      resolveMcpAuthForServer(serverId, { action: 'authenticated' })
-      toast.success(`${serverId} authenticated`)
-    } catch (error) {
-      patchServerState(serverId, {
-        serverId,
-        status: 'auth_required',
-        tools: [],
-        error: error instanceof Error ? error.message : String(error),
-      })
-      if (isDcrMissingClientError(error)) {
-        patchPendingMcpAuthForServer(serverId, {
-          kind: 'client',
-          detail:
-            'This authorization server needs a client ID. Enter the client ID from the server. Optional client secret is stored in the keychain only.',
+        const challenge = stored ?? fromUrl
+        const state = await mcpRuntime.authenticate(
+          serverId,
+          serverConfig,
+          runtimeOptions({
+            ...extras,
+            scope: challenge?.scope,
+            resourceMetadataUrl: challenge?.resourceMetadataUrl,
+          }),
+        )
+        patchServerState(serverId, state)
+        resolveMcpAuthForServer(serverId, { action: 'authenticated' })
+        toast.success(`${serverId} authenticated`)
+      } catch (error) {
+        patchServerState(serverId, {
+          serverId,
+          status: 'auth_required',
+          tools: [],
+          error: error instanceof Error ? error.message : String(error),
         })
+        if (isDcrMissingClientError(error)) {
+          patchPendingMcpAuthForServer(serverId, {
+            kind: 'client',
+            detail:
+              'This authorization server needs a client ID. Enter the client ID from the server. Optional client secret is stored in the keychain only.',
+          })
+        }
+        toast.error('Authentication failed', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+        throw error
+      } finally {
+        authenticatingServers.value = {
+          ...authenticatingServers.value,
+          [serverId]: false,
+        }
       }
-      toast.error('Authentication failed', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-      throw error
-    } finally {
-      authenticatingServers.value = {
-        ...authenticatingServers.value,
-        [serverId]: false,
-      }
-    }
-  })
-}
+    })
+  }
 
-export const logoutServer = async (
-  serverId: string,
-  config?: McpServerConfig,
-): Promise<void> => {
+export const logoutServer = async (serverId: string, config?: McpServerConfig): Promise<void> => {
   try {
     const resolvedConfig =
       config ??

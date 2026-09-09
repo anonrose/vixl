@@ -12,9 +12,7 @@ import {
   type VixlThemeTypography,
   type VixlThemeVariantKind,
 } from '@/types/appearance/theme'
-import type {
-  AppearanceChangeEventDetail,
-} from '@/utils/appearance/resolve-effective-appearance'
+import type { AppearanceChangeEventDetail } from '@/utils/appearance/resolve-effective-appearance'
 import { VIXL_APPEARANCE_CHANGE_EVENT } from '@/utils/appearance/resolve-effective-appearance'
 
 /**
@@ -39,7 +37,8 @@ export type MonacoEditorLike = {
 export type EditorAppearanceState = {
   themeId: string
   themeName: string
-  builtIn: boolean
+  /** True when the theme is a bundled built-in (immutable). */
+  readOnlyBuiltIn: boolean
   variant: VixlThemeVariantKind
   typography: VixlThemeTypography
   editor: VixlThemeEditorPalette
@@ -54,14 +53,13 @@ export const editorAppearanceRevision = ref(0)
 
 const defaultState = (): EditorAppearanceState => {
   const dark =
-    typeof document !== 'undefined' &&
-    document.documentElement.classList.contains('dark')
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
   const variant: VixlThemeVariantKind = dark ? 'dark' : 'light'
   const variantTheme = builtInVixlTheme.variants[variant]
   return {
     themeId: BUILTIN_VIXL_THEME_ID,
     themeName: builtInVixlTheme.name,
-    builtIn: true,
+    readOnlyBuiltIn: true,
     variant,
     typography: variantTheme.typography,
     editor: variantTheme.editor,
@@ -120,11 +118,8 @@ const shikiSettingToMonacoRule = (
     return null
   }
   const foreground =
-    typeof settings.foreground === 'string'
-      ? settings.foreground.replace(/^#/, '')
-      : undefined
-  const fontStyle =
-    typeof settings.fontStyle === 'string' ? settings.fontStyle : undefined
+    typeof settings.foreground === 'string' ? settings.foreground.replace(/^#/, '') : undefined
+  const fontStyle = typeof settings.fontStyle === 'string' ? settings.fontStyle : undefined
   if (!foreground && !fontStyle) {
     return null
   }
@@ -181,7 +176,7 @@ const applyAppearanceDetail = (detail: AppearanceChangeEventDetail): void => {
   currentState = {
     themeId: detail.themeId,
     themeName: detail.themeName,
-    builtIn: detail.builtIn,
+    readOnlyBuiltIn: detail.readOnlyBuiltIn,
     variant: detail.variant,
     typography: detail.typography,
     editor: detail.editor,
@@ -234,20 +229,17 @@ export const unregisterMonacoEditorInstance = (editor: MonacoEditorLike): void =
   trackedEditors.delete(editor)
 }
 
-export const getRegisteredMonacoEditors = (): MonacoEditorLike[] => [
-  ...trackedEditors,
-]
+export const getRegisteredMonacoEditors = (): MonacoEditorLike[] => [...trackedEditors]
 
 export const getEditorAppearanceState = (): EditorAppearanceState => currentState
 
 export const getActiveEditorPalette = (): VixlThemeEditorPalette => currentState.editor
 
-export const getActiveEditorTypography = (): VixlThemeTypography =>
-  currentState.typography
+export const getActiveEditorTypography = (): VixlThemeTypography => currentState.typography
 
 export const getActiveEditorVariant = (): VixlThemeVariantKind => currentState.variant
 
-export const isEditorThemeBuiltIn = (): boolean => currentState.builtIn
+export const isEditorThemeBuiltIn = (): boolean => currentState.readOnlyBuiltIn
 
 /** Theme id Monaco should currently display for the active variant. */
 export const getActiveMonacoThemeId = (): string => {
@@ -256,15 +248,14 @@ export const getActiveMonacoThemeId = (): string => {
 }
 
 /** Active light/dark code-block theme ids (built-in or generated). */
-export const getActiveCodeThemeIds = (): EditorThemeIds =>
-  getEditorThemeIds(currentState.themeId)
+export const getActiveCodeThemeIds = (): EditorThemeIds => getEditorThemeIds(currentState.themeId)
 
 /** Stable signature of the effective editor palette (cache keys). */
 export const getEditorPaletteSignature = (state: EditorAppearanceState): string =>
   [
     state.themeId,
     state.variant,
-    state.builtIn ? 'builtin' : 'custom',
+    state.readOnlyBuiltIn ? 'builtin' : 'custom',
     state.revision,
     JSON.stringify(state.editor),
   ].join('|')

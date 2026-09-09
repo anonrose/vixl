@@ -1,27 +1,52 @@
 import { computed, ref } from 'vue'
 import {
-  clampAngle,
   clampFontSize,
-  clampStopPosition,
   cloneThemeDefinition,
-  sortStops,
   isValidHexColor,
   builtInVariant,
 } from './appearance-ui'
-import { BUILTIN_VIXL_THEME_ID, VIXL_THEME_FORMAT_VERSION } from '@/types/appearance/theme'
+import { normalizeCanvas } from '@/utils/appearance/canvas-presets'
+import { sanitizeGlass } from './appearance-glass-ui'
+import {
+  BUILTIN_VIXL_THEME_ID,
+  THEME_ICON_PACKS,
+  VIXL_THEME_FORMAT_VERSION,
+} from '@/types/appearance/theme'
 import type {
-  VixlThemeCanvasBackground,
+  VixlThemeCanvas,
   VixlThemeDefinition,
+  VixlThemeGlass,
+  VixlThemeIconAppearance,
   VixlThemeSemanticTokens,
   VixlThemeTypography,
   VixlThemeVariantKind,
 } from '@/types/appearance/theme'
-import { THEME_NAME_MAX_LENGTH } from '@/schemas/appearance/theme'
+import {
+  THEME_ICON_SIZE_SCALE_MAX,
+  THEME_ICON_SIZE_SCALE_MIN,
+  THEME_ICON_WEIGHT_MAX,
+  THEME_ICON_WEIGHT_MIN,
+  THEME_NAME_MAX_LENGTH,
+} from '@/schemas/appearance/theme'
 
 export type AppearanceEditorMode = 'create' | 'edit' | 'duplicate' | null
 
+/** Editor sections that support a per-section reset to Vixl defaults. */
+export type AppearanceEditorSection = 'colors' | 'typography' | 'background' | 'glass' | 'icons'
+
+export const APPEARANCE_EDITOR_SECTIONS: readonly AppearanceEditorSection[] = [
+  'colors',
+  'typography',
+  'background',
+  'glass',
+  'icons',
+]
+
 const sanitizeName = (name: string): string => {
-  const trimmed = name.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const trimmed = name
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   return trimmed.slice(0, THEME_NAME_MAX_LENGTH)
 }
 
@@ -84,7 +109,12 @@ export const useAppearanceEditor = () => {
     variant: VixlThemeVariantKind = 'light',
   ): void => {
     begin(
-      { ...cloneThemeDefinition(source), id, name: 'Untitled theme', version: VIXL_THEME_FORMAT_VERSION },
+      {
+        ...cloneThemeDefinition(source),
+        id,
+        name: 'Untitled theme',
+        version: VIXL_THEME_FORMAT_VERSION,
+      },
       'create',
       variant,
     )
@@ -149,9 +179,7 @@ export const useAppearanceEditor = () => {
       ...typography,
       ...patch,
       uiFontSize:
-        patch.uiFontSize !== undefined
-          ? clampFontSize(patch.uiFontSize)
-          : typography.uiFontSize,
+        patch.uiFontSize !== undefined ? clampFontSize(patch.uiFontSize) : typography.uiFontSize,
       editorFontSize:
         patch.editorFontSize !== undefined
           ? clampFontSize(patch.editorFontSize)
@@ -159,21 +187,61 @@ export const useAppearanceEditor = () => {
     }
   }
 
-  const setCanvas = (canvas: VixlThemeCanvasBackground): void => {
+  const setCanvas = (canvas: VixlThemeCanvas): void => {
     const variantTheme = draft.value?.variants[editingVariant.value]
     if (!variantTheme) {
       return
     }
-    if (canvas.type === 'gradient') {
-      canvas = {
-        ...canvas,
-        angle: clampAngle(canvas.angle),
-        stops: sortStops(
-          canvas.stops.map((stop) => ({ ...stop, position: clampStopPosition(stop.position) })),
-        ),
-      }
+    // Shared pure normalization: bounded layer count/geometry, safe hex
+    // fallback, and stops sorted by ascending position, so the draft always
+    // round-trips through the strict v2 schema. The background editor and
+    // canonical export use the same helpers.
+    variantTheme.canvas = normalizeCanvas(canvas)
+  }
+
+  /**
+   * Replaces the draft variant's glass configuration. Values are sanitized
+   * (clamped, canonical scope order, valid presets) so the draft always
+   * round-trips the strict v2 schema.
+   */
+  const setGlass = (glass: VixlThemeGlass): void => {
+    const variantTheme = draft.value?.variants[editingVariant.value]
+    if (!variantTheme) {
+      return
     }
-    variantTheme.canvas = canvas
+    variantTheme.glass = sanitizeGlass(glass)
+  }
+
+  /**
+   * Replaces the draft variant's icon appearance. Values are sanitized
+   * (allowlisted pack, clamped weight/scale, `inherit` or safe hex tint) so
+   * the draft always round-trips the strict v2 schema.
+   */
+  const setIcons = (icons: VixlThemeIconAppearance): void => {
+    const variantTheme = draft.value?.variants[editingVariant.value]
+    if (!variantTheme) {
+      return
+    }
+    const pack = (THEME_ICON_PACKS as readonly string[]).includes(icons.pack)
+      ? icons.pack
+      : 'lucide'
+    const weight = Number.isFinite(icons.weight)
+      ? Math.min(
+          THEME_ICON_WEIGHT_MAX,
+          Math.max(THEME_ICON_WEIGHT_MIN, Math.round(icons.weight * 2) / 2),
+        )
+      : 2
+    const sizeScale = Number.isFinite(icons.sizeScale)
+      ? Math.min(
+          THEME_ICON_SIZE_SCALE_MAX,
+          Math.max(THEME_ICON_SIZE_SCALE_MIN, Math.round(icons.sizeScale * 100) / 100),
+        )
+      : 1
+    const tint =
+      icons.tint === 'inherit' || (typeof icons.tint === 'string' && isValidHexColor(icons.tint))
+        ? icons.tint
+        : 'inherit'
+    variantTheme.icons = { pack, weight, sizeScale, tint }
   }
 
   /** Restores one variant of the draft to the built-in defaults. */
@@ -183,6 +251,36 @@ export const useAppearanceEditor = () => {
     }
     const defaults = structuredClone(builtInVariant(editingVariant.value))
     draft.value.variants[editingVariant.value] = defaults
+  }
+
+  /**
+   * Restores one section (colors, typography, background, glass, or icons) of
+   * the editing variant to the built-in Vixl defaults, leaving the rest of the
+   * draft untouched. Glass passes through sanitization like live edits.
+   */
+  const resetSection = (section: AppearanceEditorSection): void => {
+    if (!draft.value) {
+      return
+    }
+    const defaults = structuredClone(builtInVariant(editingVariant.value))
+    const variantTheme = draft.value.variants[editingVariant.value]
+    switch (section) {
+      case 'colors':
+        variantTheme.colors = defaults.colors
+        break
+      case 'typography':
+        variantTheme.typography = defaults.typography
+        break
+      case 'background':
+        variantTheme.canvas = defaults.canvas
+        break
+      case 'glass':
+        variantTheme.glass = sanitizeGlass(defaults.glass)
+        break
+      case 'icons':
+        variantTheme.icons = defaults.icons
+        break
+    }
   }
 
   return {
@@ -204,6 +302,9 @@ export const useAppearanceEditor = () => {
     setToken,
     setTypography,
     setCanvas,
+    setGlass,
+    setIcons,
     resetVariant,
+    resetSection,
   }
 }
