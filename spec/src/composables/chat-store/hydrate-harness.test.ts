@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import applyHydrateHarnessEvent, {
   type HydrateAccumulator,
 } from '@/composables/chat-store/hydrate-harness'
-import formatSubagentDisplayTitle from '@/utils/format-subagent-display-title'
 
 const emptyAcc = (): HydrateAccumulator => ({
   nextMessages: [],
@@ -12,8 +11,8 @@ const emptyAcc = (): HydrateAccumulator => ({
   pendingSubagents: [],
 })
 
-describe('hydrate-harness subagent-start description', () => {
-  it('stores description from subagent-start', () => {
+describe('hydrate-harness subagent-start', () => {
+  it('ignores a persisted description and keeps agentName', () => {
     const acc = emptyAcc()
     applyHydrateHarnessEvent(
       acc,
@@ -33,11 +32,10 @@ describe('hydrate-harness subagent-start description', () => {
       return
     }
     expect(item.name).toBe('explorer')
-    expect(item.description).toBe('Scan auth helpers')
-    expect(formatSubagentDisplayTitle(item)).toBe('Scan auth helpers')
+    expect('description' in item).toBe(false)
   })
 
-  it('hydrates old records without description and falls back to agentName', () => {
+  it('hydrates old records without description using agentName', () => {
     const acc = emptyAcc()
     applyHydrateHarnessEvent(
       acc,
@@ -56,7 +54,6 @@ describe('hydrate-harness subagent-start description', () => {
       return
     }
     expect(item.name).toBe('generalPurpose')
-    expect(item.description).toBeUndefined()
-    expect(formatSubagentDisplayTitle(item)).toBe('generalPurpose')
+    expect('description' in item).toBe(false)
   })
 })

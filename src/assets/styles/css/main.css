@@ -143,6 +143,7 @@
 
 .chat-prompt-editor .ProseMirror p {
   margin: 0;
+  min-height: 1.25em;
 }
 
 .chat-prompt-editor .ProseMirror p.is-editor-empty:first-child::before {

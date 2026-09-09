@@ -63,17 +63,14 @@ afterEach(() => {
 })
 
 describe('SubAgentTurn title', () => {
-  it('shows description as the title and agentName as a secondary label', () => {
-    const mounted = mountTurn(
-      subagent({ description: 'Scan auth helpers', name: 'explorer' }),
-    )
-    expect(mounted.text()).toContain('Scan auth helpers')
+  it('shows the agent name only', () => {
+    const mounted = mountTurn(subagent({ name: 'explorer' }))
     expect(mounted.text()).toContain('explorer')
+    expect(mounted.text()).not.toContain('Scan auth helpers')
   })
 
-  it('falls back to agentName when description is missing', () => {
-    const mounted = mountTurn(subagent({ name: 'generalPurpose' }))
-    expect(mounted.text()).toContain('generalPurpose')
-    expect(mounted.text()).not.toContain('Scan auth helpers')
+  it('falls back to Sub-agent when the name is blank', () => {
+    const mounted = mountTurn(subagent({ name: '  ' }))
+    expect(mounted.text()).toContain('Sub-agent')
   })
 })

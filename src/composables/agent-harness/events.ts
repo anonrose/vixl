@@ -143,7 +143,6 @@ export default (
         {
           subagentId: event.subagentId,
           name: event.name,
-          description: event.description,
           blocking: event.blocking,
           status: 'running',
           events: [],
@@ -153,7 +152,6 @@ export default (
         subagentId: event.subagentId,
         toolCallId: event.toolCallId,
         name: event.name,
-        description: event.description,
         blocking: event.blocking,
         prompt: event.prompt,
         model: event.model,
