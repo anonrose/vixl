@@ -111,7 +111,7 @@
     "@types/picomatch": "^4.0.3",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "@vitest/eslint-plugin": "^1.6.20",
     "@vue/eslint-config-typescript": "^14.8.0",
     "@vue/language-server": "^3.3.7",
@@ -139,7 +139,7 @@
     "vite": "^8.0.16",
     "vite-plugin-static-copy": "^4.1.1",
     "vite-plugin-vue-devtools": "^8.1.2",
-    "vitest": "^4.1.9",
+    "vitest": "^4.1.11",
     "vue-eslint-parser": "^10.4.1",
     "vue-tsc": "^3.3.7",
     "vuepress": "^2.0.0-rc.30"
