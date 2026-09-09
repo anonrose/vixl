@@ -276,6 +276,11 @@ Each exists at personal and project level. When both define the same thing, the 
 
 </details>
 
+## Roadmap
+
+1. Image edit and create support
+2. Theme, glass, and deeper personalization
+
 ## Contributing
 
 - Read [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, PR process, and signed commits.
