@@ -45,7 +45,6 @@ const inputDefs = computed((): McpInputDefinition[] => {
     return {
       id: inputId,
       type: 'promptString',
-      description: `Value for ${inputId}`,
       password: true,
     }
   })
@@ -145,9 +144,6 @@ defineExpose({ hasMissing, refreshConfigured })
 
 <template>
   <div class="space-y-4">
-    <p class="text-sm text-muted-foreground">
-      Update keychain values for this server. Leave a field blank to keep the saved value.
-    </p>
     <p
       v-if="inputDefs.length === 0"
       class="text-sm text-muted-foreground"
