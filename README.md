@@ -25,6 +25,7 @@
   <a href="https://vixl.app/"><img src="https://img.shields.io/badge/Agents%20UI-desktop-8b5cf6" alt="Agents UI" /></a>
 </p>
 
+---
 
 ## Sponsored by
 
@@ -37,6 +38,8 @@
 <p align="center">
   <a href="https://getminds.ai/">Minds</a>
 </p>
+
+---
 
 Vixl is an open alternative to Antigravity, Cursor, and VS Code agents.
 
