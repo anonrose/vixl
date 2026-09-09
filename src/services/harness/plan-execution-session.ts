@@ -84,6 +84,10 @@ export const rekeyPlanExecutionSession = (
   sessions.set(toKey, existing)
 }
 
+export const dropPlanExecutionSession = (projectSlug: string, chatId: string): void => {
+  sessions.delete(planExecutionSessionKey(projectSlug, chatId))
+}
+
 export const markCreatedPlanThisTurn = (
   projectSlug: string,
   chatId: string,

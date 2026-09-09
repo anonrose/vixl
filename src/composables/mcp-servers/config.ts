@@ -36,6 +36,18 @@ const loadScopedConfig = async (
   }
 }
 
+export const loadPersonalMcpConfig = async (): Promise<McpConfig> => {
+  const loaded = await loadScopedConfig('personal', null)
+  return loaded.config
+}
+
+export const loadProjectConfigForRoot = async (
+  rootPath: string,
+): Promise<McpConfig> => {
+  const loaded = await loadScopedConfig('project', rootPath)
+  return loaded.config
+}
+
 export const loadConfigs = async (rootPath: string | null): Promise<void> => {
   const personalLoaded = await loadScopedConfig('personal', null)
 

@@ -142,4 +142,80 @@ describe('createSetServerEnabled', () => {
     expect(stopServer).not.toHaveBeenCalled()
     expect(personalMcp.value.servers.filesystem).toEqual(existing)
   })
+
+  it('uses a project config override without clobbering the global project ref', async () => {
+    const globalExisting = stdioServer(true)
+    const overrideExisting = stdioServer(false)
+    projectMcp.value = { servers: { slack: globalExisting } }
+    const override = { servers: { github: overrideExisting } }
+    const startServer = vi.fn<(...args: unknown[]) => Promise<void>>(async () => {})
+    const setServerEnabled = createSetServerEnabled(
+      vi.fn<(serverId: string, serverConfig: McpServerConfig) => void>(),
+      startServer,
+    )
+
+    const updated = await setServerEnabled(
+      'github',
+      true,
+      '/tmp/other-project',
+      override,
+    )
+
+    expect(setMcpServerEnabled).toHaveBeenCalledWith(
+      'project',
+      'github',
+      true,
+      '/tmp/other-project',
+    )
+    expect(projectMcp.value.servers.slack).toEqual(globalExisting)
+    expect(projectMcp.value.servers.github).toBeUndefined()
+    expect(updated?.servers.github?.enabled).toBe(true)
+    expect(startServer).toHaveBeenCalledWith(
+      'github',
+      { ...overrideExisting, enabled: true },
+      { quiet: true, manageLoading: false },
+    )
+  })
+
+  it('does not roll back the global project ref when an override toggle fails', async () => {
+    const globalExisting = stdioServer(true)
+    projectMcp.value = { servers: { slack: globalExisting } }
+    setMcpServerEnabled.mockRejectedValue(new Error('disk full'))
+    const startServer = vi.fn<(...args: unknown[]) => Promise<void>>(async () => {})
+    const setServerEnabled = createSetServerEnabled(
+      vi.fn<(serverId: string, serverConfig: McpServerConfig) => void>(),
+      startServer,
+    )
+
+    await expect(
+      setServerEnabled(
+        'github',
+        true,
+        '/tmp/other-project',
+        { servers: { github: stdioServer(false) } },
+      ),
+    ).rejects.toThrow('disk full')
+
+    expect(projectMcp.value.servers.slack).toEqual(globalExisting)
+    expect(projectMcp.value.servers.github).toBeUndefined()
+  })
+
+  it('passes a settings override through to startServer', async () => {
+    const existing = stdioServer(false)
+    projectMcp.value = { servers: { github: existing } }
+    const startServer = vi.fn<(...args: unknown[]) => Promise<void>>(async () => {})
+    const setServerEnabled = createSetServerEnabled(
+      vi.fn<(serverId: string, serverConfig: McpServerConfig) => void>(),
+      startServer,
+    )
+    const settings = { version: 1 as const, 'agent.mcp.trust': [] }
+
+    await setServerEnabled('github', true, '/tmp/project', undefined, settings)
+
+    expect(startServer).toHaveBeenCalledWith(
+      'github',
+      { ...existing, enabled: true },
+      { quiet: true, manageLoading: false, settings },
+    )
+  })
 })

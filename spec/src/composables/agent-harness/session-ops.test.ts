@@ -40,6 +40,14 @@ vi.mock('@/router', () => ({
   default: { push: vi.fn<(...args: unknown[]) => Promise<void>>() },
 }))
 
+const loadEffectiveSettings = vi.hoisted(() =>
+  vi.fn<(rootPath: string | null) => Promise<VixlSettings>>(),
+)
+
+vi.mock('@/services/config/vixl-config', () => ({
+  loadEffectiveSettings,
+}))
+
 vi.mock('vue-sonner', () => ({
   toast: {
     error: (...args: unknown[]) => toastError(...args),
@@ -103,6 +111,7 @@ describe('sessionOps compactChat', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     compactSession.mockResolvedValue(compactResult)
+    loadEffectiveSettings.mockResolvedValue({ version: 1 })
   })
 
   it('sets compacting true while in flight and false after resolve', async () => {
@@ -126,6 +135,7 @@ describe('sessionOps compactChat', () => {
     expect(state.compacting.value).toBe(true)
     expect(maybeDrainQueue).not.toHaveBeenCalled()
 
+    await Promise.resolve()
     release?.()
     await pending
 
@@ -239,6 +249,7 @@ describe('sessionOps createHandoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     compactSession.mockResolvedValue(compactResult)
+    loadEffectiveSettings.mockResolvedValue({ version: 1 })
   })
 
   it('toasts and does not compact when the parent is streaming', async () => {
@@ -286,6 +297,7 @@ describe('sessionOps createHandoff', () => {
     expect(state.compacting.value).toBe(true)
     expect(writeHandoff).not.toHaveBeenCalled()
 
+    await Promise.resolve()
     release?.()
     await pending
 

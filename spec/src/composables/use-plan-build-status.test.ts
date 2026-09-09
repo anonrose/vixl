@@ -36,6 +36,15 @@ vi.mock('@/composables/use-workbench-store', () => ({
   }),
 }))
 
+vi.mock('vue-sonner', () => ({
+  toast: {
+    error: vi.fn<(...args: unknown[]) => void>(),
+    success: vi.fn<(...args: unknown[]) => void>(),
+  },
+}))
+
+import { toast } from 'vue-sonner'
+
 describe('use-plan-build-status', () => {
   beforeEach(() => {
     sessionStatus.value = 'idle'
@@ -52,6 +61,7 @@ describe('use-plan-build-status', () => {
           : ({ status: sessionStatus.value } as ChatMeta),
       ),
     }))
+    vi.mocked(toast.error).mockClear()
   })
 
   it('prefers lastBuildChatId over sourceChatId and tracks running status', async () => {
@@ -140,5 +150,48 @@ describe('use-plan-build-status', () => {
     await vi.waitFor(() => {
       expect(refreshChatMeta).toHaveBeenCalledWith('proj', 'source-chat')
     })
+  })
+
+  it('flags missing chats without toasting when Chat not found', async () => {
+    refreshChatMeta.mockRejectedValue(new Error('Chat not found'))
+    const { default: usePlanBuildStatus } = await import(
+      '@/composables/use-plan-build-status'
+    )
+    const lastBuildChatId = ref<string | null>('build-chat')
+    const sourceChatId = ref<string | null>('source-chat')
+    const { buildChatMissing, missingChatIds, buildChatStatus } = usePlanBuildStatus({
+      projectId: 'proj-1',
+      lastBuildChatId,
+      sourceChatId,
+    })
+
+    await vi.waitFor(() => {
+      expect(missingChatIds.value).toContain('build-chat')
+    })
+    expect(buildChatMissing.value).toBe(true)
+    expect(buildChatStatus.value).toBe('idle')
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('toasts other hydration errors and does not flag the chat missing', async () => {
+    refreshChatMeta.mockRejectedValue(new Error('disk full'))
+    const { default: usePlanBuildStatus } = await import(
+      '@/composables/use-plan-build-status'
+    )
+    const lastBuildChatId = ref<string | null>('build-chat')
+    const sourceChatId = ref<string | null>(null)
+    const { buildChatMissing, missingChatIds } = usePlanBuildStatus({
+      projectId: 'proj-1',
+      lastBuildChatId,
+      sourceChatId,
+    })
+
+    await vi.waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to load plan build status', {
+        description: 'disk full',
+      })
+    })
+    expect(missingChatIds.value).toEqual([])
+    expect(buildChatMissing.value).toBe(false)
   })
 })

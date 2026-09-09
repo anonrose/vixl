@@ -67,7 +67,6 @@ export default defineConfigWithVueTs(
       'src/components/workbench/tabs/browser/BrowserToolbar.vue',
       // Outside this slice; still over 300
       'src/components/chat/prompt-editor/ChatPromptEditor.vue',
-      'src/components/chat/ChatMcpServerPicker.vue',
       'src/components/chat/ChatThreadContent.vue',
       'src/components/chat/ContextUsageBar.vue',
       'src/components/project/sections/ChatsSection.vue',

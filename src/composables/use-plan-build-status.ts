@@ -1,4 +1,4 @@
-import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue'
+import { computed, readonly, ref, toValue, watch, type MaybeRefOrGetter } from 'vue'
 import { toast } from 'vue-sonner'
 import useChatStore from '@/composables/use-chat-store'
 import useWorkbenchStore from '@/composables/use-workbench-store'
@@ -10,9 +10,13 @@ type PlanBuildStatusInput = {
   sourceChatId: MaybeRefOrGetter<string | null>
 }
 
+const isChatNotFoundError = (error: unknown): boolean =>
+  error instanceof Error && error.message.includes('Chat not found')
+
 export default (input: PlanBuildStatusInput) => {
   const chatStore = useChatStore()
   const workbench = useWorkbenchStore()
+  const missingChatIds = ref<string[]>([])
 
   const buildChatId = computed(
     () => toValue(input.lastBuildChatId) ?? toValue(input.sourceChatId),
@@ -31,6 +35,25 @@ export default (input: PlanBuildStatusInput) => {
     return chatStore.forChat(slug, id).meta.value?.status ?? 'idle'
   })
 
+  const buildChatMissing = computed(() => {
+    const id = buildChatId.value
+    return Boolean(id && missingChatIds.value.includes(id))
+  })
+
+  const markChatMissing = (id: string): void => {
+    if (missingChatIds.value.includes(id)) {
+      return
+    }
+    missingChatIds.value = [...missingChatIds.value, id]
+  }
+
+  const markChatPresent = (id: string): void => {
+    if (!missingChatIds.value.includes(id)) {
+      return
+    }
+    missingChatIds.value = missingChatIds.value.filter((item) => item !== id)
+  }
+
   watch(
     [buildChatId, projectSlug],
     async ([id, slug]) => {
@@ -39,7 +62,12 @@ export default (input: PlanBuildStatusInput) => {
       }
       try {
         await chatStore.refreshChatMeta(slug, id)
+        markChatPresent(id)
       } catch (error) {
+        if (isChatNotFoundError(error)) {
+          markChatMissing(id)
+          return
+        }
         toast.error('Failed to load plan build status', {
           description: error instanceof Error ? error.message : 'Unknown error',
         })
@@ -51,5 +79,7 @@ export default (input: PlanBuildStatusInput) => {
   return {
     buildChatId,
     buildChatStatus,
+    buildChatMissing,
+    missingChatIds: readonly(missingChatIds),
   }
 }

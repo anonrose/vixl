@@ -30,7 +30,11 @@ vi.mock('@/services/mcp/mcp-runtime', () => ({
   },
 }))
 
-import { loadConfigs, refreshStates } from '@/composables/mcp-servers/config'
+import {
+  loadConfigs,
+  loadProjectConfigForRoot,
+  refreshStates,
+} from '@/composables/mcp-servers/config'
 import { personalMcp, projectMcp, serverStates } from '@/composables/mcp-servers/state'
 
 const braveConfig = {
@@ -98,5 +102,30 @@ describe('mcp-servers loadConfigs and refreshStates', () => {
 
     expect(mcpStop).toHaveBeenCalledWith('brave')
     expect(serverStates.value.brave).toBeUndefined()
+  })
+})
+
+describe('loadProjectConfigForRoot', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    seedRunningBrave()
+    readMcpConfig.mockResolvedValue({
+      servers: {
+        github: { command: 'npx', args: ['-y', 'github-mcp'] },
+      },
+    })
+  })
+
+  it('returns the project config without mutating global refs or writing disk', async () => {
+    const loaded = await loadProjectConfigForRoot('/other/project')
+
+    expect(loaded.servers.github).toEqual({
+      command: 'npx',
+      args: ['-y', 'github-mcp'],
+    })
+    expect(personalMcp.value.servers.brave).toBeDefined()
+    expect(projectMcp.value.servers).toEqual({})
+    expect(writeMcpConfig).not.toHaveBeenCalled()
+    expect(readMcpConfig).toHaveBeenCalledWith('project', '/other/project')
   })
 })

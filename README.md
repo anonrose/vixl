@@ -29,15 +29,30 @@
 
 ## Sponsored by
 
-<p align="center">
-  <a href="https://getminds.ai/" target="_blank" rel="noreferrer">
-    <img src="https://getminds.ai/images/logo.png" alt="Minds" height="72" />
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://getminds.ai/">Minds</a>
-</p>
+<table align="center">
+  <tr>
+    <td align="center" valign="middle">
+      <a href="https://getminds.ai/" target="_blank" rel="noreferrer">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="./docs/media/readme/minds-dark.png" />
+          <img src="https://getminds.ai/images/logo.png" alt="Minds" height="56" />
+        </picture>
+      </a>
+      <br />
+      <a href="https://getminds.ai/">Minds</a>
+    </td>
+    <td align="center" valign="middle">
+      <a href="https://www.getniche.ai/" target="_blank" rel="noreferrer">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://www.getniche.ai/niche-logo-dark.png" />
+          <img src="https://www.getniche.ai/niche-logo-light.webp" alt="Niche" height="56" />
+        </picture>
+      </a>
+      <br />
+      <a href="https://www.getniche.ai/">Niche</a>
+    </td>
+  </tr>
+</table>
 
 ---
 

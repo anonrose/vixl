@@ -2,6 +2,7 @@ import { toast } from 'vue-sonner'
 import formatUnknownError from '@/utils/format-unknown-error'
 import type { McpConfig, McpServerConfig } from '@/types/vixl/mcp-config'
 import type { McpInputDefinition } from '@/types/vixl/mcp-config'
+import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import { listEffectiveMcpServers } from '@/services/mcp/merge-mcp-config'
 import mcpRuntime from '@/services/mcp/mcp-runtime'
 import { listRequiredInputIdsForServer } from '@/services/mcp/resolve-mcp-inputs'
@@ -19,6 +20,7 @@ import { createStartServer, stopServer } from './lifecycle'
 type AssertTrustedFn = (
   serverId: string,
   serverConfig: McpServerConfig,
+  settings?: VixlSettings,
 ) => void
 
 type StartServerFn = ReturnType<typeof createStartServer>
@@ -170,8 +172,11 @@ export const createSetServerEnabled = (
   serverId: string,
   enabled: boolean,
   rootPath: string | null,
-): Promise<void> => {
-  const effective = listEffectiveMcpServers(personalMcp.value, projectMcp.value)
+  projectConfigOverride?: McpConfig,
+  settings?: VixlSettings,
+): Promise<McpConfig | undefined> => {
+  const projectConfig = projectConfigOverride ?? projectMcp.value
+  const effective = listEffectiveMcpServers(personalMcp.value, projectConfig)
   const server = effective.find((item) => item.id === serverId)
   if (!server) {
     toast.error('MCP server not found', {
@@ -181,12 +186,12 @@ export const createSetServerEnabled = (
   }
 
   if (enabled) {
-    assertTrustedOrThrow(serverId, server.config)
+    assertTrustedOrThrow(serverId, server.config, settings)
   }
 
   const tab: SettingsTab =
     server.scope === 'personal' ? 'personal' : 'project'
-  const scoped = tab === 'personal' ? personalMcp.value : projectMcp.value
+  const scoped = tab === 'personal' ? personalMcp.value : projectConfig
   const existing = scoped.servers[serverId]
   if (!existing) {
     toast.error('MCP server config missing', {
@@ -209,9 +214,11 @@ export const createSetServerEnabled = (
     },
   }
 
+  const useProjectOverride = tab === 'project' && projectConfigOverride !== undefined
+
   if (tab === 'personal') {
     personalMcp.value = nextScoped
-  } else {
+  } else if (!useProjectOverride) {
     projectMcp.value = nextScoped
   }
 
@@ -220,7 +227,11 @@ export const createSetServerEnabled = (
       await setMcpServerEnabled(tab, serverId, enabled, rootPath)
 
       if (enabled) {
-        await startServer(serverId, nextConfig, { quiet: true, manageLoading: false })
+        await startServer(serverId, nextConfig, {
+          quiet: true,
+          manageLoading: false,
+          ...(settings !== undefined ? { settings } : {}),
+        })
       } else {
         await stopServer(serverId, { quiet: true, manageLoading: false })
       }
@@ -228,10 +239,14 @@ export const createSetServerEnabled = (
     } catch (error) {
       if (tab === 'personal') {
         personalMcp.value = scoped
-      } else {
+      } else if (!useProjectOverride) {
         projectMcp.value = scoped
       }
       throw error
     }
   })
+
+  if (useProjectOverride) {
+    return nextScoped
+  }
 }

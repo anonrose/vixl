@@ -299,6 +299,7 @@
     "useRafFn": true,
     "useRefHistory": true,
     "useResizeObserver": true,
+    "useRootEffectiveSettings": true,
     "useSSRWidth": true,
     "useScreenOrientation": true,
     "useScreenSafeArea": true,

@@ -582,63 +582,16 @@ const refreshAll = async (): Promise<void> => {
       </DialogContent>
     </Dialog>
 
-    <Dialog
+    <TrustServerDialog
       :open="trustPending !== null"
+      :server-id="trustPending?.serverId ?? null"
+      :saving="trustSaving"
       @update:open="
         (open) => {
           if (!open) trustPending = null
         }
       "
-    >
-      <DialogContent class="max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Trust MCP server?</DialogTitle>
-        </DialogHeader>
-        <div class="space-y-3 text-sm text-muted-foreground">
-          <p>
-            <span class="inline-flex items-center gap-2 font-mono font-medium text-foreground">
-              <McpServerIcon v-if="trustPending?.serverId" :server-id="trustPending.serverId" />
-              {{ trustPending?.serverId }}
-            </span>
-            is an MCP server that can execute code on your machine (for example via npx or uvx).
-            Choose how much you trust this exact command or URL.
-          </p>
-          <p class="text-xs">
-            Untrusted servers cannot be started or called by agents. Changing the command, args, or
-            URL requires trust again.
-          </p>
-        </div>
-        <DialogFooter class="flex-col gap-2 sm:flex-col">
-          <Button class="w-full" :disabled="trustSaving" @click="handleTrustChoice('session')">
-            This session
-          </Button>
-          <Button
-            v-if="config.activeRootPath.value"
-            variant="outline"
-            class="w-full"
-            :disabled="trustSaving"
-            @click="handleTrustChoice('workspace')"
-          >
-            This workspace
-          </Button>
-          <Button
-            variant="outline"
-            class="w-full"
-            :disabled="trustSaving"
-            @click="handleTrustChoice('always')"
-          >
-            Always
-          </Button>
-          <Button
-            variant="ghost"
-            class="w-full text-destructive hover:text-destructive"
-            :disabled="trustSaving"
-            @click="handleTrustChoice('never')"
-          >
-            Never
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      @choice="handleTrustChoice"
+    />
   </SettingsSectionScroll>
 </template>

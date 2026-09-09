@@ -7,6 +7,7 @@ import { setPendingChatMessage } from '@/services/chat/pending-message'
 import chatRouteFor from '@/utils/chat-route-for'
 import formatUnknownError from '@/utils/format-unknown-error'
 import router from '@/router'
+import { loadEffectiveSettings } from '@/services/config/vixl-config'
 import type { AgentHarnessState } from './types'
 
 type SessionOpsDeps = {
@@ -15,7 +16,7 @@ type SessionOpsDeps = {
 }
 
 export default (state: AgentHarnessState, deps: SessionOpsDeps) => {
-  const { options, session, config, status, contextUsage, compacting } = state
+  const { options, session, status, contextUsage, compacting } = state
 
   const isParentStreaming = (): boolean =>
     status.value === 'streaming' || status.value === 'submitted'
@@ -52,7 +53,9 @@ export default (state: AgentHarnessState, deps: SessionOpsDeps) => {
         projectSlug: options.projectSlug,
         chatId: options.chatId,
         projectRoot,
-        settings: config.effectiveSettings.value,
+        settings: await loadEffectiveSettings(
+          options.standalone ? null : options.projectRoot,
+        ),
         messages: session.messages.value,
         timeline: session.timeline.value,
         focus,
@@ -107,7 +110,9 @@ export default (state: AgentHarnessState, deps: SessionOpsDeps) => {
         projectSlug: options.projectSlug,
         chatId: options.chatId,
         projectRoot,
-        settings: config.effectiveSettings.value,
+        settings: await loadEffectiveSettings(
+          options.standalone ? null : options.projectRoot,
+        ),
         messages: session.messages.value,
         timeline: session.timeline.value,
         chatModel: meta.model,

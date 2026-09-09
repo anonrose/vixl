@@ -3,10 +3,20 @@ import { toast } from 'vue-sonner'
 import { sessionTrusts } from '@/services/mcp/mcp-trust'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
 
-const { updateSetting, clearMcpToolBaseline } = vi.hoisted(() => ({
-  updateSetting: vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}),
-  clearMcpToolBaseline: vi.fn<(serverId: string) => Promise<void>>(async () => {}),
-}))
+const { updateSetting, clearMcpToolBaseline, loadEffectiveSettings, loadProjectSettings, saveSettings } =
+  vi.hoisted(() => ({
+    updateSetting: vi.fn<(...args: unknown[]) => Promise<void>>(async () => {}),
+    clearMcpToolBaseline: vi.fn<(serverId: string) => Promise<void>>(async () => {}),
+    loadEffectiveSettings: vi.fn<(rootPath: string | null) => Promise<VixlSettings>>(async () => ({
+      version: 1,
+    })),
+    loadProjectSettings: vi.fn<(rootPath: string) => Promise<VixlSettings>>(async () => ({
+      version: 1,
+    })),
+    saveSettings: vi.fn<
+      (scope: string, settings: VixlSettings, rootPath?: string | null) => Promise<void>
+    >(async () => {}),
+  }))
 
 const settings = vi.hoisted(() => ({
   personal: { version: 1 } as VixlSettings,
@@ -52,7 +62,15 @@ vi.mock('@/services/mcp/mcp-tool-baseline', () => ({
   clearMcpToolBaseline,
 }))
 
+vi.mock('@/services/config/vixl-config', () => ({
+  loadEffectiveSettings,
+  loadProjectSettings,
+  saveSettings,
+}))
+
 import useMcpTrustChoice from '@/composables/mcp-servers/use-mcp-trust-choice'
+import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
+import type { McpServerConfig } from '@/types/vixl/mcp-config'
 
 const deferred = (): {
   promise: Promise<void>
@@ -148,5 +166,55 @@ describe('useMcpTrustChoice', () => {
       description: 'npx spawn failed',
     })
     expect(toast.error).not.toHaveBeenCalledWith('Failed to trust server', expect.anything())
+  })
+
+  it('checks requireTrust against the provided root effective settings', async () => {
+    const serverConfig: McpServerConfig = {
+      command: 'npx',
+      args: ['-y', 'example-mcp'],
+    }
+    const fingerprint = mcpServerFingerprint(serverConfig)
+    const action = vi.fn<() => Promise<void>>(async () => {})
+    loadEffectiveSettings.mockResolvedValueOnce({
+      version: 1,
+      'agent.mcp.trust': [
+        { serverId: 'github', scope: 'workspace', fingerprint },
+      ],
+    })
+    settings.effective = { version: 1 }
+
+    const choice = useMcpTrustChoice(() => '/tmp/other-project')
+    await choice.requireTrust('github', serverConfig, action)
+
+    expect(loadEffectiveSettings).toHaveBeenCalledWith('/tmp/other-project')
+    expect(action).toHaveBeenCalledTimes(1)
+    expect(choice.trustPending.value).toBeNull()
+  })
+
+  it('writes workspace trust to the provided root when it differs from the active root', async () => {
+    loadProjectSettings.mockResolvedValueOnce({ version: 1 })
+    const action = vi.fn<() => Promise<void>>(async () => {})
+    const choice = useMcpTrustChoice(() => '/tmp/other-project')
+    choice.trustPending.value = {
+      serverId: 'server-a',
+      fingerprint: 'fp-a',
+      action,
+    }
+
+    await choice.handleTrustChoice('workspace')
+
+    expect(loadProjectSettings).toHaveBeenCalledWith('/tmp/other-project')
+    expect(saveSettings).toHaveBeenCalledWith(
+      'project',
+      {
+        version: 1,
+        'agent.mcp.trust': [
+          { serverId: 'server-a', scope: 'workspace', fingerprint: 'fp-a' },
+        ],
+      },
+      '/tmp/other-project',
+    )
+    expect(updateSetting).not.toHaveBeenCalled()
+    expect(action).toHaveBeenCalledTimes(1)
   })
 })

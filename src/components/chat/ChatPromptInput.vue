@@ -128,11 +128,6 @@ const syncDraftSelection = (): void => {
   contextBudgetSync.setDraftSelection(session.selectedModelRef, session.selectedMode)
 }
 
-const resolveDefaultPermissionLevel = (): PermissionLevel =>
-  props.permissionLevel ?? config.effectiveSettings.value['agent.permissionLevel'] ?? 'allowlist'
-
-const localPermissionLevel = ref<PermissionLevel>(resolveDefaultPermissionLevel())
-
 const session = reactive<{
   selectedMode: VixlChatMode
   selectedModelRef: string
@@ -207,6 +202,17 @@ const promptWorkspaceRoot = computed((): string | null => {
 })
 
 const showGitBranch = computed(() => git.isRepo.value && promptWorkspaceRoot.value !== null)
+
+const { settings: rootEffectiveSettings } = useRootEffectiveSettings(
+  () => promptWorkspaceRoot.value,
+)
+
+const resolveDefaultPermissionLevel = (): PermissionLevel =>
+  props.permissionLevel
+  ?? rootEffectiveSettings.value['agent.permissionLevel']
+  ?? 'allowlist'
+
+const localPermissionLevel = ref<PermissionLevel>(resolveDefaultPermissionLevel())
 
 const resolveInitialModelRef = (mode: VixlChatMode, metaModel?: string): string => {
   const settings = config.effectiveSettings.value
@@ -385,14 +391,14 @@ watch(
 )
 
 watch(
-  () => config.hydrated.value,
-  (hydrated) => {
+  [() => config.hydrated.value, rootEffectiveSettings],
+  ([hydrated]) => {
     if (!hydrated) {
       return
     }
     if (props.permissionLevel === undefined) {
       localPermissionLevel.value =
-        config.effectiveSettings.value['agent.permissionLevel'] ?? 'allowlist'
+        rootEffectiveSettings.value['agent.permissionLevel'] ?? 'allowlist'
     }
     if (!session.modeInitialized) {
       session.selectedMode = 'agent'
@@ -563,7 +569,7 @@ watch(
         <ChatGitBranchSelect v-if="showGitBranch" />
       </div>
       <div class="flex min-w-0 items-center gap-1">
-        <ChatMcpServerPicker />
+        <ChatMcpServerPicker :project-root="promptWorkspaceRoot" />
         <ChatSkillsPicker :mode="session.selectedMode" />
       </div>
     </div>

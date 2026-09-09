@@ -4,7 +4,7 @@ import type { ContextMention } from '@/types/harness/context-mention'
 import type { HarnessEvent } from '@/types/harness/harness-event'
 import type { PermissionCapabilityKey } from '@/types/harness/permission'
 import type { ReasoningLevel } from '@/types/models/reasoning-level'
-import type { VixlChatMode } from '@/types/vixl/vixl-settings'
+import type { VixlChatMode, VixlSettings } from '@/types/vixl/vixl-settings'
 import runOrchestrator from '@/services/harness/orchestrator'
 import listConfiguredProviders from '@/services/providers/list-configured-providers'
 import { updateChatMeta } from '@/services/vixl/vixl-tauri'
@@ -14,6 +14,7 @@ import { listAgentIndex } from '@/services/agents/registry'
 import dropUnresolvedAgentMentions from '@/services/agents/drop-unresolved-agent-mentions'
 import buildMentionHighlights from '@/utils/build-mention-highlights'
 import collectExplicitAgentMentions from '@/utils/collect-explicit-agent-mentions'
+import { loadEffectiveSettings } from '@/services/config/vixl-config'
 import type { AgentHarnessState, AttentionHelpers } from './types'
 
 export type SendArgs = {
@@ -64,6 +65,13 @@ export default (
   } = state
 
   const send = async (args: SendArgs): Promise<void> => {
+    const pending = session.pendingQuestion.value
+    if (!args.internal && pending && args.text.trim().length > 0) {
+      session.submitAnswer(pending.toolCallId, args.text)
+      attention.maybeClearAttentionWhenGatesEmpty()
+      return
+    }
+
     if (!args.internal && (attention.isParentBusy() || attention.isWaitingOnBackground())) {
       try {
         messageQueue.enqueue({
@@ -109,12 +117,23 @@ export default (
       return
     }
 
+    const projectRoot = options.standalone ? null : options.projectRoot
+    let chatSettings: VixlSettings
+    try {
+      chatSettings = await loadEffectiveSettings(projectRoot)
+    } catch (settingsError) {
+      toast.error('Failed to load project settings', {
+        description:
+          settingsError instanceof Error ? settingsError.message : 'Unknown error',
+      })
+      return
+    }
+
     error.value = null
     status.value = 'submitted'
     toolRuns.value = []
     subagents.value = []
 
-    const projectRoot = options.standalone ? null : options.projectRoot
     const agentIndex = await listAgentIndex(projectRoot).catch(() => [])
     const mentions = await dropUnresolvedAgentMentions(
       collectExplicitAgentMentions(args.text, args.mentions ?? [], agentIndex),
@@ -126,7 +145,7 @@ export default (
       model: args.model,
       reasoning: args.reasoning,
       mentions,
-      effectiveSettings: config.effectiveSettings.value,
+      effectiveSettings: chatSettings,
     }
     contextBudgetSync.setDraftMentions(mentions)
 
@@ -214,7 +233,7 @@ export default (
         mode: args.mode,
         modelId: parsedModel.modelId,
         providerId: parsedModel.providerId,
-        settings: config.effectiveSettings.value,
+        settings: chatSettings,
         messages: session.messages.value,
         timeline: session.timeline.value,
         userText: args.text,

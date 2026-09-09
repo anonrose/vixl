@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef, type Ref } from 'vue'
 import type { AgentHarnessState, AttentionHelpers } from '@/composables/agent-harness/types'
+import type { PendingQuestionState } from '@/types/chat/pending-question'
 import type { VixlSettings } from '@/types/vixl/vixl-settings'
 import { mockVixlTauri } from '../../test-utils/mocks/vixl-tauri'
 
@@ -50,6 +51,14 @@ vi.mock('@/services/harness/subagent/registry', () => ({
   hasRunningSubagentsForChat: () => false,
 }))
 
+const loadEffectiveSettings = vi.hoisted(() =>
+  vi.fn<(rootPath: string | null) => Promise<VixlSettings>>(),
+)
+
+vi.mock('@/services/config/vixl-config', () => ({
+  loadEffectiveSettings,
+}))
+
 vi.mock('vue-sonner', () => ({
   toast: {
     error: (...args: unknown[]) => toastError(...args),
@@ -61,7 +70,13 @@ import createHelpers from '@/composables/agent-harness/helpers'
 
 const settings = (): VixlSettings => ({ version: 1 })
 
-const buildState = (): AgentHarnessState => {
+type SendTestState = AgentHarnessState & {
+  session: AgentHarnessState['session'] & {
+    pendingQuestion: Ref<PendingQuestionState | null>
+  }
+}
+
+const buildState = (): SendTestState => {
   const patchMeta = vi.fn<(patch: unknown) => void>()
   const startAgentTurn = vi.fn<(turnId: string) => void>()
   const finishAgentTurn = vi.fn<() => void>()
@@ -70,6 +85,7 @@ const buildState = (): AgentHarnessState => {
     .fn<(slug: string) => Promise<void>>()
     .mockResolvedValue(undefined)
   const setDraftMentions = vi.fn<(mentions: unknown[]) => void>()
+  const pendingQuestion = ref<PendingQuestionState | null>(null)
 
   return {
     options: {
@@ -87,6 +103,8 @@ const buildState = (): AgentHarnessState => {
       setAgentTurnError,
       messages: ref([]),
       timeline: ref([]),
+      pendingQuestion,
+      submitAnswer: vi.fn<(toolCallId: string, answer: string) => void>(),
     },
     config: {
       hydrated: computed(() => true),
@@ -112,7 +130,7 @@ const buildState = (): AgentHarnessState => {
     messageQueue: {
       enqueue: vi.fn<(...args: unknown[]) => void>(),
     },
-  } as unknown as AgentHarnessState
+  } as unknown as SendTestState
 }
 
 const buildAttention = (): AttentionHelpers =>
@@ -134,6 +152,7 @@ describe('agent-harness send persist model/mode', () => {
     listConfiguredProviders.mockReturnValue(['openai'])
     listAgentIndex.mockResolvedValue([])
     resolveAgentDefinition.mockResolvedValue(null)
+    loadEffectiveSettings.mockResolvedValue({ version: 1 })
   })
 
   it('persists model and mode via updateChatMeta before the turn', async () => {
@@ -253,6 +272,59 @@ describe('agent-harness send persist model/mode', () => {
     expect(second.sessionAllows).toBe(state.sessionAllows)
     expect(second.sessionDenies).toBe(state.sessionDenies)
     expect(second.sessionAllows.has('fs.write')).toBe(true)
+  })
+
+  it('loads effective settings for the chat project root', async () => {
+    const chatSettings: VixlSettings = {
+      version: 1,
+      'agent.permissionLevel': 'allowlist',
+    }
+    loadEffectiveSettings.mockResolvedValue(chatSettings)
+    const state = buildState()
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'hello',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(loadEffectiveSettings).toHaveBeenCalledWith('/tmp/proj')
+    expect(state.lastRunConfig.value?.effectiveSettings).toEqual(chatSettings)
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: chatSettings }),
+    )
+  })
+
+  it('loads personal settings when the chat is standalone', async () => {
+    const personalSettings: VixlSettings = { version: 1 }
+    loadEffectiveSettings.mockResolvedValue(personalSettings)
+    const state = buildState()
+    state.options.standalone = true
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'hello',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(loadEffectiveSettings).toHaveBeenCalledWith(null)
+    expect(runOrchestrator).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: personalSettings }),
+    )
   })
 
   it('turns raw /reviewer text into an agent mention on send', async () => {
@@ -390,5 +462,108 @@ describe('agent-harness send persist model/mode', () => {
         mentions: [{ type: 'skill', name: 'agent' }],
       }),
     )
+  })
+
+  it('treats a composer send as the answer to a pending question', async () => {
+    const state = buildState()
+    state.status.value = 'streaming'
+    state.session.pendingQuestion.value = {
+      toolCallId: 'q-1',
+      question: 'Which approach?',
+    }
+    vi.mocked(state.session.submitAnswer).mockImplementation(
+      (toolCallId: string) => {
+        if (state.session.pendingQuestion.value?.toolCallId === toolCallId) {
+          state.session.pendingQuestion.value = null
+        }
+      },
+    )
+    const attention = buildAttention()
+    const { send } = createSend(state, attention, {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'use the first option',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      files: [
+        {
+          type: 'file',
+          mediaType: 'image/png',
+          url: 'https://example.com/a.png',
+        },
+      ],
+    })
+
+    expect(state.session.submitAnswer).toHaveBeenCalledWith(
+      'q-1',
+      'use the first option',
+    )
+    expect(state.session.pendingQuestion.value).toBeNull()
+    expect(attention.maybeClearAttentionWhenGatesEmpty).toHaveBeenCalledTimes(1)
+    expect(state.messageQueue.enqueue).not.toHaveBeenCalled()
+    expect(runOrchestrator).not.toHaveBeenCalled()
+  })
+
+  it('does not intercept internal sends while a question is pending', async () => {
+    const state = buildState()
+    state.session.pendingQuestion.value = {
+      toolCallId: 'q-1',
+      question: 'Which approach?',
+    }
+    const { send } = createSend(state, buildAttention(), {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: 'queued drain',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+      skipUserMessage: true,
+      internal: true,
+    })
+
+    expect(state.session.submitAnswer).not.toHaveBeenCalled()
+    expect(state.session.pendingQuestion.value).toEqual({
+      toolCallId: 'q-1',
+      question: 'Which approach?',
+    })
+    expect(runOrchestrator).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls through when the composer send is empty while a question is pending', async () => {
+    const state = buildState()
+    state.status.value = 'streaming'
+    state.session.pendingQuestion.value = {
+      toolCallId: 'q-1',
+      question: 'Which approach?',
+    }
+    const attention = createHelpers(state)
+    const { send } = createSend(state, attention, {
+      handleEvent: vi.fn<(...args: unknown[]) => void>(),
+      persistPermission: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+      maybeDrainQueue: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
+    })
+
+    await send({
+      text: '   ',
+      mode: 'agent',
+      model: 'openai::gpt-4o',
+    })
+
+    expect(state.session.submitAnswer).not.toHaveBeenCalled()
+    expect(state.session.pendingQuestion.value).toEqual({
+      toolCallId: 'q-1',
+      question: 'Which approach?',
+    })
+    expect(state.messageQueue.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ text: '   ' }),
+    )
+    expect(runOrchestrator).not.toHaveBeenCalled()
   })
 })

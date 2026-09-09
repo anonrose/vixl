@@ -161,7 +161,6 @@ const handleOpenEditor = async (): Promise<void> => {
   }
 
   try {
-    await fleet.setActiveProject(fleetProject.id)
     await workbench.openEditor(fleetProject.id, 'README.md')
   } catch (error) {
     toast.error('Could not open editor', {
@@ -178,7 +177,6 @@ const handleOpenTerminal = async (): Promise<void> => {
   }
 
   try {
-    await fleet.setActiveProject(fleetProject.id)
     await workbench.openTerminal(fleetProject.id)
   } catch (error) {
     toast.error('Could not open terminal', {
