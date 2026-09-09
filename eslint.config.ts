@@ -27,10 +27,6 @@ export default defineConfigWithVueTs(
     'src/components/ai-elements/**',
     'src/auto-imports.d.ts',
     'src/components.d.ts',
-    'docs/.vuepress/.temp/**',
-    'docs/.vuepress/.cache/**',
-    'docs/.vuepress/dist/**',
-    'docs/.vuepress/components/ui/**',
   ]),
 
   ...pluginVue.configs['flat/essential'],

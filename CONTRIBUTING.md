@@ -21,7 +21,7 @@ and `SECURITY.md` for security reports.
 
 - **Bug reports**: open an issue with reproduction steps, OS, and relevant provider/MCP setup.
 - **Feature requests**: open an issue describing the use case before large PRs.
-- **Documentation**: fixes and clarifications in `README.md` and `docs/`.
+- **Documentation**: fixes and clarifications in `README.md`.
 - **Code**: bug fixes, tests, and features via pull request.
 
 ## Development setup
@@ -56,21 +56,12 @@ Run these before opening a PR:
 
 CI also runs a Tauri build job. Match existing style and the conventions in `AGENTS.md`.
 
-### Docs site
-
-The docs site is VuePress (`docs/`).
-
-```bash
-npm run docs:dev
-npm run docs:build
-```
-
 ## Pull request process
 
 1. Fork the repo and create a branch from `main`.
 2. Make focused changes; avoid unrelated drive-by edits.
 3. Add or update tests when changing harness, tools, or other covered behaviour.
-4. Update `docs/` or `README.md` when behaviour or public surfaces change.
+4. Update `README.md` when behaviour or public surfaces change.
 5. Ensure `npm run ci` passes (and Rust audit when you touch `src-tauri`).
 6. Open a PR against `main` and fill out the [PR template](.github/pull_request_template.md).
 7. Wait for required checks (`CI`, `Rust audit`, `Tauri build`) and a [CODEOWNERS](.github/CODEOWNERS) review.
@@ -100,8 +91,6 @@ Breaking changes should be called out in the PR description.
 | `src/services/harness/` | Agent harness and tool loop |
 | `src-tauri/` | Tauri / Rust shell |
 | `src/prompts/` | System and tool guidance prompts |
-| `docs/` | VuePress documentation |
-| `docs/media/` | README screenshots and assets |
 
 ## Commit messages
 
