@@ -131,9 +131,10 @@ export const decidePermission = (input: PermissionDecisionInput): PermissionDeci
     action === 'shell.network' ||
     action === 'shell.unsandboxed'
   ) {
-    // Shell is never covered by Bypass. Approval scopes are once/session/never only
-    // (no workspace/always persist). OS sandboxing (Seatbelt / bwrap) is separate from
-    // this permission gate; sandboxed vs unsandboxed is chosen at spawn time.
+    // Bypass auto-allows shell. Approval scopes are once/session/never only
+    // (no workspace/always persist). Session allows still work as documented below.
+    // OS sandboxing (Seatbelt / bwrap) is separate from this permission gate;
+    // sandboxed vs unsandboxed is chosen at spawn time and is unchanged.
     // Session allow of `shell` must not cover `shell.network` or `shell.unsandboxed`.
     // Session allow of `shell.unsandboxed` may cover network and sandboxed shell
     // (full access implies network). Session allow of `shell.network` covers only
@@ -147,6 +148,9 @@ export const decidePermission = (input: PermissionDecisionInput): PermissionDeci
     if (sessionAllowed) {
       return { verdict: 'allow', allowedScopes: shellScopesPhaseA() }
     }
+    if (permissionLevel === 'bypass') {
+      return { verdict: 'allow', allowedScopes: shellScopesPhaseA() }
+    }
     return {
       verdict: 'ask',
       allowedScopes: shellScopesPhaseA(),
@@ -155,11 +159,14 @@ export const decidePermission = (input: PermissionDecisionInput): PermissionDeci
   }
 
   if (action === 'web.fetch') {
-    // Web fetch is never covered by Bypass. Session/workspace/always persist allowed.
+    // Bypass auto-allows web fetch. Session/workspace/always persist allowed.
     if (sessionAllows.has(capability) || sessionAllows.has('web.fetch')) {
       return { verdict: 'allow', allowedScopes: defaultScopes() }
     }
     if (persisted?.verdict === 'allow') {
+      return { verdict: 'allow', allowedScopes: defaultScopes() }
+    }
+    if (permissionLevel === 'bypass') {
       return { verdict: 'allow', allowedScopes: defaultScopes() }
     }
     return { verdict: 'ask', allowedScopes: defaultScopes(), reason: 'Web fetch' }
@@ -198,6 +205,9 @@ export const decidePermission = (input: PermissionDecisionInput): PermissionDeci
       return { verdict: 'allow', allowedScopes: defaultScopes() }
     }
     if (action === 'git.write') {
+      return { verdict: 'allow', allowedScopes: defaultScopes() }
+    }
+    if (action === 'mcp.call') {
       return { verdict: 'allow', allowedScopes: defaultScopes() }
     }
   }

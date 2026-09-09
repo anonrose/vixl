@@ -194,10 +194,19 @@ export const createSubmitHandlers = (state: AgentThreadViewState) => {
     })
   }
 
-  const handlePermissionLevelChange = (level: PermissionLevel): void => {
+  const handlePermissionLevelChange = async (
+    level: PermissionLevel,
+  ): Promise<void> => {
     state.permissionLevelTouched.value = true
     state.sessionPermissionLevel.value = level
     state.harness.value?.setPermissionLevel(level)
+    try {
+      await state.config.updateSetting('personal', 'agent.permissionLevel', level)
+    } catch (error) {
+      toast.error('Failed to save permission level', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
   }
 
   const handleCompact = async (): Promise<void> => {
