@@ -75,6 +75,7 @@ export default defineUserConfig({
           collapsible: true,
           children: [
             { text: 'General', link: '/guide/general.html' },
+            { text: 'Appearance', link: '/guide/appearance.html' },
             { text: 'Graphs', link: '/guide/graphs.html' },
             { text: 'MCP', link: '/guide/mcp.html' },
             { text: 'Providers', link: '/guide/providers.html' },
