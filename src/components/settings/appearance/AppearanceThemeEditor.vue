@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { AppIcon } from '@/icons'
-import { ref } from 'vue'
 import { Button } from '@/components/shadcn/ui/button'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/shadcn/ui/collapsible'
 import { Input } from '@/components/shadcn/ui/input'
 import { Label } from '@/components/shadcn/ui/label'
 import AppearanceBackgroundEditor from './AppearanceBackgroundEditor.vue'
@@ -48,8 +42,6 @@ const emit = defineEmits<{
   apply: []
   cancel: []
 }>()
-
-const advancedOpen = ref(false)
 </script>
 
 <template>
@@ -131,110 +123,78 @@ const advancedOpen = ref(false)
       </div>
     </div>
 
-    <!-- Advanced tokens -->
-    <Collapsible :open="advancedOpen" @update:open="(open: boolean) => (advancedOpen = open)">
-      <CollapsibleTrigger as-child>
-        <Button variant="ghost" size="sm" :aria-expanded="advancedOpen">
-          {{ advancedOpen ? 'Hide' : 'Show' }} advanced tokens (charts, sidebar)
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent class="mt-2 space-y-2">
-        <div class="grid gap-2 lg:grid-cols-2">
-          <AppearanceColorField
-            v-for="token in ADVANCED_TOKEN_FIELDS"
-            :key="token.key"
-            :label="token.label"
-            :model-value="draft.variants[editingVariant].colors[token.key]"
-            :contrast-against="contrastTargetFor(token.key, draft.variants[editingVariant].colors)"
-            @update:model-value="(value: string) => emit('set-token', token.key, value)"
-          />
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-
-    <!-- Typography -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between gap-2">
-        <p class="text-sm font-medium">Typography</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="Reset typography to Vixl defaults"
-          data-testid="appearance-reset-typography"
-          @click="emit('reset-section', 'typography')"
-        >
-          <AppIcon name="rotate-ccw" class="h-3 w-3" />
-          Reset
-        </Button>
+    <!-- Advanced tokens (collapsed by default) -->
+    <AppearanceEditorSection
+      title="Advanced tokens (charts, sidebar)"
+      testid="appearance-editor-advanced"
+    >
+      <div class="grid gap-2 lg:grid-cols-2">
+        <AppearanceColorField
+          v-for="token in ADVANCED_TOKEN_FIELDS"
+          :key="token.key"
+          :label="token.label"
+          :model-value="draft.variants[editingVariant].colors[token.key]"
+          :contrast-against="contrastTargetFor(token.key, draft.variants[editingVariant].colors)"
+          @update:model-value="(value: string) => emit('set-token', token.key, value)"
+        />
       </div>
+    </AppearanceEditorSection>
+
+    <!-- Typography (collapsed by default; reset stays visible) -->
+    <AppearanceEditorSection
+      title="Typography"
+      reset-label="Reset typography to Vixl defaults"
+      reset-testid="appearance-reset-typography"
+      testid="appearance-editor-section-typography"
+      @reset="emit('reset-section', 'typography')"
+    >
       <AppearanceTypographyEditor
         :typography="draft.variants[editingVariant].typography"
         @update="(patch) => emit('set-typography', patch)"
       />
-    </div>
+    </AppearanceEditorSection>
 
-    <!-- Background -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between gap-2">
-        <p class="text-sm font-medium">Canvas background</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="Reset canvas background to Vixl defaults"
-          data-testid="appearance-reset-background"
-          @click="emit('reset-section', 'background')"
-        >
-          <AppIcon name="rotate-ccw" class="h-3 w-3" />
-          Reset
-        </Button>
-      </div>
+    <!-- Background (collapsed by default; reset stays visible) -->
+    <AppearanceEditorSection
+      title="Canvas background"
+      reset-label="Reset canvas background to Vixl defaults"
+      reset-testid="appearance-reset-background"
+      testid="appearance-editor-section-background"
+      @reset="emit('reset-section', 'background')"
+    >
       <AppearanceBackgroundEditor
         :canvas="draft.variants[editingVariant].canvas"
         @update:canvas="(canvas) => emit('set-canvas', canvas)"
       />
-    </div>
+    </AppearanceEditorSection>
 
-    <!-- Glass surfaces -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between gap-2">
-        <p class="text-sm font-medium">Glass surfaces</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="Reset glass surfaces to Vixl defaults"
-          data-testid="appearance-reset-glass"
-          @click="emit('reset-section', 'glass')"
-        >
-          <AppIcon name="rotate-ccw" class="h-3 w-3" />
-          Reset
-        </Button>
-      </div>
+    <!-- Glass surfaces (collapsed by default; reset stays visible) -->
+    <AppearanceEditorSection
+      title="Glass surfaces"
+      reset-label="Reset glass surfaces to Vixl defaults"
+      reset-testid="appearance-reset-glass"
+      testid="appearance-editor-section-glass"
+      @reset="emit('reset-section', 'glass')"
+    >
       <AppearanceGlassEditor
         :glass="draft.variants[editingVariant].glass"
         @update:glass="(glass) => emit('set-glass', glass)"
       />
-    </div>
+    </AppearanceEditorSection>
 
-    <!-- Icons -->
-    <div class="space-y-2">
-      <div class="flex items-center justify-between gap-2">
-        <p class="text-sm font-medium">Icons</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="Reset icons to Vixl defaults"
-          data-testid="appearance-reset-icons"
-          @click="emit('reset-section', 'icons')"
-        >
-          <AppIcon name="rotate-ccw" class="h-3 w-3" />
-          Reset
-        </Button>
-      </div>
+    <!-- Icons (collapsed by default; reset stays visible) -->
+    <AppearanceEditorSection
+      title="Icons"
+      reset-label="Reset icons to Vixl defaults"
+      reset-testid="appearance-reset-icons"
+      testid="appearance-editor-section-icons"
+      @reset="emit('reset-section', 'icons')"
+    >
       <AppearanceIconEditor
         :icons="draft.variants[editingVariant].icons"
         @update:icons="(icons) => emit('set-icons', icons)"
       />
-    </div>
+    </AppearanceEditorSection>
 
     <!-- Live preview -->
     <AppearancePreview

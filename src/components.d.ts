@@ -30,6 +30,7 @@ declare module 'vue' {
     AppearanceCanvasStopsEditor: typeof import('./components/settings/appearance/AppearanceCanvasStopsEditor.vue')['default']
     AppearanceColorField: typeof import('./components/settings/appearance/AppearanceColorField.vue')['default']
     AppearanceEditorPanel: typeof import('./components/settings/appearance/AppearanceEditorPanel.vue')['default']
+    AppearanceEditorSection: typeof import('./components/settings/appearance/AppearanceEditorSection.vue')['default']
     AppearanceGlassEditor: typeof import('./components/settings/appearance/AppearanceGlassEditor.vue')['default']
     AppearanceGlassRangeField: typeof import('./components/settings/appearance/AppearanceGlassRangeField.vue')['default']
     AppearanceIconEditor: typeof import('./components/settings/appearance/AppearanceIconEditor.vue')['default']
