@@ -41,6 +41,7 @@ onMounted(() => {
     theme: 'neutral',
     securityLevel: 'strict',
     suppressErrorRendering: true,
+    htmlLabels: false,
   })
   renderDiagram().catch(() => {
     rendered.value = ''
