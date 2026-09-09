@@ -38,10 +38,5 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
-# VuePress
-docs/.vuepress/.temp
-docs/.vuepress/.cache
-docs/.vuepress/dist
-
 # CodeGraph local index (codegraph.db and runtime files; not for committing)
 .codegraph/

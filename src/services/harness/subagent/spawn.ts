@@ -13,7 +13,6 @@ import resolveSpawnModel from '@/services/harness/subagent/resolve-spawn-model'
 import runSubagentGenerate from '@/services/harness/subagent/run-generate'
 import validateSpawnAgentName from '@/services/harness/subagent/validate-spawn-agent-name'
 import { READ_ONLY_SPAWN_MODES } from '@/services/harness/subagent/constants'
-import { clipTerminalLabel } from '@/utils/clip-terminal-label'
 import linkAbortSignal from '@/utils/link-abort-signal'
 import type { HarnessToolContext } from '@/types/harness/tool-context'
 
@@ -27,7 +26,6 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
         .describe(
           'Catalog name (frontmatter name, filename stem, or slug). Verb phrases only for generic helpers not in the catalog.',
         ),
-      description: z.string().min(1).max(48).describe('2-6 word UI title'),
       prompt: z.string().describe('Task instructions for the subagent'),
       mode: z
         .enum(['blocking', 'background'])
@@ -45,10 +43,10 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
         ),
     }),
     execute: async (
-      { agentName, description, prompt, mode, model: callModel, capabilities },
+      { agentName, prompt, mode, model: callModel, capabilities },
       { toolCallId },
     ): Promise<
-      | { subagentId: string; name: string; description: string; summary: string }
+      | { subagentId: string; name: string; summary: string }
       | {
           subagentId: string
           status: 'running'
@@ -69,9 +67,14 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
       }
 
       const subagentId = crypto.randomUUID()
-      const lockedSubagentModel = getPlanExecutionSession(ctx.projectSlug, ctx.chatId).subagentModel
-      const agentDefinition = await validateSpawnAgentName(ctx.projectRoot, agentName)
-      const uiTitle = clipTerminalLabel(description) || agentName
+      const lockedSubagentModel = getPlanExecutionSession(
+        ctx.projectSlug,
+        ctx.chatId,
+      ).subagentModel
+      const agentDefinition = await validateSpawnAgentName(
+        ctx.projectRoot,
+        agentName,
+      )
       const model = await resolveSpawnModel({
         callModel,
         lockedModel: lockedSubagentModel,
@@ -100,7 +103,6 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
         subagentId,
         toolCallId,
         name: agentName,
-        description: uiTitle,
         blocking,
         prompt,
         model,
@@ -113,7 +115,6 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
           toolCallId,
           subagentId,
           agentName,
-          description: uiTitle,
           prompt,
         })
 
@@ -133,7 +134,6 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
             resolveSubagent(subagentId, {
               subagentId,
               name: agentName,
-              description: uiTitle,
               summary,
             })
             emitSubagentResult(ctx, {
@@ -181,7 +181,6 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
         resolveSubagent(subagentId, {
           subagentId,
           name: agentName,
-          description: uiTitle,
           summary,
         })
         emitSubagentResult(ctx, {
@@ -191,7 +190,7 @@ const spawnSubagent = (ctx: HarnessToolContext) =>
           outcome: 'completed',
         })
 
-        return { subagentId, name: agentName, description: uiTitle, summary }
+        return { subagentId, name: agentName, summary }
       } catch (error) {
         finishSubagentWithError(ctx, {
           subagentId,

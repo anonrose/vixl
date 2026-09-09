@@ -35,7 +35,7 @@ describe('decidePermission web.fetch', () => {
     ])
   })
 
-  it('does not auto-allow under bypass', () => {
+  it('allows under bypass', () => {
     const decision = decidePermission({
       action: 'web.fetch',
       capability: 'web.fetch:example.com',
@@ -46,7 +46,14 @@ describe('decidePermission web.fetch', () => {
       sandboxEnabled: true,
     })
 
-    expect(decision.verdict).toBe('ask')
+    expect(decision.verdict).toBe('allow')
+    expect(decision.allowedScopes).toEqual([
+      'once',
+      'session',
+      'workspace',
+      'always',
+      'never',
+    ])
   })
 
   it('allows when sessionAllows has web.fetch:host', () => {
@@ -274,6 +281,113 @@ describe('decidePermission fs broad grants', () => {
       }),
     )
     expect(persistedDecision.verdict).toBe('allow')
+  })
+})
+
+describe('decidePermission bypass', () => {
+  const bypassInput = (
+    action:
+      | 'shell'
+      | 'shell.network'
+      | 'shell.unsandboxed'
+      | 'web.fetch'
+      | 'mcp.call'
+      | 'fs.write'
+      | 'fs.delete',
+    options: {
+      capability?: string
+      paths?: string[]
+      sessionDenies?: string[]
+      permissions?: VixlSettings['agent.permissions']
+    } = {},
+  ) => ({
+    action,
+    capability: (options.capability ?? action) as
+      | 'shell'
+      | 'shell.network'
+      | 'shell.unsandboxed'
+      | 'web.fetch'
+      | `web.fetch:${string}`
+      | `mcp:${string}`
+      | `fs.write:${string}`
+      | `fs.delete:${string}`,
+    paths: options.paths,
+    settings: baseSettings(options.permissions),
+    permissionLevel: 'bypass' as const,
+    sessionAllows: new Set<string>(),
+    sessionDenies: new Set(options.sessionDenies ?? []),
+    sandboxEnabled: true,
+  })
+
+  it.each([
+    'shell',
+    'shell.network',
+    'shell.unsandboxed',
+  ] as const)('allows %s', (action) => {
+    const decision = decidePermission(bypassInput(action))
+    expect(decision.verdict).toBe('allow')
+    expect(decision.allowedScopes).toEqual(['once', 'session', 'never'])
+  })
+
+  it('allows mcp.call', () => {
+    const decision = decidePermission(
+      bypassInput('mcp.call', { capability: 'mcp:server:tool' }),
+    )
+    expect(decision.verdict).toBe('allow')
+    expect(decision.allowedScopes).toEqual([
+      'once',
+      'session',
+      'workspace',
+      'always',
+      'never',
+    ])
+  })
+
+  it('lets session deny win', () => {
+    const decision = decidePermission(
+      bypassInput('shell', { sessionDenies: ['shell'] }),
+    )
+    expect(decision.verdict).toBe('deny')
+    expect(decision.reason).toBe('Denied for this session')
+  })
+
+  it('lets persisted never deny win', () => {
+    const decision = decidePermission(
+      bypassInput('mcp.call', {
+        capability: 'mcp:server:tool',
+        permissions: [
+          {
+            capability: 'mcp:server:tool',
+            verdict: 'deny',
+            scope: 'always',
+          },
+        ],
+      }),
+    )
+    expect(decision.verdict).toBe('deny')
+    expect(decision.reason).toBe('Permanently denied')
+  })
+
+  it('asks for a sensitive fs.write path', () => {
+    const decision = decidePermission(
+      bypassInput('fs.write', {
+        capability: 'fs.write:.env',
+        paths: ['.env'],
+      }),
+    )
+    expect(decision.verdict).toBe('ask')
+    expect(decision.reason).toBe('Sensitive path')
+  })
+
+  it('asks for a sensitive fs.delete path', () => {
+    const decision = decidePermission(
+      bypassInput('fs.delete', {
+        capability: 'fs.delete:.ssh/id_rsa',
+        paths: ['.ssh/id_rsa'],
+      }),
+    )
+    expect(decision.verdict).toBe('ask')
+    expect(decision.reason).toBe('Sensitive path')
   })
 })
 

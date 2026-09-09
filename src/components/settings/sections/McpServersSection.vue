@@ -19,19 +19,11 @@ import SettingsMcpManageMcpServerDialog from '@/components/settings/mcp/ManageMc
 import ChatMcpSecretsForm from '@/components/chat/ChatMcpSecretsForm.vue'
 import useVixlConfig from '@/composables/use-vixl-config'
 import useMcpServers from '@/composables/use-mcp-servers'
+import useMcpTrustChoice from '@/composables/mcp-servers/use-mcp-trust-choice'
 import type { SettingsTab } from '@/composables/use-vixl-config'
 import type { McpConfig, McpInputDefinition, McpServerConfig } from '@/types/vixl/mcp-config'
 import { isMcpHttpServer } from '@/types/vixl/mcp-config'
-import type { McpTrustScope } from '@/types/harness/permission'
 import { isMcpServerEnabled } from '@/schemas/mcp-config'
-import {
-  isMcpTrusted,
-  sessionTrusts,
-  upsertMcpTrustRecord,
-  clearSessionTrust,
-} from '@/services/mcp/mcp-trust'
-import { mcpServerFingerprint } from '@/services/mcp/mcp-server-fingerprint'
-import { clearMcpToolBaseline } from '@/services/mcp/mcp-tool-baseline'
 import {
   listRequiredInputIdsForServer,
   loadMcpInputValues,
@@ -60,12 +52,7 @@ const {
   listScopedMcpServers,
   refreshStates,
 } = useMcpServers()
-
-type TrustPending = {
-  serverId: string
-  fingerprint: string
-  action: () => Promise<void>
-}
+const { trustPending, trustSaving, requireTrust, handleTrustChoice } = useMcpTrustChoice()
 
 const expanded = ref<Record<string, boolean>>({})
 const refreshingAll = ref(false)
@@ -78,8 +65,6 @@ const secretsConfigured = ref<Record<string, boolean>>({})
 const asConfirmOpen = ref(false)
 const asConfirmOrigin = ref('')
 const asConfirmResolve = ref<((confirmed: boolean) => void) | null>(null)
-const trustPending = ref<TrustPending | null>(null)
-const trustSaving = ref(false)
 
 const scopedServers = computed(() =>
   listScopedMcpServers(personalMcp.value, projectMcp.value, props.tab),
@@ -155,81 +140,6 @@ const handleAsConfirm = (confirmed: boolean): void => {
   const resolve = asConfirmResolve.value
   asConfirmResolve.value = null
   resolve?.(confirmed)
-}
-
-const requireTrust = async (
-  id: string,
-  serverConfig: McpServerConfig,
-  action: () => Promise<void>,
-): Promise<void> => {
-  const fingerprint = mcpServerFingerprint(serverConfig)
-  if (isMcpTrusted(config.effectiveSettings.value, id, fingerprint, sessionTrusts)) {
-    await action()
-    return
-  }
-  trustPending.value = { serverId: id, fingerprint, action }
-}
-
-const handleTrustChoice = async (scope: McpTrustScope): Promise<void> => {
-  const pending = trustPending.value
-  if (!pending) {
-    return
-  }
-  trustPending.value = null
-  trustSaving.value = true
-
-  try {
-    await clearMcpToolBaseline(pending.serverId)
-
-    if (scope === 'never') {
-      clearSessionTrust(pending.serverId)
-      const existing = config.personalSettings.value['agent.mcp.trust'] ?? []
-      await config.updateSetting(
-        'personal',
-        'agent.mcp.trust',
-        upsertMcpTrustRecord(existing, pending.serverId, 'never', pending.fingerprint),
-      )
-      return
-    }
-
-    if (scope === 'session') {
-      sessionTrusts.set(pending.serverId, pending.fingerprint)
-    } else if (scope === 'workspace') {
-      const rootPath = config.activeRootPath.value
-      if (rootPath) {
-        const existing = config.projectSettings.value['agent.mcp.trust'] ?? []
-        await config.updateSetting(
-          'project',
-          'agent.mcp.trust',
-          upsertMcpTrustRecord(existing, pending.serverId, 'workspace', pending.fingerprint),
-        )
-      } else {
-        const existing = config.personalSettings.value['agent.mcp.trust'] ?? []
-        await config.updateSetting(
-          'personal',
-          'agent.mcp.trust',
-          upsertMcpTrustRecord(existing, pending.serverId, 'always', pending.fingerprint),
-        )
-      }
-      sessionTrusts.set(pending.serverId, pending.fingerprint)
-    } else {
-      const existing = config.personalSettings.value['agent.mcp.trust'] ?? []
-      await config.updateSetting(
-        'personal',
-        'agent.mcp.trust',
-        upsertMcpTrustRecord(existing, pending.serverId, 'always', pending.fingerprint),
-      )
-      sessionTrusts.set(pending.serverId, pending.fingerprint)
-    }
-
-    await pending.action()
-  } catch (error) {
-    toast.error('Failed to trust server', {
-      description: error instanceof Error ? error.message : 'Unknown error',
-    })
-  } finally {
-    trustSaving.value = false
-  }
 }
 
 const handleEnabledChange = async (

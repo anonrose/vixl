@@ -25,7 +25,6 @@ const findInputDefinition = (
   return {
     id: inputId,
     type: 'promptString',
-    description: `Value for ${inputId}`,
     password: true,
   }
 }

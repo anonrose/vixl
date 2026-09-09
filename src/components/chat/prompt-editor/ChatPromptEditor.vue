@@ -3,7 +3,6 @@ import type { HTMLAttributes } from 'vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import Document from '@tiptap/extension-document'
-import HardBreak from '@tiptap/extension-hard-break'
 import History from '@tiptap/extension-history'
 import Paragraph from '@tiptap/extension-paragraph'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -18,6 +17,12 @@ import useChatContextBudgetSync from '@/composables/use-chat-context-budget-sync
 import useChatPromptEditor from '@/composables/use-chat-prompt-editor'
 import useSlashIndex from '@/composables/use-slash-index'
 import createChatMentionExtension from '@/utils/chat-mention-extension'
+import {
+  plainTextFromEditor,
+  plainTextToDoc,
+  shouldApplyExternalText,
+  splitOnShiftEnter,
+} from '@/utils/chat-prompt-editor'
 import contextMentionFromNode from '@/utils/context-mention-from-node'
 import searchWorkspaceFiles from '@/utils/search-workspace-files'
 import formatUnknownError from '@/utils/format-unknown-error'
@@ -50,17 +55,6 @@ let suggestionRenderer: VueRenderer | null = null
 
 const fileSuggestionKey = new PluginKey('chatFileMention')
 const skillSuggestionKey = new PluginKey('chatSkillMention')
-
-const plainTextToDoc = (text: string) => {
-  const lines = text.split('\n')
-  return {
-    type: 'doc' as const,
-    content: lines.map((line) => ({
-      type: 'paragraph' as const,
-      content: line.length > 0 ? [{ type: 'text' as const, text: line }] : [],
-    })),
-  }
-}
 
 const syncMentionsFromEditor = (): void => {
   const current = editor.value
@@ -234,7 +228,6 @@ const editor = useEditor({
     Document,
     Paragraph,
     Text,
-    HardBreak,
     History,
     Placeholder.configure({
       placeholder: props.placeholder,
@@ -250,6 +243,11 @@ const editor = useEditor({
       'aria-label': 'Chat prompt',
     },
     handleKeyDown: (_view, event) => {
+      const currentEditor = editor.value
+      if (currentEditor && splitOnShiftEnter(currentEditor, event, isComposing.value)) {
+        return true
+      }
+
       if (event.key === 'Enter' && !event.shiftKey && !isComposing.value && !suggestionOpen.value) {
         event.preventDefault()
         const target = editor.value?.view.dom
@@ -305,7 +303,7 @@ const editor = useEditor({
     if (applyingExternalText.value) {
       return
     }
-    const nextText = current.getText({ blockSeparator: '\n' })
+    const nextText = plainTextFromEditor(current)
     if (nextText !== textInput.value) {
       setTextInput(nextText)
     }
@@ -331,14 +329,17 @@ watch(
     if (!current) {
       return
     }
-    const editorText = current.getText({ blockSeparator: '\n' })
-    if (editorText === value) {
+    const editorText = plainTextFromEditor(current)
+    if (!shouldApplyExternalText(editorText, value)) {
       return
     }
     applyingExternalText.value = true
-    current.commands.setContent(plainTextToDoc(value), { emitUpdate: false })
-    applyingExternalText.value = false
-    contextBudgetSync.setDraftMentions([])
+    try {
+      current.commands.setContent(plainTextToDoc(value), { emitUpdate: false })
+      contextBudgetSync.setDraftMentions([])
+    } finally {
+      applyingExternalText.value = false
+    }
   },
 )
 

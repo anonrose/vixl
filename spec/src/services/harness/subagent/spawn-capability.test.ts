@@ -94,7 +94,6 @@ const execute = async (
   ) => Promise<unknown>
   const input: Record<string, unknown> = {
     agentName: 'Reading auth',
-    description: 'Read auth flow',
     prompt: 'Summarize the auth flow.',
     mode: 'blocking',
   }

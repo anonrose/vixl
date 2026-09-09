@@ -89,7 +89,6 @@ const execute = (agentName: string): Promise<unknown> => {
   return runner(
     {
       agentName,
-      description: 'Scan auth helpers',
       prompt: 'Find auth helpers.',
       mode: 'blocking',
     },
@@ -115,11 +114,11 @@ describe('spawn_subagent agentName validation', () => {
     expect(runSubagentGenerate).not.toHaveBeenCalled()
   })
 
-  it('emits description on subagent-start for a verb phrase helper', async () => {
-    const events: Array<{ type: string; description?: string; name?: string }> = []
+  it('emits agentName on subagent-start for a verb phrase helper', async () => {
+    const events: Array<{ type: string; name?: string }> = []
     const ctx = baseCtx()
     ctx.onHarnessEvent = (event) => {
-      events.push(event as { type: string; description?: string; name?: string })
+      events.push(event as { type: string; name?: string })
     }
     const built = spawnSubagent(ctx)
     const runner = built.execute as (
@@ -129,7 +128,6 @@ describe('spawn_subagent agentName validation', () => {
     await runner(
       {
         agentName: 'Reading auth',
-        description: 'Scan auth helpers',
         prompt: 'Find auth helpers.',
         mode: 'blocking',
       },
@@ -138,7 +136,7 @@ describe('spawn_subagent agentName validation', () => {
     const start = events.find((event) => event.type === 'subagent-start')
     expect(start).toMatchObject({
       name: 'Reading auth',
-      description: 'Scan auth helpers',
     })
+    expect(start && 'description' in start).toBe(false)
   })
 })

@@ -142,7 +142,7 @@ describe('formatToolRunLabel call_mcp_tool', () => {
     ).toBe('Listed MCP tools')
   })
 
-  it('prefers spawn_subagent description over agentName', () => {
+  it('labels spawn_subagent with agentName', () => {
     expect(
       formatToolRunLabel(
         toolRun({
@@ -151,7 +151,7 @@ describe('formatToolRunLabel call_mcp_tool', () => {
           args: { agentName: 'generalPurpose', description: 'Scan auth helpers' },
         }),
       ),
-    ).toBe('Starting Scan auth helpers…')
+    ).toBe('Starting generalPurpose…')
     expect(
       formatToolRunLabel(
         toolRun({
