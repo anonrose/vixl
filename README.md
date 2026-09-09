@@ -49,34 +49,10 @@ Local first design, built originally for using Qwen on a Halo Strix.
 
 [View the estimated token counts](/Users/aidanhibbard/Documents/GitHub/vixl-ai/vixl/spec/src/services/context/system-prompt-token-snapshot.test.ts)
 
-## Table of contents
-
-- [Getting started](#getting-started)
-  - [Install](#install)
-  - [Add a provider key](#add-a-provider-key)
-  - [Select a default model](#select-a-default-model)
-  - [Add a project](#add-a-project)
-  - [Start a chat](#start-a-chat)
-- [How vixl compares](#how-vixl-compares)
-- [What vixl does not include](#what-vixl-does-not-include)
-- [Left sidebar](#left-sidebar)
-- [Home](#home)
-- [Chat view](#chat-view)
-- [Workbench](#workbench)
-- [Project view](#project-view)
-- [Settings](#settings)
-- [The .vixl directory](#the-vixl-directory)
-- [Codegraphs](#codegraphs)
-- [MCP](#mcp)
-- [Agents and chat modes](#agents-and-chat-modes)
-- [Plans](#plans)
-- [Skills, Rules, and AGENTS.md](#skills-rules-and-agentsmd)
-- [Contributing](#contributing)
-
 ## Getting started
 
 <details id="install">
-<summary><strong>Install</strong>: GitHub Releases or build from source</summary>
+<summary><strong>Install</strong></summary>
 
 Install a prebuilt app:
 
@@ -93,7 +69,7 @@ Or build from source:
 </details>
 
 <details id="add-a-provider-key">
-<summary><strong>Add a provider key</strong>: Settings, Providers, Add provider</summary>
+<summary><strong>Add a provider key</strong></summary>
 
 1. Open **Settings** from the sidebar footer.
 2. Go to **Providers**.
@@ -106,7 +82,7 @@ Keys are stored in the OS keychain. They are never written to `.vixl` or `settin
 </details>
 
 <details id="select-a-default-model">
-<summary><strong>Select a default model</strong>: Settings, Models</summary>
+<summary><strong>Select a default model</strong></summary>
 
 1. Open **Settings > Models**.
 2. Set **Default** to the model every role falls back to.
@@ -118,7 +94,7 @@ Without a Default model, starting a chat from the sidebar or file tree shows: `S
 </details>
 
 <details id="add-a-project">
-<summary><strong>Add a project</strong>: sidebar or the project picker</summary>
+<summary><strong>Add a project</strong></summary>
 
 1. Click **Add project** in the Chats toolbar of the sidebar.
 2. Choose the folder to register as a project.
@@ -128,7 +104,7 @@ You can also pick a project from the project picker on the home screen. **No pro
 </details>
 
 <details id="start-a-chat">
-<summary><strong>Start a chat</strong>: from the home screen</summary>
+<summary><strong>Start a chat</strong></summary>
 
 1. Click **New Agent** in the sidebar to open home.
 2. Pick a project in the project picker, or keep **No project**.
@@ -139,9 +115,7 @@ You can also pick a project from the project picker on the home screen. **No pro
 </details>
 
 <details id="how-vixl-compares">
-<summary><strong>How vixl compares</strong>: cost, license, BYOK, local, MCP (as of September 8, 2026)</summary>
-
-Figures below were checked on September 8, 2026 against the linked vendor pages. They change; read those pages before you buy anything.
+<summary><strong>How vixl compares</strong></summary>
 
 Sources: [GitHub Copilot plans](https://docs.github.com/en/copilot/get-started/plans), [VS Code language models](https://code.visualstudio.com/docs/copilot/language-models), [VS Code BYOK](https://code.visualstudio.com/blogs/2026/06/18/byok-vscode), [VS Code license](https://code.visualstudio.com/license), [VS Code MCP](https://code.visualstudio.com/docs/agent-customization/mcp-servers), [Cursor pricing](https://cursor.com/pricing), [Cursor models](https://cursor.com/docs/models-and-pricing), [Cursor API keys](https://cursor.com/docs/settings/api-keys), [Cursor MCP](https://cursor.com/docs/mcp), [Cursor terms](https://cursor.com/terms-of-service), [Antigravity pricing](https://antigravity.google/pricing), [Antigravity models](https://antigravity.google/docs/models/), [Antigravity plans](https://www.antigravity.google/docs/plans/), [Antigravity MCP](https://antigravity.google/docs/mcp/).
 
@@ -157,7 +131,7 @@ Sources: [GitHub Copilot plans](https://docs.github.com/en/copilot/get-started/p
 </details>
 
 <details id="what-vixl-does-not-include">
-<summary><strong>What vixl does not include</strong>: no opinionated integrations</summary>
+<summary><strong>What vixl does not include</strong></summary>
 
 vixl ships no bundled product integrations. It does not pick a browser, a ticket tracker, or a cloud for you.
 
@@ -168,7 +142,7 @@ If an MCP server exists for a tool, add it to `mcp.json` and vixl can use it.
 </details>
 
 <details id="left-sidebar">
-<summary><strong>Left sidebar</strong>: your chats, projects, and search</summary>
+<summary><strong>Left sidebar</strong></summary>
 
 The sidebar lists your chats grouped by project, each with a status label like **Running**, **Needs approval**, or **Done**. From here you can start a new chat, search across projects and chats, pin chats, filter by status, add a project, and open **Settings**.
 
@@ -177,7 +151,7 @@ Right-click a chat to rename, fork, pin, or delete it.
 </details>
 
 <details id="home">
-<summary><strong>Home</strong>: where every chat starts</summary>
+<summary><strong>Home</strong></summary>
 
 Home is the screen vixl opens on. Type a prompt in the text box at the bottom and send it to start a chat.
 
@@ -193,7 +167,7 @@ Before you send, the bar under the input lets you set up the chat:
 </details>
 
 <details id="chat-view">
-<summary><strong>Chat view</strong>: modes, approvals, and context</summary>
+<summary><strong>Chat view</strong></summary>
 
 There are four modes. **Ask** answers questions without changing files. **Plan** researches and writes a plan document. **Agent** makes the changes. **Orchestrator** splits work across sub-agents.
 
@@ -206,14 +180,14 @@ Long conversations can be compacted to save context. You can queue messages whil
 </details>
 
 <details id="workbench">
-<summary><strong>Workbench</strong>: editor, terminals, and changes</summary>
+<summary><strong>Workbench</strong></summary>
 
 The right sidebar is the workbench. It has an editor (the same Monaco core as VS Code, with a file tree and language server support), terminals that open in your project, and a git view for status and diffs. Plans and running agent shells open here as tabs too.
 
 </details>
 
 <details id="project-view">
-<summary><strong>Project view</strong>: everything scoped to one repo</summary>
+<summary><strong>Project view</strong></summary>
 
 Each project gets a page with tabs for its chats, MCP servers, code graph, plans, skills, agents, and rules. These mirror the personal versions in Settings but apply only to that project.
 
@@ -222,7 +196,7 @@ The **Graph** tab shows the code index for the project. Search a symbol or file 
 </details>
 
 <details id="settings">
-<summary><strong>Settings</strong>: personal configuration</summary>
+<summary><strong>Settings</strong></summary>
 
 Settings holds everything that applies to you rather than one project: theme and updates, providers and models, language servers, permissions, and your personal MCP servers, plans, skills, agents, and rules.
 
@@ -231,7 +205,7 @@ Permissions is where you review what agents have been allowed to do: sandboxed t
 </details>
 
 <details id="the-vixl-directory">
-<summary><strong>The .vixl directory</strong>: where your data lives</summary>
+<summary><strong>The .vixl directory</strong></summary>
 
 vixl keeps two config trees. API keys are in the OS keychain, not in either one.
 
@@ -256,7 +230,7 @@ Project config lives at `<repo>/.vixl` and can be committed to share with a team
 </details>
 
 <details id="codegraphs">
-<summary><strong>Codegraphs</strong>: how agents navigate your code</summary>
+<summary><strong>Codegraphs</strong></summary>
 
 vixl indexes each project into a code graph so agents can search symbols and see how the code connects instead of reading files one by one. Indexes are stored per user, never in the repo.
 
@@ -265,7 +239,7 @@ The project's **Graph** tab shows index status and stats, and lets you search a 
 </details>
 
 <details id="mcp">
-<summary><strong>MCP</strong>: connect any tool</summary>
+<summary><strong>MCP</strong></summary>
 
 Add MCP servers in Settings (personal) or on the project page (project). Config lives in `mcp.json`, and project servers override personal ones with the same name.
 
@@ -276,7 +250,7 @@ Once connected, agents can call the server's tools in any chat.
 </details>
 
 <details id="agents-and-chat-modes">
-<summary><strong>Agents and chat modes</strong>: two different things</summary>
+<summary><strong>Agents and chat modes</strong></summary>
 
 The four chat modes (**Agent**, **Ask**, **Orchestrator**, **Plan**) are built in. See [Chat view](#chat-view).
 
@@ -285,7 +259,7 @@ Custom agents are your own: markdown files in `.vixl/agents/` with a name, descr
 </details>
 
 <details id="plans">
-<summary><strong>Plans</strong>: research first, then build</summary>
+<summary><strong>Plans</strong></summary>
 
 Plan mode writes a plan document with a todo list, saved under `.vixl/plans/`. You can also create one by hand with **New plan**.
 
@@ -294,7 +268,7 @@ When the plan looks right, **Build now** has an agent implement the todos, or **
 </details>
 
 <details id="skills-rules-and-agentsmd">
-<summary><strong>Skills, Rules, and AGENTS.md</strong>: teach vixl how you work</summary>
+<summary><strong>Skills, Rules, and AGENTS.md</strong></summary>
 
 Skills are reusable instruction packs in `.vixl/skills/`, run with `/` or loaded by agents when relevant. Rules in `.vixl/rules/` and a top-level `AGENTS.md` are always-on instructions added to every chat.
 
