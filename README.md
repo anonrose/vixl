@@ -47,7 +47,7 @@ Save on token costs by utilizing routers, sales, and model mixing.
 
 Local first design, built originally for using Qwen on a Halo Strix.
 
-[View the estimated token counts](/Users/aidanhibbard/Documents/GitHub/vixl-ai/vixl/spec/src/services/context/system-prompt-token-snapshot.test.ts)
+[View the estimated token counts](./spec/src/services/context/system-prompt-token-snapshot.test.ts)
 
 ## Getting started
 
